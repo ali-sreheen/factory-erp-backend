@@ -3,7 +3,7 @@ uvicorn[standard]
 sqlalchemy
 pydantic
 python-multipart
-passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
 psycopg2-binary
 gunicorn
