@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+*.db
+uploads/
+build/
+dist/
+*.spec
+*.exe
+web-app/
+mobile/
