@@ -138,7 +138,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
 # --- ADMIN PANEL USER MANAGEMENT ENDPOINTS ---
 
-@app.get("/api/users/", response_model=List[schemas.UserWithPermissionsResponse])
+@app.get("/api/users", response_model=List[schemas.UserWithPermissionsResponse])
 def list_users(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)

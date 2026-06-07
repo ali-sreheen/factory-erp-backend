@@ -226,6 +226,22 @@ async function authFetch(url, options = {}) {
     }
 }
 
+async function handleBadResponse(response, defaultMsg) {
+    let detail = '';
+    try {
+        const text = await response.text();
+        try {
+            const json = JSON.parse(text);
+            detail = json.detail || text;
+        } catch (e) {
+            detail = text;
+        }
+    } catch (e) {
+        detail = response.statusText;
+    }
+    return new Error(`${defaultMsg} (${response.status}): ${detail}`);
+}
+
 // Setup Transaction Type UI Toggle styling
 function setupTxTypeToggle() {
     const radios = document.querySelectorAll('input[name="txType"]');
@@ -464,7 +480,12 @@ async function fetchDepartmentCounts() {
             authFetch(`${API_URL}/`)
         ]);
         
-        if (!deptsResponse.ok || !itemsResponse.ok) throw new Error('Failed to fetch data');
+        if (!deptsResponse.ok) {
+            throw await handleBadResponse(deptsResponse, 'فشل جلب الأقسام الرئيسية');
+        }
+        if (!itemsResponse.ok) {
+            throw await handleBadResponse(itemsResponse, 'فشل جلب البنود');
+        }
         
         globalDepartments = await deptsResponse.json();
         const items = await itemsResponse.json();
@@ -555,7 +576,9 @@ async function loadUsers() {
     
     try {
         const response = await authFetch(USERS_URL);
-        if (!response.ok) throw new Error('فشلت عملية جلب المستخدمين');
+        if (!response.ok) {
+            throw await handleBadResponse(response, 'فشلت عملية جلب المستخدمين');
+        }
         const users = await response.json();
         
         users.forEach(user => {
@@ -1338,11 +1361,11 @@ async function openPermissionsModal(userId, username) {
     permissionsModal.querySelector('.transform').classList.remove('scale-95');
     
     try {
-        const response = await authFetch(`${API_URL.replace('/items', '/users')}/${userId}/permissions/`);
-        // Wait! The backend doesn't have `GET /api/users/{user_id}/permissions/` implemented explicitly for a specific user ID,
-        // Wait, yes I added a general `GET /api/users/me/permissions/` but let me just load all users and their permissions from `get_all_users()`.
-        // Actually, `list_users` returns permissions inside the user object now!
+        // Load all users and their permissions from USERS_URL which now returns permissions inside the user object
         const usersResp = await authFetch(USERS_URL);
+        if (!usersResp.ok) {
+            throw await handleBadResponse(usersResp, 'فشلت عملية جلب الحسابات');
+        }
         const users = await usersResp.json();
         const user = users.find(u => u.id === userId);
         
