@@ -302,10 +302,12 @@ def update_item_image(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="هذه الصلاحية متاحة للمسؤول (admin) فقط")
+
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    check_permission(db, current_user, item.category)
     
     image_url = None
     if image and image.filename:
@@ -319,6 +321,29 @@ def update_item_image(
         raise HTTPException(status_code=400, detail="Invalid image file")
         
     updated_item = crud.update_item_image(db, item_id=item_id, image_url=image_url)
+    if updated_item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return updated_item
+
+@app.put("/api/items/{item_id}/description", response_model=schemas.Item)
+def update_item_description(
+    item_id: int,
+    update_data: schemas.ItemDescriptionUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="هذه الصلاحية متاحة للمسؤول (admin) فقط")
+        
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    updated_item = crud.update_item_info(
+        db, 
+        item_id=item_id, 
+        description=update_data.description
+    )
     if updated_item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return updated_item

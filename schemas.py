@@ -131,6 +131,9 @@ class ItemUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
 
+class ItemDescriptionUpdate(BaseModel):
+    description: Optional[str] = None
+
 # Reservation schemas
 class ReservationCreate(BaseModel):
     quantity: int

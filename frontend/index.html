@@ -382,13 +382,16 @@
                     <h3 class="text-lg font-bold">سجل حركات البند (<span id="logItemName">اسم البند</span>)</h3>
                     <p class="text-xs text-slate-400 mt-0.5 mb-2">تتبع تاريخ الإضافات والخصومات على هذا البند.</p>
                     
-                    <!-- Editable Description Container -->
-                    <div class="mb-3 flex items-center gap-2">
+                    <!-- Description Display/Edit Container -->
+                    <div id="logDescriptionEditContainer" class="mb-3 flex items-center gap-2">
                         <input type="text" id="logItemDescriptionInput" class="bg-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full" placeholder="لا يوجد وصف للبند، أضف وصفاً...">
                         <button id="btnSaveDescription" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-[11px] text-white font-bold px-3 py-1.5 rounded-lg transition">حفظ الوصف</button>
                     </div>
+                    <div id="logDescriptionReadOnlyContainer" class="mb-3 text-xs text-slate-300 hidden">
+                        <span class="font-bold text-slate-400">الوصف:</span> <span id="logItemDescriptionText">لا يوجد وصف</span>
+                    </div>
 
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-300 hover:text-indigo-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                    <label id="logImageUploadLabel" class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-300 hover:text-indigo-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
                         📷 تعديل صورة البند
                         <input type="file" id="editItemImageInput" accept="image/*" class="hidden">
                     </label>

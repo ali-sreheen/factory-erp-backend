@@ -673,9 +673,30 @@ function setupEditUserAction() {
 
 // ----------------- ITEM MANAGEMENT -----------------
 
+function normalizeArabic(str) {
+    if (!str) return '';
+    return String(str)
+        .trim()
+        .replace(/[أإآا]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي');
+}
+
 async function loadItems() {
     showDeptLoading();
     try {
+        const username = localStorage.getItem('username');
+        if (username && username !== 'admin') {
+            try {
+                const permsResponse = await authFetch(`${API_URL.replace('/items', '/users')}/me/permissions`);
+                if (permsResponse.ok) {
+                    userPermissionsList = await permsResponse.json();
+                }
+            } catch (err) {
+                console.error('Error loading user permissions in loadItems:', err);
+            }
+        }
+        
         let url = `${API_URL}/?category=${encodeURIComponent(currentDepartment)}`;
         if (currentSubcategory) {
             url += `&subcategory=${encodeURIComponent(currentSubcategory)}`;
@@ -697,7 +718,7 @@ function renderItemsGrid() {
     itemsGrid.innerHTML = '';
     
     const username = localStorage.getItem('username');
-    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => String(p.department_name).trim() === String(currentDepartment).trim() && (p.can_edit == 1 || p.can_edit === true));
+    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => normalizeArabic(p.department_name) === normalizeArabic(currentDepartment) && (p.can_edit == 1 || p.can_edit === true));
     
     const mainAddBtn = document.getElementById('mainAddItemBtn');
     if (mainAddBtn) {
@@ -1071,12 +1092,34 @@ async function openLogModal(itemId, itemName) {
     logItemName.textContent = itemName;
     logTableBody.innerHTML = '';
     
-    // Populate description input
+    // Populate description input & handle admin-only controls visibility
     const item = allItems.find(i => i.id === itemId);
-    if (item) {
-        document.getElementById('logItemDescriptionInput').value = item.description || '';
+    const username = localStorage.getItem('username');
+    const descriptionEditContainer = document.getElementById('logDescriptionEditContainer');
+    const descriptionReadOnlyContainer = document.getElementById('logDescriptionReadOnlyContainer');
+    const descriptionText = document.getElementById('logItemDescriptionText');
+    const imageUploadLabel = document.getElementById('logImageUploadLabel');
+    
+    if (username === 'admin') {
+        if (descriptionEditContainer) descriptionEditContainer.classList.remove('hidden');
+        if (descriptionReadOnlyContainer) descriptionReadOnlyContainer.classList.add('hidden');
+        if (imageUploadLabel) imageUploadLabel.classList.remove('hidden');
+        
+        if (item) {
+            document.getElementById('logItemDescriptionInput').value = item.description || '';
+        } else {
+            document.getElementById('logItemDescriptionInput').value = '';
+        }
     } else {
-        document.getElementById('logItemDescriptionInput').value = '';
+        if (descriptionEditContainer) descriptionEditContainer.classList.add('hidden');
+        if (descriptionReadOnlyContainer) descriptionReadOnlyContainer.classList.remove('hidden');
+        if (imageUploadLabel) imageUploadLabel.classList.add('hidden');
+        
+        if (item && item.description) {
+            descriptionText.textContent = item.description;
+        } else {
+            descriptionText.textContent = 'لا يوجد وصف لهذا البند';
+        }
     }
     
     // Render active reservations
@@ -1480,8 +1523,8 @@ async function openPermissionsModal(userId, username) {
         permissionsList.innerHTML = '';
         
         globalDepartments.forEach(dept => {
-            const perm = user.permissions.find(p => p.department_name === dept.name);
-            const canEdit = perm && perm.can_edit === 1;
+            const perm = user.permissions.find(p => normalizeArabic(p.department_name) === normalizeArabic(dept.name));
+            const canEdit = perm && (perm.can_edit == 1 || perm.can_edit === true);
             
             permissionsList.innerHTML += `
                 <div class="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
