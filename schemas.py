@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class UserUpdate(BaseModel):
     username: str
@@ -34,12 +35,14 @@ class UserPermissionResponse(UserPermissionBase):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class UserWithPermissionsResponse(UserResponse):
-    permissions: list[UserPermissionResponse] = []
+    permissions: List[UserPermissionResponse] = []
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class SubDepartmentBase(BaseModel):
     name: str
@@ -53,6 +56,7 @@ class SubDepartmentResponse(SubDepartmentBase):
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 class DepartmentBase(BaseModel):
     name: str
@@ -62,10 +66,11 @@ class DepartmentCreate(DepartmentBase):
 
 class DepartmentResponse(DepartmentBase):
     id: int
-    subdepartments: list[SubDepartmentResponse] = []
+    subdepartments: List[SubDepartmentResponse] = []
 
     class Config:
         from_attributes = True
+        orm_mode = True
 
 # Token schemas
 class Token(BaseModel):
