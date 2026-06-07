@@ -104,6 +104,16 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 def health_check():
     return {"status": "ok"}
 
+@app.get("/api/debug/all-permissions")
+def debug_all_permissions(db: Session = Depends(get_db)):
+    """Temporary debug endpoint - shows all permissions and users in DB"""
+    users = db.query(models.User).all()
+    perms = db.query(models.UserPermission).all()
+    return {
+        "users": [{"id": u.id, "username": u.username} for u in users],
+        "permissions": [{"id": p.id, "user_id": p.user_id, "department_name": p.department_name, "can_edit": p.can_edit} for p in perms]
+    }
+
 # Dependency
 def get_db():
     db = SessionLocal()
