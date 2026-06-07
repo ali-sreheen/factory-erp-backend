@@ -19,6 +19,34 @@ from database import SessionLocal, engine
 # Recreate tables
 models.Base.metadata.create_all(bind=engine)
 
+def check_and_update_db_schema(db_engine):
+    from sqlalchemy import inspect, text
+    inspector = inspect(db_engine)
+    
+    # Check transactions table
+    if "transactions" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("transactions")]
+        if "user_id" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE transactions ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+                print("Added column user_id to transactions table successfully.")
+            except Exception as e:
+                print(f"Error adding user_id to transactions table: {e}")
+
+    # Check reservations table
+    if "reservations" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("reservations")]
+        if "user_id" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE reservations ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+                print("Added column user_id to reservations table successfully.")
+            except Exception as e:
+                print(f"Error adding user_id to reservations table: {e}")
+
+check_and_update_db_schema(engine)
+
 def seed_default_departments(db: Session):
     if not db.query(models.Department).first():
         depts = [
@@ -110,7 +138,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
 # --- ADMIN PANEL USER MANAGEMENT ENDPOINTS ---
 
-@app.get("/api/users/", response_model=List[schemas.UserResponse])
+@app.get("/api/users/", response_model=List[schemas.UserWithPermissionsResponse])
 def list_users(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)

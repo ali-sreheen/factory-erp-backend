@@ -532,6 +532,7 @@ async function fetchDepartmentCounts() {
         
     } catch (error) {
         console.error('Error fetching data:', error);
+        showToast('خطأ أثناء تحميل الأقسام: ' + error.message, 'bg-rose-500', '✗');
     }
 }
 
@@ -581,7 +582,7 @@ async function loadUsers() {
         });
     } catch (error) {
         console.error('Admin load users error:', error);
-        showToast('خطأ أثناء تحميل الحسابات', 'bg-rose-500', '✗');
+        showToast('خطأ أثناء تحميل الحسابات: ' + error.message, 'bg-rose-500', '✗');
     } finally {
         adminLoading.classList.add('hidden');
     }
