@@ -697,7 +697,7 @@ function renderItemsGrid() {
     itemsGrid.innerHTML = '';
     
     const username = localStorage.getItem('username');
-    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => p.department_name === currentDepartment && p.can_edit === 1);
+    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => String(p.department_name).trim() === String(currentDepartment).trim() && (p.can_edit == 1 || p.can_edit === true));
     
     const mainAddBtn = document.getElementById('mainAddItemBtn');
     if (mainAddBtn) {
