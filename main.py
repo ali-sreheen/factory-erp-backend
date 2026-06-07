@@ -143,7 +143,6 @@ def update_user_credentials(
 
 # --- PROTECTED ITEMS ENDPOINTS ---
 
-@app.post("/api/items/", response_model=schemas.Item)
 def check_permission(db: Session, current_user: models.User, category: str):
     if current_user.username == "admin":
         return True
