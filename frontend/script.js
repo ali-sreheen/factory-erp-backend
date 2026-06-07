@@ -496,9 +496,16 @@ async function fetchDepartmentCounts() {
             document.getElementById('adminDepartmentControls').classList.remove('hidden');
         } else {
             document.getElementById('adminDepartmentControls').classList.add('hidden');
-            const permsResponse = await authFetch(`${API_URL.replace('/items', '/users')}/me/permissions`);
+            const permUrl = `${API_URL.replace('/items', '/users')}/me/permissions`;
+            console.log('[DEBUG] Fetching permissions from:', permUrl);
+            const permsResponse = await authFetch(permUrl);
+            console.log('[DEBUG] Permissions response status:', permsResponse.status);
             if (permsResponse.ok) {
                 userPermissionsList = await permsResponse.json();
+                console.log('[DEBUG] userPermissionsList loaded:', JSON.stringify(userPermissionsList));
+            } else {
+                const errText = await permsResponse.text();
+                console.error('[DEBUG] Permissions fetch failed:', errText);
             }
         }
         
@@ -688,9 +695,16 @@ async function loadItems() {
         const username = localStorage.getItem('username');
         if (username && username !== 'admin') {
             try {
-                const permsResponse = await authFetch(`${API_URL.replace('/items', '/users')}/me/permissions`);
+                const permUrl = `${API_URL.replace('/items', '/users')}/me/permissions`;
+                console.log('[DEBUG] loadItems: Fetching permissions from:', permUrl);
+                const permsResponse = await authFetch(permUrl);
+                console.log('[DEBUG] loadItems: Permissions response status:', permsResponse.status);
                 if (permsResponse.ok) {
                     userPermissionsList = await permsResponse.json();
+                    console.log('[DEBUG] loadItems: userPermissionsList:', JSON.stringify(userPermissionsList));
+                } else {
+                    const errText = await permsResponse.text();
+                    console.error('[DEBUG] loadItems: Permissions fetch failed:', errText);
                 }
             } catch (err) {
                 console.error('Error loading user permissions in loadItems:', err);
@@ -719,6 +733,7 @@ function renderItemsGrid() {
     
     const username = localStorage.getItem('username');
     const hasEditPermission = username === 'admin' || userPermissionsList.some(p => normalizeArabic(p.department_name) === normalizeArabic(currentDepartment) && (p.can_edit == 1 || p.can_edit === true));
+    console.log('[DEBUG] renderItemsGrid: username=', username, ' currentDepartment=', currentDepartment, ' userPermissionsList=', JSON.stringify(userPermissionsList), ' hasEditPermission=', hasEditPermission);
     
     const mainAddBtn = document.getElementById('mainAddItemBtn');
     if (mainAddBtn) {
