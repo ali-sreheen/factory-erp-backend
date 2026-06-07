@@ -466,6 +466,13 @@ def delete_subdepartment(subdepartment_id: int, db: Session = Depends(get_db), c
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/users/me/permissions", response_model=List[schemas.UserPermissionResponse])
+def get_my_permissions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username == "admin":
+        # Admin has permission to everything. We can just return a wildcard or the frontend knows admin is admin
+        return []
+    return crud.get_user_permissions(db, current_user.id)
+
 @app.get("/api/users/{user_id}/permissions", response_model=List[schemas.UserPermissionResponse])
 def get_user_permissions(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.username != "admin":
@@ -486,13 +493,6 @@ def remove_permission(user_id: int, department_name: str, db: Session = Depends(
     if not success:
         raise HTTPException(status_code=404, detail="Permission not found")
     return {"message": "Deleted successfully"}
-
-@app.get("/api/users/me/permissions", response_model=List[schemas.UserPermissionResponse])
-def get_my_permissions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    if current_user.username == "admin":
-        # Admin has permission to everything. We can just return a wildcard or the frontend knows admin is admin
-        return []
-    return crud.get_user_permissions(db, current_user.id)
 
 # Serve frontend files
 def get_frontend_dir():

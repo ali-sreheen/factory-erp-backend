@@ -1069,14 +1069,17 @@ txForm.addEventListener('submit', async (e) => {
             body: JSON.stringify(payload)
         });
         
-        if (!response.ok) throw new Error('Failed to log transaction');
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to log transaction');
+        }
         
         showToast('تم تعديل الكمية بنجاح', 'bg-emerald-500', '✓');
         closeTxModal();
         await loadItems();
     } catch (error) {
         console.error('Error recording transaction:', error);
-        showToast('خطأ في تعديل الكمية. تأكد من أن الرصيد يكفي للخصم.', 'bg-rose-500', '✗');
+        showToast(error.message || 'خطأ في تعديل الكمية. تأكد من أن الرصيد يكفي للخصم.', 'bg-rose-500', '✗');
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
