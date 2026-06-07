@@ -48,6 +48,10 @@ app.add_middleware(
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok"}
+
 # Dependency
 def get_db():
     db = SessionLocal()
