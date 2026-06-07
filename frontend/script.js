@@ -719,7 +719,9 @@ function renderItemsGrid() {
         const card = document.createElement('div');
         card.className = 'bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200';
         
-        const imageUrl = item.image_url ? `${API_HOST}${item.image_url}` : 'https://placehold.co/600x400/e2e8f0/64748b?text=%D9%84%D8%A7+%D8%AA%D9%88%D8%AC%D8%AF+%D8%B5%D9%85%D9%8A%D9%85';
+        const imageHTML = item.image_url 
+            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-cover">`
+            : ''; // Blank background instead of question marks
         
         let badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">${item.category}</span>`;
         if (item.category === 'إكسسوارات' && item.subcategory) {
@@ -733,8 +735,8 @@ function renderItemsGrid() {
         card.innerHTML = `
             <div>
                 <!-- Item Image -->
-                <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100">
-                    <img src="${imageUrl}" alt="${item.name}" class="w-full h-full object-cover">
+                <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                    ${imageHTML}
                 </div>
                 <!-- Content -->
                 <div class="p-5">
@@ -781,6 +783,14 @@ function renderItemsGrid() {
                 <button onclick="openReservationModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
                     📌 حجز كمية للمشروع
                 </button>
+                ${username === 'admin' ? `
+                <button onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow mt-1">
+                    🗑️ حذف البند
+                </button>
+                <button onclick="openEditItemModal(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${(item.description || '').replace(/'/g, "\\'")}')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow mt-1">
+                    ✏️ تعديل معلومات البند
+                </button>
+                ` : ''}
                 ` : `
                 <button onclick="openLogModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -892,7 +902,97 @@ addItemForm.addEventListener('submit', async (e) => {
     }
 });
 
+async function deleteItem(itemId, itemName) {
+    if (!confirm(`هل أنت متأكد من رغبتك في حذف البند "${itemName}" بالكامل؟ سيتم حذف جميع الحركات والحجوزات المرتبطة به. لا يمكن التراجع عن هذا الإجراء.`)) {
+        return;
+    }
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/items/${itemId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || 'فشل حذف البند');
+        }
+        
+        showToast('تم حذف البند بنجاح', 'bg-emerald-500', '✓');
+        await loadItems(); // Refresh the items list
+        fetchDepartmentCounts(); // Refresh the counts on the home page
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        showToast(error.message || 'خطأ أثناء حذف البند', 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- EDIT ITEM INFO LOGIC -----------------
+
+const editItemModal = document.getElementById('editItemModal');
+const editItemForm = document.getElementById('editItemForm');
+
+function openEditItemModal(itemId, currentName, currentDesc) {
+    document.getElementById('editItemId').value = itemId;
+    document.getElementById('editItemName').value = currentName || '';
+    document.getElementById('editItemDescription').value = currentDesc || '';
+    
+    editItemModal.classList.remove('hidden');
+    void editItemModal.offsetWidth;
+    editItemModal.classList.remove('opacity-0');
+    editItemModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeEditItemModal() {
+    editItemModal.classList.add('opacity-0');
+    editItemModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        editItemModal.classList.add('hidden');
+        if (editItemForm) editItemForm.reset();
+    }, 300);
+}
+
+if (editItemForm) {
+    editItemForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = editItemForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> جاري الحفظ...';
+        
+        try {
+            const itemId = document.getElementById('editItemId').value;
+            const name = document.getElementById('editItemName').value;
+            const description = document.getElementById('editItemDescription').value;
+            
+            const response = await authFetch(`${API_HOST}/api/items/${itemId}/info`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.detail || 'فشل تحديث بيانات البند');
+            }
+            
+            showToast('تم تحديث معلومات البند بنجاح', 'bg-emerald-500', '✓');
+            closeEditItemModal();
+            await loadItems();
+        } catch (error) {
+            console.error('Error updating item info:', error);
+            showToast(error.message || 'خطأ أثناء تحديث معلومات البند', 'bg-rose-500', '✗');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+}
+
 // ----------------- TRANSACTION MODAL LOGIC -----------------
+
 
 function openTxModal(itemId, itemName) {
     txItemId.value = itemId;

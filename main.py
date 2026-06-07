@@ -225,6 +225,24 @@ def read_items(
     items = crud.get_items(db, category=category, subcategory=subcategory)
     return items
 
+@app.delete("/api/items/{item_id}")
+def delete_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="هذه الصلاحية متاحة للمسؤول (admin) فقط")
+    
+    success = crud.delete_item(db, item_id=item_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Could not delete item")
+    return {"message": "Item deleted successfully"}
+
 @app.post("/api/items/{item_id}/transactions/", response_model=schemas.TransactionResponse)
 def create_transaction(
     item_id: int,
@@ -236,6 +254,9 @@ def create_transaction(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     check_permission(db, current_user, item.category)
+    
+    if item.quantity + tx.change < 0:
+        raise HTTPException(status_code=400, detail="الكمية المطلوبة للحذف أكبر من الكمية المتوفرة في المستودع")
     
     # Pass current_user.id as user_id to document who performed the transaction
     db_tx = crud.create_transaction(
@@ -302,19 +323,26 @@ def update_item_image(
         raise HTTPException(status_code=404, detail="Item not found")
     return updated_item
 
-@app.put("/api/items/{item_id}/description", response_model=schemas.Item)
-def update_item_description(
+@app.put("/api/items/{item_id}/info", response_model=schemas.Item)
+def update_item_info(
     item_id: int,
-    update_data: schemas.ItemDescriptionUpdate,
+    update_data: schemas.ItemUpdate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="هذه الصلاحية متاحة للمسؤول (admin) فقط")
+        
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    check_permission(db, current_user, item.category)
     
-    updated_item = crud.update_item_description(db, item_id=item_id, description=update_data.description)
+    updated_item = crud.update_item_info(
+        db, 
+        item_id=item_id, 
+        name=update_data.name, 
+        description=update_data.description
+    )
     if updated_item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return updated_item

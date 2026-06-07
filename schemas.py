@@ -127,7 +127,8 @@ class Item(ItemBase):
     class Config:
         from_attributes = True
 
-class ItemDescriptionUpdate(BaseModel):
+class ItemUpdate(BaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
 
 # Reservation schemas

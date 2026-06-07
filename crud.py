@@ -135,10 +135,13 @@ def update_item_image(db: Session, item_id: int, image_url: str):
         return db_item
     return None
 
-def update_item_description(db: Session, item_id: int, description: str):
+def update_item_info(db: Session, item_id: int, name: str = None, description: str = None):
     db_item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if db_item:
-        db_item.description = description
+        if name is not None:
+            db_item.name = name
+        if description is not None:
+            db_item.description = description
         db.commit()
         db.refresh(db_item)
         return db_item
@@ -264,3 +267,10 @@ def remove_user_permission(db: Session, user_id: int, department_name: str):
         return True
     return False
 
+def delete_item(db: Session, item_id: int):
+    db_item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+        return True
+    return False
