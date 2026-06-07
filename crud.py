@@ -61,14 +61,6 @@ def create_item(db: Session, name: str, category: str, quantity: int, subcategor
         description=description,
         image_url=image_url
     )
-    db_item = models.Item(
-        name=name,
-        category=category,
-        subcategory=subcategory,
-        quantity=quantity,
-        description=description,
-        image_url=image_url
-    )
     db.add(db_item)
     db.commit()
     db.refresh(db_item)

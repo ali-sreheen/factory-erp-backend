@@ -735,6 +735,13 @@ addItemForm.addEventListener('submit', async (e) => {
         formData.append('image', imageFile);
     }
     
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'جاري الحفظ...';
+    }
+    
     try {
         const response = await authFetch(`${API_URL}/`, {
             method: 'POST',
@@ -749,6 +756,11 @@ addItemForm.addEventListener('submit', async (e) => {
     } catch (error) {
         console.error('Error adding item:', error);
         showToast('خطأ أثناء حفظ البند', 'bg-rose-500', '✗');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
     }
 });
 
@@ -794,6 +806,13 @@ txForm.addEventListener('submit', async (e) => {
         notes: notes || null
     };
     
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'جاري الحفظ...';
+    }
+    
     try {
         const response = await authFetch(`${API_URL}/${itemId}/transactions/`, {
             method: 'POST',
@@ -809,6 +828,11 @@ txForm.addEventListener('submit', async (e) => {
     } catch (error) {
         console.error('Error recording transaction:', error);
         showToast('خطأ في تعديل الكمية. تأكد من أن الرصيد يكفي للخصم.', 'bg-rose-500', '✗');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
     }
 });
 
