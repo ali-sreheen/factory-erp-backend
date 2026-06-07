@@ -13,7 +13,7 @@ let activeLogItemId = null; // Track current item open in log modal
 const authContainer = document.getElementById('authContainer');
 const appContainer = document.getElementById('appContainer');
 const departmentsView = document.getElementById('departmentsView');
-const accessoriesSubDeptView = document.getElementById('accessoriesSubDeptView');
+const accessoriesSubDeptView = document.getElementById('subDeptView');
 const departmentDetailView = document.getElementById('departmentDetailView');
 const adminView = document.getElementById('adminView');
 
