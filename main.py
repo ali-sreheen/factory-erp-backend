@@ -441,6 +441,12 @@ def delete_subdepartment(subdepartment_id: int, db: Session = Depends(get_db), c
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/users/{user_id}/permissions", response_model=List[schemas.UserPermissionResponse])
+def get_user_permissions(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return crud.get_user_permissions(db, user_id)
+
 @app.post("/api/users/{user_id}/permissions/", response_model=schemas.UserPermissionResponse)
 def set_permission(user_id: int, perm: schemas.UserPermissionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.username != "admin":
