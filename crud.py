@@ -181,3 +181,86 @@ def delete_reservation(db: Session, reservation_id: int):
         db.commit()
         return True
     return False
+
+# --- Departments ---
+def get_departments(db: Session):
+    return db.query(models.Department).all()
+
+def create_department(db: Session, name: str):
+    db_dept = models.Department(name=name)
+    db.add(db_dept)
+    db.commit()
+    db.refresh(db_dept)
+    return db_dept
+
+def delete_department(db: Session, department_id: int):
+    # Check if there are any items in this department
+    db_dept = db.query(models.Department).filter(models.Department.id == department_id).first()
+    if not db_dept:
+        return False
+    
+    items_count = db.query(models.Item).filter(models.Item.category == db_dept.name).count()
+    if items_count > 0:
+        raise ValueError("لا يمكن حذف القسم لوجود بنود تابعة له")
+        
+    db.delete(db_dept)
+    db.commit()
+    return True
+
+# --- SubDepartments ---
+def create_subdepartment(db: Session, department_id: int, name: str):
+    db_sub = models.SubDepartment(department_id=department_id, name=name)
+    db.add(db_sub)
+    db.commit()
+    db.refresh(db_sub)
+    return db_sub
+
+def delete_subdepartment(db: Session, subdepartment_id: int):
+    db_sub = db.query(models.SubDepartment).filter(models.SubDepartment.id == subdepartment_id).first()
+    if not db_sub:
+        return False
+        
+    # Check if items exist
+    items_count = db.query(models.Item).filter(models.Item.subcategory == db_sub.name).count()
+    if items_count > 0:
+        raise ValueError("لا يمكن حذف القسم الفرعي لوجود بنود تابعة له")
+
+    db.delete(db_sub)
+    db.commit()
+    return True
+
+# --- User Permissions ---
+def get_user_permissions(db: Session, user_id: int):
+    return db.query(models.UserPermission).filter(models.UserPermission.user_id == user_id).all()
+
+def set_user_permission(db: Session, user_id: int, department_name: str, can_edit: int):
+    db_perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user_id,
+        models.UserPermission.department_name == department_name
+    ).first()
+    
+    if db_perm:
+        db_perm.can_edit = can_edit
+    else:
+        db_perm = models.UserPermission(
+            user_id=user_id,
+            department_name=department_name,
+            can_edit=can_edit
+        )
+        db.add(db_perm)
+        
+    db.commit()
+    db.refresh(db_perm)
+    return db_perm
+
+def remove_user_permission(db: Session, user_id: int, department_name: str):
+    db_perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user_id,
+        models.UserPermission.department_name == department_name
+    ).first()
+    if db_perm:
+        db.delete(db_perm)
+        db.commit()
+        return True
+    return False
+

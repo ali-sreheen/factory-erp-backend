@@ -362,23 +362,62 @@ async function showDepartmentsView() {
     await fetchDepartmentCounts();
 }
 
-async function enterAccessoriesMenu() {
-    currentDepartment = 'إكسسوارات';
+async function enterAccessoriesMenu(deptName) {
+    currentDepartment = deptName;
     currentSubcategory = '';
     
+    document.getElementById('subDeptTitle').textContent = `قسم ${deptName}`;
+    
+    // Find subdepartments
+    const dept = globalDepartments.find(d => d.name === deptName);
+    const subGrid = document.getElementById('subDeptGrid');
+    subGrid.innerHTML = '';
+    
+    if (dept && dept.subdepartments) {
+        dept.subdepartments.forEach(sub => {
+            const card = document.createElement('div');
+            card.onclick = () => enterSubDepartment(sub.name);
+            card.className = "group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-lg border border-slate-100 p-6 transition-all text-center flex flex-col items-center justify-center h-40 relative";
+            
+            // Delete sub-department button for admin
+            const deleteBtnHtml = localStorage.getItem('username') === 'admin' ? 
+                `<button onclick="event.stopPropagation(); deleteSubDepartment(${sub.id})" class="absolute top-2 left-2 text-rose-300 hover:text-rose-600 transition" title="حذف القسم الفرعي">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>` : '';
+
+            card.innerHTML = `
+                ${deleteBtnHtml}
+                <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                </div>
+                <h4 class="font-bold text-slate-800">${sub.name}</h4>
+            `;
+            subGrid.appendChild(card);
+        });
+    }
+    
+    const username = localStorage.getItem('username');
+    if (username === 'admin') {
+        document.getElementById('adminSubDepartmentControls').classList.remove('hidden');
+        document.getElementById('deleteDepartmentBtn').classList.remove('hidden');
+    } else {
+        document.getElementById('adminSubDepartmentControls').classList.add('hidden');
+        document.getElementById('deleteDepartmentBtn').classList.add('hidden');
+    }
+    
     departmentsView.classList.add('hidden');
+    // Using accessoriesSubDeptView as the generic sub dept view
     accessoriesSubDeptView.classList.remove('hidden');
     departmentDetailView.classList.add('hidden');
     adminView.classList.add('hidden');
-    
-    await fetchDepartmentCounts();
 }
 
 async function enterSubDepartment(subDept) {
-    currentDepartment = 'إكسسوارات';
     currentSubcategory = subDept;
     
-    currentDeptTitle.textContent = 'إكسسوارات';
+    currentDeptTitle.textContent = currentDepartment;
     currentSubDeptBadge.textContent = subDept;
     currentSubDeptBadge.classList.remove('hidden');
     
@@ -390,11 +429,11 @@ async function enterSubDepartment(subDept) {
     await loadItems();
 }
 
-async function enterDepartment(dept) {
-    currentDepartment = dept;
+async function enterDepartment(deptName) {
+    currentDepartment = deptName;
     currentSubcategory = '';
     
-    currentDeptTitle.textContent = dept;
+    currentDeptTitle.textContent = deptName;
     currentSubDeptBadge.classList.add('hidden');
     
     departmentsView.classList.add('hidden');
@@ -406,54 +445,93 @@ async function enterDepartment(dept) {
 }
 
 function handleDetailBackNavigation() {
-    if (currentDepartment === 'إكسسوارات') {
-        enterAccessoriesMenu();
+    const dept = globalDepartments.find(d => d.name === currentDepartment);
+    if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
+        enterAccessoriesMenu(currentDepartment);
     } else {
         showDepartmentsView();
     }
 }
 
+let globalDepartments = [];
+let userPermissionsList = [];
+
 async function fetchDepartmentCounts() {
     try {
-        const response = await authFetch(`${API_URL}/`);
-        if (!response.ok) throw new Error('Failed to fetch counts');
-        const items = await response.json();
+        // Fetch departments and items
+        const [deptsResponse, itemsResponse] = await Promise.all([
+            authFetch(`${API_URL.replace('/items', '/departments')}/`),
+            authFetch(`${API_URL}/`)
+        ]);
         
-        const counts = {
-            "ألواح صاج": 0,
-            "إكسسوارات": 0,
-            "كشفات طوب": 0
-        };
+        if (!deptsResponse.ok || !itemsResponse.ok) throw new Error('Failed to fetch data');
         
-        const subCounts = {
-            "الزرافيل": 0,
-            "الفصالات": 0,
-            "ايادي": 0,
-            "متفرقات": 0
-        };
+        globalDepartments = await deptsResponse.json();
+        const items = await itemsResponse.json();
         
-        items.forEach(item => {
-            if (counts.hasOwnProperty(item.category)) {
-                counts[item.category]++;
+        // Fetch permissions if not admin
+        const username = localStorage.getItem('username');
+        if (username === 'admin') {
+            document.getElementById('adminDepartmentControls').classList.remove('hidden');
+        } else {
+            document.getElementById('adminDepartmentControls').classList.add('hidden');
+            const permsResponse = await authFetch(`${API_URL.replace('/items', '/users')}/me/permissions`);
+            if (permsResponse.ok) {
+                userPermissionsList = await permsResponse.json();
             }
-            if (item.category === 'إكسسوارات' && subCounts.hasOwnProperty(item.subcategory)) {
-                subCounts[item.subcategory]++;
+        }
+        
+        // Calculate counts
+        const counts = {};
+        const subCounts = {};
+        items.forEach(item => {
+            counts[item.category] = (counts[item.category] || 0) + 1;
+            if (item.subcategory) {
+                subCounts[`${item.category}-${item.subcategory}`] = (subCounts[`${item.category}-${item.subcategory}`] || 0) + 1;
             }
         });
         
-        // Update UI Main Counts
-        document.getElementById('count-ألواح صاج').textContent = `${counts["ألواح صاج"]} بند`;
-        document.getElementById('count-إكسسوارات').textContent = `${counts["إكسسوارات"]} بند`;
-        document.getElementById('count-كشفات طوب').textContent = `${counts["كشفات طوب"]} بند`;
+        // Render Main Departments Grid
+        const departmentsGrid = document.getElementById('departmentsGrid');
+        departmentsGrid.innerHTML = '';
         
-        // Update UI Subcategory Counts
-        document.getElementById('count-sub-الزرافيل').textContent = `${subCounts["الزرافيل"]} بند`;
-        document.getElementById('count-sub-الفصالات').textContent = `${subCounts["الفصالات"]} بند`;
-        document.getElementById('count-sub-ايادي').textContent = `${subCounts["ايادي"]} بند`;
-        document.getElementById('count-sub-متفرقات').textContent = `${subCounts["متفرقات"]} بند`;
+        const colors = ['blue', 'purple', 'amber', 'emerald', 'rose', 'cyan'];
+        
+        globalDepartments.forEach((dept, index) => {
+            const c = colors[index % colors.length];
+            const hasSubDepts = dept.subdepartments && dept.subdepartments.length > 0;
+            const clickHandler = hasSubDepts ? `enterAccessoriesMenu('${dept.name}')` : `enterDepartment('${dept.name}')`;
+            
+            const card = document.createElement('div');
+            card.onclick = () => eval(clickHandler);
+            card.className = `group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between min-h-[250px] relative overflow-hidden`;
+            
+            card.innerHTML = `
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-${c}-500/5 rounded-full group-hover:scale-125 transition-transform duration-500"></div>
+                <div>
+                    <div class="w-12 h-12 rounded-xl bg-${c}-500/10 text-${c}-600 flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">${dept.name}</h3>
+                    <p class="text-slate-500 text-sm">${hasSubDepts ? 'يحتوي على أقسام فرعية' : 'إدارة بنود القسم مباشرة'}</p>
+                </div>
+                <div class="mt-6 flex justify-between items-center">
+                    <span class="text-xs font-semibold px-3 py-1 bg-${c}-50 text-${c}-700 rounded-full border border-${c}-100">${counts[dept.name] || 0} بند</span>
+                    <span class="text-${c}-600 group-hover:translate-x-[-4px] transition-transform font-bold text-sm flex items-center gap-1">
+                        ${hasSubDepts ? 'تصفح الأقسام الفرعية' : 'دخول القسم'}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </span>
+                </div>
+            `;
+            departmentsGrid.appendChild(card);
+        });
         
     } catch (error) {
-        console.error('Error fetching counts:', error);
+        console.error('Error fetching data:', error);
     }
 }
 
@@ -487,10 +565,15 @@ async function loadUsers() {
                 <td class="p-4 text-slate-500 font-semibold">#${user.id}</td>
                 <td class="p-4 font-bold text-slate-800">${user.username}</td>
                 <td class="p-4">
-                    <div class="flex justify-center">
+                    <div class="flex justify-center gap-2">
                         <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200">
-                            ⚙️ تعديل الحساب
+                            ⚙️ الحساب
                         </button>
+                        ${user.username !== 'admin' ? `
+                        <button onclick="openPermissionsModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition text-xs font-bold border border-amber-200">
+                            🛡️ الصلاحيات
+                        </button>
+                        ` : ''}
                     </div>
                 </td>
             `;
@@ -589,6 +672,18 @@ async function loadItems() {
 function renderItemsGrid() {
     itemsGrid.innerHTML = '';
     
+    const username = localStorage.getItem('username');
+    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => p.department_name === currentDepartment && p.can_edit === 1);
+    
+    const mainAddBtn = document.getElementById('mainAddItemBtn');
+    if (mainAddBtn) {
+        if (hasEditPermission) {
+            mainAddBtn.classList.remove('hidden');
+        } else {
+            mainAddBtn.classList.add('hidden');
+        }
+    }
+    
     if (allItems.length === 0) {
         deptEmptyState.classList.remove('hidden');
         return;
@@ -644,6 +739,7 @@ function renderItemsGrid() {
             </div>
             <!-- Actions -->
             <div class="p-5 pt-0 flex flex-col gap-2">
+                ${hasEditPermission ? `
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="openTxModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -661,6 +757,14 @@ function renderItemsGrid() {
                 <button onclick="openReservationModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
                     📌 حجز كمية للمشروع
                 </button>
+                ` : `
+                <button onclick="openLogModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    عرض السجل فقط
+                </button>
+                `}
             </div>
         `;
         itemsGrid.appendChild(card);
@@ -1105,5 +1209,195 @@ async function silentLoadItems() {
         }
     } catch (error) {
         console.error('Silent refresh failed:', error);
+    }
+}
+
+// ----------------- ADMIN DEPARTMENTS LOGIC -----------------
+
+const addDepartmentModal = document.getElementById('addDepartmentModal');
+const addDepartmentForm = document.getElementById('addDepartmentForm');
+const permissionsModal = document.getElementById('permissionsModal');
+
+function openAddDepartmentModal() {
+    addDepartmentForm.reset();
+    addDepartmentModal.classList.remove('hidden');
+    void addDepartmentModal.offsetWidth;
+    addDepartmentModal.classList.remove('opacity-0');
+    addDepartmentModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeAddDepartmentModal() {
+    addDepartmentModal.classList.add('opacity-0');
+    addDepartmentModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        addDepartmentModal.classList.add('hidden');
+    }, 300);
+}
+
+if(addDepartmentForm) {
+    addDepartmentForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const deptName = document.getElementById('newDepartmentName').value;
+        try {
+            const response = await authFetch(`${API_URL.replace('/items', '/departments')}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: deptName })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to add department');
+            }
+            showToast('تمت إضافة القسم بنجاح', 'bg-emerald-500', '✓');
+            closeAddDepartmentModal();
+            fetchDepartmentCounts(); // Reload grid
+        } catch (err) {
+            showToast(err.message, 'bg-rose-500', '✗');
+        }
+    };
+}
+
+async function deleteCurrentDepartment() {
+    if (!confirm(`هل أنت متأكد من حذف القسم ${currentDepartment}؟ سيتم الرفض إذا كان يحتوي على بنود.`)) return;
+    try {
+        const dept = globalDepartments.find(d => d.name === currentDepartment);
+        if(!dept) throw new Error("Department not found");
+        
+        const response = await authFetch(`${API_URL.replace('/items', '/departments')}/${dept.id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to delete department');
+        }
+        showToast('تم الحذف بنجاح', 'bg-emerald-500', '✓');
+        showDepartmentsView();
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    }
+}
+
+const addSubDeptForm = document.getElementById('addSubDeptForm');
+if(addSubDeptForm) {
+    addSubDeptForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const subName = document.getElementById('newSubDeptName').value;
+        const dept = globalDepartments.find(d => d.name === currentDepartment);
+        if(!dept) return;
+        
+        try {
+            const response = await authFetch(`${API_URL.replace('/items', '/departments')}/${dept.id}/sub/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: subName })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to add sub-department');
+            }
+            showToast('تمت إضافة القسم الفرعي بنجاح', 'bg-emerald-500', '✓');
+            document.getElementById('newSubDeptName').value = '';
+            // Reload
+            await fetchDepartmentCounts();
+            enterAccessoriesMenu(currentDepartment);
+        } catch (err) {
+            showToast(err.message, 'bg-rose-500', '✗');
+        }
+    };
+}
+
+async function deleteSubDepartment(subId) {
+    if (!confirm(`هل أنت متأكد من حذف القسم الفرعي؟ سيتم الرفض إذا كان يحتوي على بنود.`)) return;
+    try {
+        const response = await authFetch(`${API_URL.replace('/items', '/subdepartments')}/${subId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to delete sub-department');
+        }
+        showToast('تم الحذف بنجاح', 'bg-emerald-500', '✓');
+        await fetchDepartmentCounts();
+        enterAccessoriesMenu(currentDepartment);
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- ADMIN PERMISSIONS LOGIC -----------------
+
+async function openPermissionsModal(userId, username) {
+    document.getElementById('permissionsUserName').textContent = username;
+    const permissionsList = document.getElementById('permissionsList');
+    permissionsList.innerHTML = '<p class="text-slate-500 text-sm">جاري تحميل الصلاحيات...</p>';
+    
+    permissionsModal.classList.remove('hidden');
+    void permissionsModal.offsetWidth;
+    permissionsModal.classList.remove('opacity-0');
+    permissionsModal.querySelector('.transform').classList.remove('scale-95');
+    
+    try {
+        const response = await authFetch(`${API_URL.replace('/items', '/users')}/${userId}/permissions/`);
+        // Wait! The backend doesn't have `GET /api/users/{user_id}/permissions/` implemented explicitly for a specific user ID,
+        // Wait, yes I added a general `GET /api/users/me/permissions/` but let me just load all users and their permissions from `get_all_users()`.
+        // Actually, `list_users` returns permissions inside the user object now!
+        const usersResp = await authFetch(USERS_URL);
+        const users = await usersResp.json();
+        const user = users.find(u => u.id === userId);
+        
+        if (!user) throw new Error('User not found');
+        
+        // Ensure globalDepartments are loaded
+        if (globalDepartments.length === 0) {
+            const deptsResponse = await authFetch(`${API_URL.replace('/items', '/departments')}/`);
+            globalDepartments = await deptsResponse.json();
+        }
+        
+        permissionsList.innerHTML = '';
+        
+        globalDepartments.forEach(dept => {
+            const perm = user.permissions.find(p => p.department_name === dept.name);
+            const canEdit = perm && perm.can_edit === 1;
+            
+            permissionsList.innerHTML += `
+                <div class="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+                    <div>
+                        <p class="font-bold text-slate-800">${dept.name}</p>
+                        <p class="text-xs text-slate-500">منح صلاحية الإضافة والتعديل</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" ${canEdit ? 'checked' : ''} onchange="togglePermission(${userId}, '${dept.name}', this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+            `;
+        });
+        
+    } catch (err) {
+        permissionsList.innerHTML = `<p class="text-rose-500 text-sm">${err.message}</p>`;
+    }
+}
+
+function closePermissionsModal() {
+    permissionsModal.classList.add('opacity-0');
+    permissionsModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        permissionsModal.classList.add('hidden');
+    }, 300);
+}
+
+async function togglePermission(userId, deptName, canEdit) {
+    try {
+        const response = await authFetch(`${API_URL.replace('/items', '/users')}/${userId}/permissions/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ department_name: deptName, can_edit: canEdit ? 1 : 0 })
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update permission');
+        }
+        showToast('تم تحديث الصلاحية بنجاح', 'bg-emerald-500', '✓');
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
     }
 }

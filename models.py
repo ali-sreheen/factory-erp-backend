@@ -10,6 +10,35 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
+    permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
+
+class Department(Base):
+    __tablename__ = "departments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    
+    subdepartments = relationship("SubDepartment", back_populates="department", cascade="all, delete-orphan")
+
+class SubDepartment(Base):
+    __tablename__ = "subdepartments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
+    
+    department = relationship("Department", back_populates="subdepartments")
+
+class UserPermission(Base):
+    __tablename__ = "user_permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    department_name = Column(String, nullable=False)
+    can_edit = Column(Integer, default=1) # 1 for True, 0 for False (SQLite boolean compatibility)
+    
+    user = relationship("User", back_populates="permissions")
+
 class Item(Base):
     __tablename__ = "items"
 

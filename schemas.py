@@ -2,8 +2,8 @@ from pydantic import BaseModel
 from typing import Literal, Optional
 from datetime import datetime
 
-CategoryType = Literal["ألواح صاج", "إكسسوارات", "كشفات طوب"]
-SubcategoryType = Literal["الزرافيل", "الفصالات", "ايادي", "متفرقات"]
+CategoryType = str
+SubcategoryType = str
 
 # User schemas
 class UserCreate(BaseModel):
@@ -20,6 +20,52 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     username: str
     password: Optional[str] = None
+
+class UserPermissionBase(BaseModel):
+    department_name: str
+    can_edit: int
+
+class UserPermissionCreate(UserPermissionBase):
+    pass
+
+class UserPermissionResponse(UserPermissionBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+class UserWithPermissionsResponse(UserResponse):
+    permissions: list[UserPermissionResponse] = []
+
+    class Config:
+        from_attributes = True
+
+class SubDepartmentBase(BaseModel):
+    name: str
+
+class SubDepartmentCreate(SubDepartmentBase):
+    pass
+
+class SubDepartmentResponse(SubDepartmentBase):
+    id: int
+    department_id: int
+
+    class Config:
+        from_attributes = True
+
+class DepartmentBase(BaseModel):
+    name: str
+
+class DepartmentCreate(DepartmentBase):
+    pass
+
+class DepartmentResponse(DepartmentBase):
+    id: int
+    subdepartments: list[SubDepartmentResponse] = []
+
+    class Config:
+        from_attributes = True
 
 # Token schemas
 class Token(BaseModel):

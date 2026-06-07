@@ -19,6 +19,30 @@ from database import SessionLocal, engine
 # Recreate tables
 models.Base.metadata.create_all(bind=engine)
 
+def seed_default_departments(db: Session):
+    if not db.query(models.Department).first():
+        depts = [
+            ("ألواح صاج", []),
+            ("إكسسوارات", ["الزرافيل", "الفصالات", "ايادي", "متفرقات"]),
+            ("كشفات طوب", [])
+        ]
+        for dept_name, sub_names in depts:
+            db_dept = models.Department(name=dept_name)
+            db.add(db_dept)
+            db.commit()
+            db.refresh(db_dept)
+            for sub_name in sub_names:
+                db_sub = models.SubDepartment(name=sub_name, department_id=db_dept.id)
+                db.add(db_sub)
+            db.commit()
+
+# Seed default departments when starting up
+db_session = SessionLocal()
+try:
+    seed_default_departments(db_session)
+finally:
+    db_session.close()
+
 # Seed Admin User on application startup
 db_seed = SessionLocal()
 try:
@@ -93,7 +117,9 @@ def list_users(
 ):
     if current_user.username != "admin":
         raise HTTPException(status_code=403, detail="Not authorized to access user accounts")
-    return crud.get_all_users(db)
+    users = crud.get_all_users(db)
+    # We will return users with permissions using the UserWithPermissionsResponse schema
+    return users
 
 @app.put("/api/users/{user_id}", response_model=schemas.UserResponse)
 def update_user_credentials(
@@ -118,6 +144,18 @@ def update_user_credentials(
 # --- PROTECTED ITEMS ENDPOINTS ---
 
 @app.post("/api/items/", response_model=schemas.Item)
+def check_permission(db: Session, current_user: models.User, category: str):
+    if current_user.username == "admin":
+        return True
+    perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == current_user.id,
+        models.UserPermission.department_name == category
+    ).first()
+    if not perm or not perm.can_edit:
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية التعديل أو الإضافة في هذا القسم")
+    return True
+
+@app.post("/api/items/", response_model=schemas.Item)
 def create_item(
     name: str = Form(...),
     description: Optional[str] = Form(None),
@@ -128,6 +166,8 @@ def create_item(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    check_permission(db, current_user, category)
+    
     image_url = None
     if image and image.filename:
         # Save file to uploads folder
@@ -165,6 +205,11 @@ def create_transaction(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    check_permission(db, current_user, item.category)
+    
     # Pass current_user.id as user_id to document who performed the transaction
     db_tx = crud.create_transaction(
         db=db, 
@@ -192,6 +237,11 @@ def delete_last_transaction(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    check_permission(db, current_user, item.category)
+    
     updated_item = crud.delete_last_transaction(db, item_id=item_id)
     if updated_item is None:
         raise HTTPException(status_code=404, detail="No transactions found to revert or item not found")
@@ -204,6 +254,11 @@ def update_item_image(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    check_permission(db, current_user, item.category)
+    
     image_url = None
     if image and image.filename:
         file_ext = os.path.splitext(image.filename)[1]
@@ -227,6 +282,11 @@ def update_item_description(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    check_permission(db, current_user, item.category)
+    
     updated_item = crud.update_item_description(db, item_id=item_id, description=update_data.description)
     if updated_item is None:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -239,6 +299,11 @@ def create_item_reservation(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    check_permission(db, current_user, item.category)
+    
     try:
         db_res = crud.create_reservation(
             db=db,
@@ -267,10 +332,81 @@ def delete_item_reservation(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    db_res = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+    if not db_res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    item = db.query(models.Item).filter(models.Item.id == db_res.item_id).first()
+    if item:
+        check_permission(db, current_user, item.category)
+        
     success = crud.delete_reservation(db, reservation_id=reservation_id)
     if not success:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return {"message": "Reservation deleted successfully"}
+
+# --- DEPARTMENTS & PERMISSIONS ENDPOINTS ---
+
+@app.get("/api/departments/", response_model=List[schemas.DepartmentResponse])
+def read_departments(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_departments(db)
+
+@app.post("/api/departments/", response_model=schemas.DepartmentResponse)
+def create_department(dept: schemas.DepartmentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return crud.create_department(db, name=dept.name)
+
+@app.delete("/api/departments/{department_id}")
+def delete_department(department_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        success = crud.delete_department(db, department_id=department_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Department not found")
+        return {"message": "Deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/departments/{department_id}/sub/", response_model=schemas.SubDepartmentResponse)
+def create_subdepartment(department_id: int, sub: schemas.SubDepartmentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return crud.create_subdepartment(db, department_id=department_id, name=sub.name)
+
+@app.delete("/api/subdepartments/{subdepartment_id}")
+def delete_subdepartment(subdepartment_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        success = crud.delete_subdepartment(db, subdepartment_id=subdepartment_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="SubDepartment not found")
+        return {"message": "Deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/users/{user_id}/permissions/", response_model=schemas.UserPermissionResponse)
+def set_permission(user_id: int, perm: schemas.UserPermissionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return crud.set_user_permission(db, user_id=user_id, department_name=perm.department_name, can_edit=perm.can_edit)
+
+@app.delete("/api/users/{user_id}/permissions/{department_name}")
+def remove_permission(user_id: int, department_name: str, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    success = crud.remove_user_permission(db, user_id=user_id, department_name=department_name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Permission not found")
+    return {"message": "Deleted successfully"}
+
+@app.get("/api/users/me/permissions", response_model=List[schemas.UserPermissionResponse])
+def get_my_permissions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username == "admin":
+        # Admin has permission to everything. We can just return a wildcard or the frontend knows admin is admin
+        return []
+    return crud.get_user_permissions(db, current_user.id)
 
 # Serve frontend files
 def get_frontend_dir():
