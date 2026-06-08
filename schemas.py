@@ -84,6 +84,7 @@ class TokenData(BaseModel):
 class TransactionBase(BaseModel):
     change: int
     project_name: Optional[str] = None
+    project_id: Optional[int] = None
     notes: Optional[str] = None
 
 class TransactionCreate(TransactionBase):
@@ -115,6 +116,7 @@ class ReservationBrief(BaseModel):
     id: int
     quantity: int
     project_name: str
+    project_id: Optional[int] = None
     username: Optional[str] = None
 
     class Config:
@@ -138,6 +140,7 @@ class ItemDescriptionUpdate(BaseModel):
 class ReservationCreate(BaseModel):
     quantity: int
     project_name: str
+    project_id: Optional[int] = None
 
 class ReservationResponse(BaseModel):
     id: int
@@ -146,7 +149,106 @@ class ReservationResponse(BaseModel):
     username: Optional[str] = None
     quantity: int
     project_name: str
+    project_id: Optional[int] = None
     timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+# Project Task schemas
+class ProjectTaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    assigned_to: Optional[int] = None
+    status: str = "Pending"
+
+class ProjectTaskCreate(ProjectTaskBase):
+    pass
+
+class ProjectTaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assigned_to: Optional[int] = None
+    status: Optional[str] = None
+
+class ProjectTaskResponse(ProjectTaskBase):
+    id: int
+    project_id: int
+    created_by: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Project Attachment schemas
+class ProjectAttachmentBase(BaseModel):
+    file_name: str
+    file_url: str
+
+class ProjectAttachmentCreate(ProjectAttachmentBase):
+    pass
+
+class ProjectAttachmentResponse(ProjectAttachmentBase):
+    id: int
+    project_id: int
+
+    class Config:
+        from_attributes = True
+
+# Project Detail schemas
+class ProjectDetailBase(BaseModel):
+    door_number: Optional[str] = None
+    width: Optional[str] = None
+    height: Optional[str] = None
+    depth: Optional[str] = None
+    lock_type: Optional[str] = None
+    profile_type: Optional[str] = None
+    door_type: Optional[str] = None
+    fire_resistance: Optional[str] = None
+    window_details: Optional[str] = None
+
+class ProjectDetailCreate(ProjectDetailBase):
+    pass
+
+class ProjectDetailResponse(ProjectDetailBase):
+    id: int
+    project_id: int
+
+    class Config:
+        from_attributes = True
+
+# Project schemas
+class ProjectBase(BaseModel):
+    project_number: str
+    name: str
+    delivery_date: Optional[datetime] = None
+    contractor_name: Optional[str] = None
+    engineer_name: Optional[str] = None
+    engineer_phone: Optional[str] = None
+    location: Optional[str] = None
+    executive_manager_id: Optional[int] = None
+    paint_color: Optional[str] = None
+    status: str = "Pending"
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    delivery_date: Optional[datetime] = None
+    contractor_name: Optional[str] = None
+    engineer_name: Optional[str] = None
+    engineer_phone: Optional[str] = None
+    location: Optional[str] = None
+    executive_manager_id: Optional[int] = None
+    paint_color: Optional[str] = None
+    status: Optional[str] = None
+
+class ProjectResponse(ProjectBase):
+    id: int
+    details: List[ProjectDetailResponse] = []
+    attachments: List[ProjectAttachmentResponse] = []
+    tasks: List[ProjectTaskResponse] = []
 
     class Config:
         from_attributes = True

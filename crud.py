@@ -78,12 +78,13 @@ def create_item(db: Session, name: str, category: str, quantity: int, subcategor
         
     return db_item
 
-def create_transaction(db: Session, item_id: int, change: int, project_name: str = None, notes: str = None, user_id: int = None):
+def create_transaction(db: Session, item_id: int, change: int, project_name: str = None, project_id: int = None, notes: str = None, user_id: int = None):
     # 1. Add Transaction record
     db_tx = models.Transaction(
         item_id=item_id,
         change=change,
         project_name=project_name,
+        project_id=project_id,
         notes=notes,
         user_id=user_id
     )
@@ -147,7 +148,7 @@ def update_item_info(db: Session, item_id: int, name: str = None, description: s
         return db_item
     return None
 
-def create_reservation(db: Session, item_id: int, quantity: int, project_name: str, user_id: int):
+def create_reservation(db: Session, item_id: int, quantity: int, project_name: str, user_id: int, project_id: int = None):
     db_item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not db_item:
         return None
@@ -162,7 +163,8 @@ def create_reservation(db: Session, item_id: int, quantity: int, project_name: s
         item_id=item_id,
         user_id=user_id,
         quantity=quantity,
-        project_name=project_name
+        project_name=project_name,
+        project_id=project_id
     )
     db.add(db_res)
     db.commit()
@@ -271,6 +273,101 @@ def delete_item(db: Session, item_id: int):
     db_item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if db_item:
         db.delete(db_item)
+        db.commit()
+        return True
+    return False
+
+# --- Projects ---
+def create_project(db: Session, project: schemas.ProjectCreate):
+    db_project = models.Project(**project.model_dump())
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+def get_projects(db: Session):
+    return db.query(models.Project).order_by(models.Project.id.desc()).all()
+
+def get_project_by_id(db: Session, project_id: int):
+    return db.query(models.Project).filter(models.Project.id == project_id).first()
+
+def update_project(db: Session, project_id: int, project_update: schemas.ProjectUpdate):
+    db_project = get_project_by_id(db, project_id)
+    if db_project:
+        update_data = project_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_project, key, value)
+        db.commit()
+        db.refresh(db_project)
+        return db_project
+    return None
+
+def delete_project(db: Session, project_id: int):
+    db_project = get_project_by_id(db, project_id)
+    if db_project:
+        db.delete(db_project)
+        db.commit()
+        return True
+    return False
+
+# --- Project Details ---
+def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectDetailCreate):
+    db_detail = models.ProjectDetail(**detail.model_dump(), project_id=project_id)
+    db.add(db_detail)
+    db.commit()
+    db.refresh(db_detail)
+    return db_detail
+
+def delete_project_detail(db: Session, detail_id: int):
+    db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
+    if db_detail:
+        db.delete(db_detail)
+        db.commit()
+        return True
+    return False
+
+# --- Project Attachments ---
+def create_project_attachment(db: Session, project_id: int, file_name: str, file_url: str):
+    db_attachment = models.ProjectAttachment(project_id=project_id, file_name=file_name, file_url=file_url)
+    db.add(db_attachment)
+    db.commit()
+    db.refresh(db_attachment)
+    return db_attachment
+
+def delete_project_attachment(db: Session, attachment_id: int):
+    db_attachment = db.query(models.ProjectAttachment).filter(models.ProjectAttachment.id == attachment_id).first()
+    if db_attachment:
+        db.delete(db_attachment)
+        db.commit()
+        return True
+    return False
+
+# --- Project Tasks ---
+def create_project_task(db: Session, task: schemas.ProjectTaskCreate, project_id: int, created_by: int):
+    db_task = models.ProjectTask(**task.model_dump(), project_id=project_id, created_by=created_by)
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+def get_project_tasks(db: Session, project_id: int):
+    return db.query(models.ProjectTask).filter(models.ProjectTask.project_id == project_id).all()
+
+def update_project_task(db: Session, task_id: int, task_update: schemas.ProjectTaskUpdate):
+    db_task = db.query(models.ProjectTask).filter(models.ProjectTask.id == task_id).first()
+    if db_task:
+        update_data = task_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_task, key, value)
+        db.commit()
+        db.refresh(db_task)
+        return db_task
+    return None
+
+def delete_project_task(db: Session, task_id: int):
+    db_task = db.query(models.ProjectTask).filter(models.ProjectTask.id == task_id).first()
+    if db_task:
+        db.delete(db_task)
         db.commit()
         return True
     return False

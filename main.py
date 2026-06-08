@@ -30,9 +30,14 @@ def check_and_update_db_schema(db_engine):
             try:
                 with db_engine.begin() as conn:
                     conn.execute(text("ALTER TABLE transactions ADD COLUMN user_id INTEGER REFERENCES users(id)"))
-                print("Added column user_id to transactions table successfully.")
             except Exception as e:
-                print(f"Error adding user_id to transactions table: {e}")
+                pass
+        if "project_id" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE transactions ADD COLUMN project_id INTEGER REFERENCES projects(id)"))
+            except Exception as e:
+                pass
 
     # Check reservations table
     if "reservations" in inspector.get_table_names():
@@ -41,9 +46,14 @@ def check_and_update_db_schema(db_engine):
             try:
                 with db_engine.begin() as conn:
                     conn.execute(text("ALTER TABLE reservations ADD COLUMN user_id INTEGER REFERENCES users(id)"))
-                print("Added column user_id to reservations table successfully.")
             except Exception as e:
-                print(f"Error adding user_id to reservations table: {e}")
+                pass
+        if "project_id" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE reservations ADD COLUMN project_id INTEGER REFERENCES projects(id)"))
+            except Exception as e:
+                pass
 
 check_and_update_db_schema(engine)
 
@@ -274,6 +284,7 @@ def create_transaction(
         item_id=item_id, 
         change=tx.change, 
         project_name=tx.project_name, 
+        project_id=tx.project_id,
         notes=tx.notes,
         user_id=current_user.id
     )
@@ -400,7 +411,8 @@ def create_item_reservation(
             item_id=item_id,
             quantity=res.quantity,
             project_name=res.project_name,
-            user_id=current_user.id
+            user_id=current_user.id,
+            project_id=res.project_id
         )
         if db_res is None:
             raise HTTPException(status_code=404, detail="Item not found")
@@ -502,6 +514,105 @@ def remove_permission(user_id: int, department_name: str, db: Session = Depends(
     success = crud.remove_user_permission(db, user_id=user_id, department_name=department_name)
     if not success:
         raise HTTPException(status_code=404, detail="Permission not found")
+    return {"message": "Deleted successfully"}
+
+# --- PROJECTS ENDPOINTS ---
+
+@app.post("/api/projects/", response_model=schemas.ProjectResponse)
+def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.create_project(db, project)
+
+@app.get("/api/projects/", response_model=List[schemas.ProjectResponse])
+def get_projects(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_projects(db)
+
+@app.get("/api/projects/{project_id}", response_model=schemas.ProjectResponse)
+def get_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    project = crud.get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+@app.put("/api/projects/{project_id}", response_model=schemas.ProjectResponse)
+def update_project(project_id: int, project_update: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    project = crud.update_project(db, project_id, project_update)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    success = crud.delete_project(db, project_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"message": "Deleted successfully"}
+
+@app.post("/api/projects/{project_id}/details/", response_model=schemas.ProjectDetailResponse)
+def create_project_detail(project_id: int, detail: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.create_project_detail(db, project_id, detail)
+
+@app.delete("/api/projects/details/{detail_id}")
+def delete_project_detail(detail_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    success = crud.delete_project_detail(db, detail_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Detail not found")
+    return {"message": "Deleted successfully"}
+
+@app.post("/api/projects/{project_id}/attachments/", response_model=schemas.ProjectAttachmentResponse)
+def create_project_attachment(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if file and file.filename:
+        file_ext = os.path.splitext(file.filename)[1]
+        filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_url = f"/uploads/{filename}"
+        return crud.create_project_attachment(db, project_id, file.filename, file_url)
+    raise HTTPException(status_code=400, detail="Invalid file")
+
+@app.delete("/api/projects/attachments/{attachment_id}")
+def delete_project_attachment(attachment_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    success = crud.delete_project_attachment(db, attachment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    return {"message": "Deleted successfully"}
+
+@app.post("/api/projects/{project_id}/tasks/", response_model=schemas.ProjectTaskResponse)
+def create_project_task(project_id: int, task: schemas.ProjectTaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    project = crud.get_project_by_id(db, project_id)
+    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin"):
+        raise HTTPException(status_code=403, detail="Not authorized to add tasks for this project")
+    return crud.create_project_task(db, task, project_id, current_user.id)
+
+@app.put("/api/projects/tasks/{task_id}", response_model=schemas.ProjectTaskResponse)
+def update_project_task(task_id: int, task_update: schemas.ProjectTaskUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    task = db.query(models.ProjectTask).filter(models.ProjectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # allow executive manager, admin, or the assignee to update
+    project = crud.get_project_by_id(db, task.project_id)
+    is_exec_manager = project and project.executive_manager_id == current_user.id
+    is_assignee = task.assigned_to == current_user.id
+    
+    if not (is_exec_manager or is_assignee or current_user.username == "admin"):
+        raise HTTPException(status_code=403, detail="Not authorized to update this task")
+        
+    return crud.update_project_task(db, task_id, task_update)
+
+@app.delete("/api/projects/tasks/{task_id}")
+def delete_project_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    task = db.query(models.ProjectTask).filter(models.ProjectTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    project = crud.get_project_by_id(db, task.project_id)
+    if project and project.executive_manager_id != current_user.id and current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to delete tasks")
+        
+    success = crud.delete_project_task(db, task_id)
     return {"message": "Deleted successfully"}
 
 # Serve frontend files
