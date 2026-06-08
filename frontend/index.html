@@ -1,15 +1,599 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Factory ERP - Web Application</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-D4smQnoU.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BjA7Xzt6.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة مخازن المصنع - تسجيل الدخول</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        tajawal: ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-tajawal min-h-screen flex flex-col">
+
+    <!-- ================= AUTHENTICATION CONTAINER ================= -->
+    <div id="authContainer" class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-950 relative overflow-hidden">
+        <!-- Background decorative blobs -->
+        <div class="absolute -left-20 -top-20 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl"></div>
+        <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl"></div>
+
+        <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-2xl border border-slate-100 z-10">
+            <div class="text-center">
+                <div class="inline-flex items-center justify-center bg-indigo-600 text-white font-black text-3xl w-14 h-14 rounded-2xl shadow-lg shadow-indigo-500/30 mb-4">F</div>
+                <h2 class="text-2xl font-black text-slate-950 tracking-tight" id="authTitle">نظام إدارة مستودعات المصنع</h2>
+                <p class="mt-2 text-sm text-slate-500" id="authSubTitle">يرجى تسجيل الدخول للوصول إلى لوحة التحكم</p>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="mt-8 space-y-4">
+                <div>
+                    <label for="loginUsername" class="block text-sm font-medium text-slate-700 mb-1">اسم المستخدم</label>
+                    <input type="text" id="loginUsername" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="أدخل اسم المستخدم">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-slate-700 mb-1">كلمة المرور</label>
+                    <input type="password" id="loginPassword" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="أدخل كلمة المرور">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm mt-2">
+                    تسجيل الدخول
+                </button>
+                <p class="text-center text-xs text-slate-500 mt-4">
+                    ليس لديك حساب؟ 
+                    <button type="button" onclick="toggleAuthMode('register')" class="text-indigo-600 hover:underline font-bold">إنشاء حساب جديد</button>
+                </p>
+            </form>
+
+            <!-- Register Form (Hidden by default) -->
+            <form id="registerForm" class="mt-8 space-y-4 hidden animate-fade-in">
+                <div>
+                    <label for="regUsername" class="block text-sm font-medium text-slate-700 mb-1">اسم المستخدم الجديد</label>
+                    <input type="text" id="regUsername" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="مثال: admin_ali">
+                </div>
+                <div>
+                    <label for="regPassword" class="block text-sm font-medium text-slate-700 mb-1">كلمة المرور</label>
+                    <input type="password" id="regPassword" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="أدخل كلمة مرور قوية">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm mt-2">
+                    إنشاء الحساب والتشغيل
+                </button>
+                <p class="text-center text-xs text-slate-500 mt-4">
+                    لديك حساب بالفعل؟ 
+                    <button type="button" onclick="toggleAuthMode('login')" class="text-indigo-600 hover:underline font-bold">تسجيل الدخول</button>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MAIN ERP APPLICATION CONTAINER ================= -->
+    <div id="appContainer" class="hidden flex flex-col min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-lg sticky top-0 z-30">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-3 space-x-reverse cursor-pointer" onclick="showDepartmentsView()">
+                    <div class="bg-indigo-600 p-2 rounded-lg text-white font-black text-xl shadow-md shadow-indigo-500/30">FT</div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-wide">مصنع فراس وطارق الجدع للابواب المعدنية</h1>
+                        <p class="text-xs text-indigo-300">نظام إدارة المستودعات الذكي</p>
+                    </div>
+                </div>
+                
+                <!-- Dropdown User Menu -->
+                <div class="relative inline-block text-left" id="userMenuDropdownContainer">
+                    <button onclick="toggleUserMenu()" class="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 transition">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span id="activeUserDisplay" class="text-xs text-slate-200 font-bold">المستخدم</span>
+                        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div id="userMenuDropdown" class="hidden absolute left-0 mt-2 w-48 rounded-xl shadow-xl bg-white border border-slate-100 py-1 z-40">
+                        <button id="adminPanelLink" onclick="showAdminView()" class="hidden w-full text-right px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 font-bold">
+                            ⚙️ واجهة التحكم
+                        </button>
+                        <button onclick="handleLogout()" class="w-full text-right px-4 py-2.5 text-xs text-rose-605 hover:bg-rose-50 text-rose-600 font-bold border-t border-slate-50">
+                            🚪 تسجيل الخروج
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-6 py-8">
+            
+            <!-- ================= DEPARTMENTS VIEW ================= -->
+            <div id="departmentsView" class="space-y-8 animate-fade-in">
+                <div class="text-center max-w-xl mx-auto py-4">
+                    <h2 class="text-3xl font-extrabold text-slate-900 mb-2">أقسام المستودع الرئيسية</h2>
+                    <p class="text-slate-500 text-sm">يرجى اختيار القسم الذي ترغب في تصفح بنوده أو إدارتها.</p>
+                </div>
+                
+                <div id="departmentsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    <!-- Dynamic departments will be rendered here -->
+                </div>
+                
+                <div id="adminDepartmentControls" class="hidden text-center mt-8">
+                    <button onclick="openAddDepartmentModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition shadow-md flex items-center gap-2 mx-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        إضافة قسم رئيسي جديد
+                    </button>
+                </div>
+            </div>
+
+            <!-- ================= SUB-DEPARTMENTS VIEW ================= -->
+            <div id="subDeptView" class="hidden space-y-8 animate-fade-in">
+                <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
+                    <button onclick="showDepartmentsView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                    <div class="flex-grow flex justify-between items-center">
+                        <div>
+                            <h2 id="subDeptTitle" class="text-3xl font-extrabold text-slate-900">الأقسام الفرعية</h2>
+                            <p class="text-slate-500 text-sm">اختر القسم الفرعي المطلوب</p>
+                        </div>
+                        <button id="deleteDepartmentBtn" onclick="deleteCurrentDepartment()" class="hidden text-rose-600 hover:text-rose-800 text-sm font-bold flex items-center gap-1 border border-rose-200 bg-rose-50 px-3 py-1.5 rounded-lg transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            حذف القسم الرئيسي
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="subDeptGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+                    <!-- Dynamic Subdepartments go here -->
+                </div>
+
+                <div id="adminSubDepartmentControls" class="hidden text-center mt-8 pt-8 border-t border-slate-100">
+                    <form id="addSubDeptForm" class="flex max-w-md mx-auto gap-2">
+                        <input type="text" id="newSubDeptName" placeholder="اسم القسم الفرعي الجديد..." required class="flex-grow px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl transition">إضافة</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ================= DEPARTMENT DETAIL VIEW ================= -->
+            <div id="departmentDetailView" class="hidden space-y-6 animate-fade-in">
+                <!-- Breadcrumbs / Top Actions -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
+                    <div class="flex items-center gap-4">
+                        <button id="btnBackToDepts" onclick="handleDetailBackNavigation()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="currentDeptTitle" class="text-3xl font-extrabold text-slate-900">اسم القسم</h2>
+                                <span id="currentSubDeptBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">الفرعي</span>
+                            </div>
+                            <p class="text-slate-500 text-sm mt-0.5">تصفح المنتجات وإجراء عمليات الصرف والإضافة.</p>
+                        </div>
+                    </div>
+                    
+                    <button id="mainAddItemBtn" onclick="openAddItemModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        إضافة بند جديد
+                    </button>
+                </div>
+
+                <!-- Items Grid -->
+                <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic cards go here -->
+                </div>
+                
+                <div id="deptLoadingIndicator" class="text-center py-16 hidden">
+                    <div class="inline-block w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-slate-500 mt-2">جاري تحميل البنود...</p>
+                </div>
+                
+                <div id="deptEmptyState" class="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-500 hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-slate-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v4.5m16 0L12 17l-8-4.5" />
+                    </svg>
+                    <p class="font-bold text-lg">القسم فارغ حالياً</p>
+                    <p class="text-sm text-slate-400 mt-1">ابدأ بإضافة أول بند إلى هذا القسم بالنقر على الزر أعلاه.</p>
+                </div>
+            </div>
+
+            <!-- ================= ADMIN CONTROL PANEL VIEW ================= -->
+            <div id="adminView" class="hidden space-y-8 animate-fade-in">
+                <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
+                    <button onclick="showDepartmentsView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-900">لوحة تحكم المشرف</h2>
+                        <p class="text-slate-500 text-sm">إدارة حسابات المستخدمين وتعديل كلمات المرور والأسماء.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                    <th class="p-4 font-bold">المعرف</th>
+                                    <th class="p-4 font-bold">اسم المستخدم</th>
+                                    <th class="p-4 font-bold text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- List of users rendered dynamically -->
+                            </tbody>
+                        </table>
+                        <div id="adminLoading" class="text-center py-12 hidden">
+                            <div class="inline-block w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p class="text-slate-400 text-xs mt-2">جاري تحميل المستخدمين...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm border-t border-slate-800 mt-auto">
+            <div class="container mx-auto px-6">
+                <p>&copy; 2026 مصنع فراس وطارق الجدع للابواب المعدنية - جميع الحقوق محفوظة</p>
+                <p class="text-xs text-slate-600 mt-1">نظام تتبع مخازن ذكي وآمن</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ================= ADD ITEM MODAL ================= -->
+    <div id="addItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">إضافة بند جديد إلى قسم (<span id="addItemModalDeptTitle">القسم</span>)</h3>
+                <button onclick="closeAddItemModal()" class="text-slate-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="addItemForm" class="p-6 space-y-4">
+                <div>
+                    <label for="itemName" class="block text-sm font-medium text-slate-700 mb-1">اسم البند</label>
+                    <input type="text" id="itemName" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="مثال: لوح صاج مجلفن 1.5 مم">
+                </div>
+                
+                <div>
+                    <label for="itemDescription" class="block text-sm font-medium text-slate-700 mb-1">وصف البند (اختياري)</label>
+                    <textarea id="itemDescription" rows="2" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="اكتب وصفاً أو تفاصيل إضافية عن البند..."></textarea>
+                </div>
+                
+                <!-- Subcategory selector (only shown when adding under Accessories) -->
+                <div id="subcategoryFieldContainer" class="hidden">
+                    <label for="itemSubcategory" class="block text-sm font-medium text-slate-700 mb-1">القسم الفرعي للإكسسوارات</label>
+                    <select id="itemSubcategory" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm bg-white">
+                        <option value="الزرافيل">الزرافيل</option>
+                        <option value="الفصالات">الفصالات</option>
+                        <option value="ايادي">أيادي</option>
+                        <option value="متفرقات">متفرقات</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="itemQuantity" class="block text-sm font-medium text-slate-700 mb-1">الكمية الافتتاحية</label>
+                    <input type="number" id="itemQuantity" required min="0" value="0" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm">
+                </div>
+
+                <div>
+                    <label for="itemImage" class="block text-sm font-medium text-slate-700 mb-1">صورة توضيحية للبند</label>
+                    <div class="flex items-center justify-center w-full">
+                        <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <p class="text-xs text-slate-500" id="imageUploadName">اضغط هنا لرفع صورة البند</p>
+                            </div>
+                            <input id="itemImage" type="file" accept="image/*" class="hidden" onchange="handleFileChange(this, 'imageUploadName')" />
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex gap-3">
+                    <button type="submit" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm">حفظ البند الجديد</button>
+                    <button type="button" onclick="closeAddItemModal()" class="px-5 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition text-sm">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= TRANSACTION (ADD/SUB) MODAL ================= -->
+    <div id="txModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">تعديل كمية البند (<span id="txItemName">اسم البند</span>)</h3>
+                <button onclick="closeTxModal()" class="text-slate-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="txForm" class="p-6 space-y-4">
+                <input type="hidden" id="txItemId">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">نوع الحركة</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-emerald-500 bg-emerald-50 text-emerald-800 font-bold focus-within:ring-2 focus-within:ring-emerald-500">
+                            <input type="radio" name="txType" value="add" checked class="ml-2 text-emerald-600 focus:ring-emerald-500">
+                            إضافة للمخزن (+)
+                        </label>
+                        <label class="flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 text-slate-700 font-medium focus-within:ring-2 focus-within:ring-red-500" id="txTypeSubLabel">
+                            <input type="radio" name="txType" value="sub" class="ml-2 text-red-600 focus:ring-red-500">
+                            خصم من المخزن (-)
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="txAmount" class="block text-sm font-medium text-slate-700 mb-1">العدد المعدل</label>
+                    <input type="number" id="txAmount" required min="1" value="1" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm">
+                </div>
+
+                <div>
+                    <label for="txProject" class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع (اختياري)</label>
+                    <input type="text" id="txProject" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="مثال: مشروع مجمع الروضة">
+                </div>
+
+                <div>
+                    <label for="txNotes" class="block text-sm font-medium text-slate-700 mb-1">الملاحظات (اختياري)</label>
+                    <textarea id="txNotes" rows="2" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="أي تفاصيل أو ملاحظات إضافية..."></textarea>
+                </div>
+
+                <div class="pt-2 flex gap-3">
+                    <button type="submit" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm">تأكيد الحركة</button>
+                    <button type="button" onclick="closeTxModal()" class="px-5 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition text-sm">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= HISTORY/LOG MODAL ================= -->
+    <div id="logModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-start shrink-0">
+                <div class="w-full max-w-lg">
+                    <h3 class="text-lg font-bold">سجل حركات البند (<span id="logItemName">اسم البند</span>)</h3>
+                    <p class="text-xs text-slate-400 mt-0.5 mb-2">تتبع تاريخ الإضافات والخصومات على هذا البند.</p>
+                    
+                    <!-- Description Display/Edit Container -->
+                    <div id="logDescriptionEditContainer" class="mb-3 flex items-center gap-2">
+                        <input type="text" id="logItemDescriptionInput" class="bg-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full" placeholder="لا يوجد وصف للبند، أضف وصفاً...">
+                        <button id="btnSaveDescription" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-[11px] text-white font-bold px-3 py-1.5 rounded-lg transition">حفظ الوصف</button>
+                    </div>
+                    <div id="logDescriptionReadOnlyContainer" class="mb-3 text-xs text-slate-300 hidden">
+                        <span class="font-bold text-slate-400">الوصف:</span> <span id="logItemDescriptionText">لا يوجد وصف</span>
+                    </div>
+
+                    <label id="logImageUploadLabel" class="inline-flex items-center gap-1.5 cursor-pointer bg-slate-800 hover:bg-slate-700 text-[11px] text-indigo-300 hover:text-indigo-200 px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                        📷 تعديل صورة البند
+                        <input type="file" id="editItemImageInput" accept="image/*" class="hidden">
+                    </label>
+                </div>
+                <button onclick="closeLogModal()" class="text-slate-400 hover:text-white transition mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-grow">
+                <!-- Section for Active Reservations inside Log Modal -->
+                <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 hidden" id="activeReservationsContainer">
+                    <h4 class="text-xs font-black text-slate-700 mb-2.5 flex items-center gap-1">📌 الحجوزات النشطة حالياً:</h4>
+                    <div class="space-y-2" id="activeReservationsList">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                <th class="p-3 font-medium">التاريخ والوقت</th>
+                                <th class="p-3 font-medium">نوع الحركة</th>
+                                <th class="p-3 font-medium">الكمية</th>
+                                <th class="p-3 font-medium">المشروع</th>
+                                <th class="p-3 font-medium">ملاحظات</th>
+                                <th class="p-3 font-medium">المسؤول</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody">
+                            <!-- Dynamic rows will go here -->
+                        </tbody>
+                    </table>
+                    <div id="logLoading" class="text-center py-8 text-slate-500 hidden">
+                        جاري تحميل السجل...
+                    </div>
+                    <div id="logEmpty" class="text-center py-8 text-slate-500 hidden">
+                        لا توجد حركات مسجلة لهذا البند بعد.
+                    </div>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-4 border-t flex justify-between shrink-0">
+                <button id="btnRevertLastTx" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl transition text-sm font-bold flex items-center gap-1.5">
+                    ↩ تراجع عن الحركة الأخيرة
+                </button>
+                <button onclick="closeLogModal()" class="px-5 py-2 border border-slate-300 rounded-xl text-slate-700 bg-white hover:bg-slate-50 transition text-sm">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= EDIT USER MODAL ================= -->
+    <div id="editUserModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">تعديل بيانات الحساب</h3>
+                <button onclick="closeEditUserModal()" class="text-slate-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="editUserForm" class="p-6 space-y-4">
+                <input type="hidden" id="editUserId">
+                <div>
+                    <label for="editUsername" class="block text-sm font-medium text-slate-700 mb-1">اسم المستخدم الجديد</label>
+                    <input type="text" id="editUsername" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm">
+                </div>
+                <div>
+                    <label for="editPassword" class="block text-sm font-medium text-slate-700 mb-1">كلمة المرور الجديدة (اتركها فارغة للاحتفاظ بكلمة المرور الحالية)</label>
+                    <input type="password" id="editPassword" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="أدخل كلمة مرور جديدة">
+                </div>
+                <div class="pt-2 flex gap-3">
+                    <button type="submit" class="flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm">حفظ التعديلات</button>
+                    <button type="button" onclick="closeEditUserModal()" class="px-5 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition text-sm">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= RESERVATION MODAL ================= -->
+    <div id="reservationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">حجز كمية من البند (<span id="resItemName">اسم البند</span>)</h3>
+                <button onclick="closeReservationModal()" class="text-slate-400 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="reservationForm" class="p-6 space-y-4">
+                <input type="hidden" id="resItemId">
+                <div>
+                    <label for="resQuantity" class="block text-sm font-medium text-slate-700 mb-1">الكمية المراد حجزها</label>
+                    <input type="number" id="resQuantity" required min="1" value="1" class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm">
+                </div>
+                <div>
+                    <label for="resProject" class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع</label>
+                    <input type="text" id="resProject" required class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm" placeholder="مثال: مدرسة السلط الثانوية">
+                </div>
+                <div class="pt-2 flex gap-3">
+                    <button type="submit" class="flex-grow bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl transition shadow-md hover:shadow-lg text-sm">تأكيد الحجز</button>
+                    <button type="button" onclick="closeReservationModal()" class="px-5 py-2.5 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 transition text-sm">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADD DEPARTMENT MODAL ================= -->
+    <div id="addDepartmentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">إضافة قسم رئيسي</h3>
+                <button onclick="closeAddDepartmentModal()" class="text-white/70 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="addDepartmentForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">اسم القسم</label>
+                        <input type="text" id="newDepartmentName" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="مثال: الواح خشب">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow-md">إضافة</button>
+                        <button type="button" onclick="closeAddDepartmentModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MANAGE PERMISSIONS MODAL ================= -->
+    <div id="permissionsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300 flex flex-col max-h-[80vh]">
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold">صلاحيات المستخدم: <span id="permissionsUserName"></span></h3>
+                <button onclick="closePermissionsModal()" class="text-white/70 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-grow">
+                <div id="permissionsList" class="space-y-4">
+                    <!-- Permissions will be injected here -->
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t text-center">
+                <button type="button" onclick="closePermissionsModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-6 rounded-xl transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Item Info Modal -->
+    <div id="editItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300 mx-4">
+            <div class="p-6 bg-gradient-to-l from-amber-600 to-yellow-500 text-white flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-bold">تعديل معلومات البند</h3>
+                    <p class="text-white/80 text-sm mt-1">تعديل الاسم أو الوصف الخاص بالبند</p>
+                </div>
+                <button onclick="closeEditItemModal()" class="text-white hover:bg-white/20 p-2 rounded-xl transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <form id="editItemForm" class="p-6 space-y-5 text-right">
+                <input type="hidden" id="editItemId" />
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">اسم البند</label>
+                    <input type="text" id="editItemName" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition" required />
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">الوصف (اختياري)</label>
+                    <textarea id="editItemDescription" rows="3" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition"></textarea>
+                </div>
+                
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 px-4 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                        <span>حفظ التعديلات</span>
+                    </button>
+                    <button type="button" onclick="closeEditItemModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 px-4 rounded-xl transition">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 left-4 right-auto bg-emerald-500 text-white px-6 py-3.5 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50 text-sm font-semibold flex items-center gap-2">
+        <span id="toastIcon">✓</span>
+        <span id="toastMessage">تمت العملية بنجاح</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>

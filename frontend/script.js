@@ -1,0 +1,1588 @@
+const API_HOST = window.location.protocol === 'file:' ? 'http://localhost:8000' : window.location.origin;
+const API_URL = `${API_HOST}/api/items`;
+const AUTH_URL = `${API_HOST}/api/auth`;
+const USERS_URL = `${API_HOST}/api/users`;
+
+// State
+let currentDepartment = '';
+let currentSubcategory = '';
+let allItems = [];
+let activeLogItemId = null; // Track current item open in log modal
+
+// DOM Views
+const authContainer = document.getElementById('authContainer');
+const appContainer = document.getElementById('appContainer');
+const departmentsView = document.getElementById('departmentsView');
+const accessoriesSubDeptView = document.getElementById('subDeptView');
+const departmentDetailView = document.getElementById('departmentDetailView');
+const adminView = document.getElementById('adminView');
+
+// Detail Header Elements
+const currentDeptTitle = document.getElementById('currentDeptTitle');
+const currentSubDeptBadge = document.getElementById('currentSubDeptBadge');
+const itemsGrid = document.getElementById('itemsGrid');
+const deptLoadingIndicator = document.getElementById('deptLoadingIndicator');
+const deptEmptyState = document.getElementById('deptEmptyState');
+const activeUserDisplay = document.getElementById('activeUserDisplay');
+const userMenuDropdown = document.getElementById('userMenuDropdown');
+const adminPanelLink = document.getElementById('adminPanelLink');
+
+// Auth Forms
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const authTitle = document.getElementById('authTitle');
+const authSubTitle = document.getElementById('authSubTitle');
+
+// Modals
+const addItemModal = document.getElementById('addItemModal');
+const addItemForm = document.getElementById('addItemForm');
+const addItemModalDeptTitle = document.getElementById('addItemModalDeptTitle');
+const subcategoryFieldContainer = document.getElementById('subcategoryFieldContainer');
+
+const txModal = document.getElementById('txModal');
+const txForm = document.getElementById('txForm');
+const txItemName = document.getElementById('txItemName');
+const txItemId = document.getElementById('txItemId');
+
+const logModal = document.getElementById('logModal');
+const logItemName = document.getElementById('logItemName');
+const logTableBody = document.getElementById('logTableBody');
+const logLoading = document.getElementById('logLoading');
+const logEmpty = document.getElementById('logEmpty');
+const btnRevertLastTx = document.getElementById('btnRevertLastTx');
+
+const editUserModal = document.getElementById('editUserModal');
+const editUserForm = document.getElementById('editUserForm');
+const editUserId = document.getElementById('editUserId');
+const editUsername = document.getElementById('editUsername');
+const editPassword = document.getElementById('editPassword');
+
+const usersTableBody = document.getElementById('usersTableBody');
+const adminLoading = document.getElementById('adminLoading');
+
+const toast = document.getElementById('toast');
+const toastMessage = document.getElementById('toastMessage');
+const toastIcon = document.getElementById('toastIcon');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthStatus();
+    setupAuthForms();
+    setupTxTypeToggle();
+    setupRevertAction();
+    setupEditImageAction();
+    setupDescriptionEditAction();
+    setupEditUserAction();
+    
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+        const userMenu = document.getElementById('userMenuDropdownContainer');
+        if (userMenu && !userMenu.contains(e.target)) {
+            userMenuDropdown.classList.add('hidden');
+        }
+    });
+});
+
+// ----------------- USER MENU DROPDOWN -----------------
+
+function toggleUserMenu() {
+    userMenuDropdown.classList.toggle('hidden');
+}
+
+// ----------------- AUTHENTICATION FLOW -----------------
+
+function checkAuthStatus() {
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    
+    if (token && username) {
+        showAppView(username);
+    } else {
+        showAuthView();
+    }
+}
+
+function showAuthView() {
+    authContainer.classList.remove('hidden');
+    appContainer.classList.add('hidden');
+    toggleAuthMode('login');
+}
+
+function showAppView(username) {
+    authContainer.classList.add('hidden');
+    appContainer.classList.remove('hidden');
+    activeUserDisplay.textContent = username;
+    
+    // If user is 'admin', show the Admin Panel link in dropdown
+    if (username === 'admin') {
+        adminPanelLink.classList.remove('hidden');
+    } else {
+        adminPanelLink.classList.add('hidden');
+    }
+    
+    showDepartmentsView();
+}
+
+function toggleAuthMode(mode) {
+    if (mode === 'login') {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        authTitle.textContent = "نظام إدارة مستودعات المصنع";
+        authSubTitle.textContent = "يرجى تسجيل الدخول للوصول إلى لوحة التحكم";
+    } else {
+        loginForm.classList.add('hidden');
+        registerForm.classList.remove('hidden');
+        authTitle.textContent = "إنشاء حساب جديد";
+        authSubTitle.textContent = "سجل حسابك للبدء في إدارة المستودعات";
+    }
+}
+
+function setupAuthForms() {
+    // Login
+    loginForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        try {
+            const response = await fetch(`${AUTH_URL}/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            
+            if (!response.ok) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+            
+            const data = await response.json();
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('username', username);
+            
+            showToast('تم تسجيل الدخول بنجاح', 'bg-emerald-500', '✓');
+            showAppView(username);
+        } catch (error) {
+            console.error('Login error:', error);
+            showToast(error.message || 'خطأ أثناء تسجيل الدخول', 'bg-rose-500', '✗');
+        }
+    };
+
+    // Register
+    registerForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        
+        try {
+            const response = await fetch(`${AUTH_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            if (response.status === 400) throw new Error('اسم المستخدم مسجل بالفعل');
+            if (!response.ok) throw new Error('خطأ في إعدادات التسجيل');
+            
+            showToast('تم إنشاء الحساب بنجاح! يرجى تسجيل الدخول', 'bg-emerald-500', '✓');
+            toggleAuthMode('login');
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = '';
+        } catch (error) {
+            console.error('Registration error:', error);
+            showToast(error.message || 'خطأ في عملية التسجيل', 'bg-rose-500', '✗');
+        }
+    };
+}
+
+function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    showToast('تم تسجيل الخروج بنجاح', 'bg-slate-700', '✓');
+    showAuthView();
+}
+
+// Request Helper to automatically append Authorization Header & handle 401s
+async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('token');
+    if (!options.headers) {
+        options.headers = {};
+    }
+    
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    try {
+        const response = await fetch(url, options);
+        if (response.status === 401) {
+            handleLogout();
+            throw new Error('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً');
+        }
+        return response;
+    } catch (err) {
+        throw err;
+    }
+}
+
+async function handleBadResponse(response, defaultMsg) {
+    let detail = '';
+    try {
+        const text = await response.text();
+        try {
+            const json = JSON.parse(text);
+            detail = json.detail || text;
+        } catch (e) {
+            detail = text;
+        }
+    } catch (e) {
+        detail = response.statusText;
+    }
+    return new Error(`${defaultMsg} (${response.status}): ${detail}`);
+}
+
+// Setup Transaction Type UI Toggle styling
+function setupTxTypeToggle() {
+    const radios = document.querySelectorAll('input[name="txType"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const parentLabels = document.querySelectorAll('input[name="txType"]');
+            parentLabels.forEach(p => {
+                const label = p.parentElement;
+                label.className = "flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-slate-200 text-slate-700 font-medium focus-within:ring-2";
+            });
+            
+            const checkedLabel = e.target.parentElement;
+            if (e.target.value === 'add') {
+                checkedLabel.className = "flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-emerald-500 bg-emerald-50 text-emerald-800 font-bold focus-within:ring-2 focus-within:ring-emerald-500";
+            } else {
+                checkedLabel.className = "flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition border-red-500 bg-red-50 text-red-800 font-bold focus-within:ring-2 focus-within:ring-red-500";
+            }
+        });
+    });
+}
+
+// Setup Revert Last Transaction Action
+function setupRevertAction() {
+    btnRevertLastTx.onclick = async () => {
+        if (!activeLogItemId) return;
+        if (!confirm('هل أنت متأكد من رغبتك في حذف آخر حركة تم تسجيلها والتراجع عن تعديل الكمية؟')) return;
+        
+        try {
+            const response = await authFetch(`${API_URL}/${activeLogItemId}/transactions/last`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to revert transaction');
+            }
+            
+            showToast('تم التراجع عن الحركة الأخيرة بنجاح وإعادة رصيد البند', 'bg-emerald-500', '✓');
+            
+            // Refresh Log
+            const txResponse = await authFetch(`${API_URL}/${activeLogItemId}/transactions/`);
+            if (txResponse.ok) {
+                const txs = await txResponse.json();
+                renderLogTable(txs);
+            }
+            
+            // Refresh Items Grid
+            await loadItems();
+            
+        } catch (error) {
+            console.error('Error reverting transaction:', error);
+            showToast(error.message || 'خطأ أثناء التراجع عن الحركة', 'bg-rose-500', '✗');
+        }
+    };
+}
+
+// Setup Edit Item Image Action
+function setupEditImageAction() {
+    const editItemImageInput = document.getElementById('editItemImageInput');
+    editItemImageInput.onchange = async (e) => {
+        if (!activeLogItemId) return;
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        try {
+            const response = await authFetch(`${API_URL}/${activeLogItemId}/image`, {
+                method: 'PUT',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to upload image');
+            }
+            
+            showToast('تم تحديث صورة البند بنجاح', 'bg-emerald-500', '✓');
+            
+            // Refresh Items Grid
+            await loadItems();
+            
+        } catch (error) {
+            console.error('Error updating image:', error);
+            showToast(error.message || 'خطأ أثناء تحديث صورة البند', 'bg-rose-500', '✗');
+        } finally {
+            editItemImageInput.value = '';
+        }
+    };
+}
+
+// Setup Edit Item Description Action
+function setupDescriptionEditAction() {
+    const btnSaveDescription = document.getElementById('btnSaveDescription');
+    const logItemDescriptionInput = document.getElementById('logItemDescriptionInput');
+    
+    btnSaveDescription.onclick = async () => {
+        if (!activeLogItemId) return;
+        const newDesc = logItemDescriptionInput.value;
+        
+        try {
+            const response = await authFetch(`${API_URL}/${activeLogItemId}/description`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: newDesc || null })
+            });
+            
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to update description');
+            }
+            
+            showToast('تم تحديث وصف البند بنجاح', 'bg-emerald-500', '✓');
+            await loadItems();
+        } catch (error) {
+            console.error('Error updating description:', error);
+            showToast(error.message || 'خطأ أثناء تحديث الوصف', 'bg-rose-500', '✗');
+        }
+    };
+}
+
+// ----------------- VIEW ROUTING -----------------
+
+async function showDepartmentsView() {
+    currentDepartment = '';
+    currentSubcategory = '';
+    
+    departmentsView.classList.remove('hidden');
+    accessoriesSubDeptView.classList.add('hidden');
+    departmentDetailView.classList.add('hidden');
+    adminView.classList.add('hidden');
+    
+    await fetchDepartmentCounts();
+}
+
+async function enterAccessoriesMenu(deptName) {
+    currentDepartment = deptName;
+    currentSubcategory = '';
+    
+    document.getElementById('subDeptTitle').textContent = `قسم ${deptName}`;
+    
+    // Find subdepartments
+    const dept = globalDepartments.find(d => d.name === deptName);
+    const subGrid = document.getElementById('subDeptGrid');
+    subGrid.innerHTML = '';
+    
+    if (dept && dept.subdepartments) {
+        dept.subdepartments.forEach(sub => {
+            const card = document.createElement('div');
+            card.onclick = () => enterSubDepartment(sub.name);
+            card.className = "group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-lg border border-slate-100 p-6 transition-all text-center flex flex-col items-center justify-center h-40 relative";
+            
+            // Delete sub-department button for admin
+            const deleteBtnHtml = localStorage.getItem('username') === 'admin' ? 
+                `<button onclick="event.stopPropagation(); deleteSubDepartment(${sub.id})" class="absolute top-2 left-2 text-rose-300 hover:text-rose-600 transition" title="حذف القسم الفرعي">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>` : '';
+
+            card.innerHTML = `
+                ${deleteBtnHtml}
+                <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                </div>
+                <h4 class="font-bold text-slate-800">${sub.name}</h4>
+            `;
+            subGrid.appendChild(card);
+        });
+    }
+    
+    const username = localStorage.getItem('username');
+    if (username === 'admin') {
+        document.getElementById('adminSubDepartmentControls').classList.remove('hidden');
+        document.getElementById('deleteDepartmentBtn').classList.remove('hidden');
+    } else {
+        document.getElementById('adminSubDepartmentControls').classList.add('hidden');
+        document.getElementById('deleteDepartmentBtn').classList.add('hidden');
+    }
+    
+    departmentsView.classList.add('hidden');
+    // Using accessoriesSubDeptView as the generic sub dept view
+    accessoriesSubDeptView.classList.remove('hidden');
+    departmentDetailView.classList.add('hidden');
+    adminView.classList.add('hidden');
+}
+
+async function enterSubDepartment(subDept) {
+    currentSubcategory = subDept;
+    
+    currentDeptTitle.textContent = currentDepartment;
+    currentSubDeptBadge.textContent = subDept;
+    currentSubDeptBadge.classList.remove('hidden');
+    
+    departmentsView.classList.add('hidden');
+    accessoriesSubDeptView.classList.add('hidden');
+    departmentDetailView.classList.remove('hidden');
+    adminView.classList.add('hidden');
+    
+    await loadItems();
+}
+
+async function enterDepartment(deptName) {
+    currentDepartment = deptName;
+    currentSubcategory = '';
+    
+    currentDeptTitle.textContent = deptName;
+    currentSubDeptBadge.classList.add('hidden');
+    
+    departmentsView.classList.add('hidden');
+    accessoriesSubDeptView.classList.add('hidden');
+    departmentDetailView.classList.remove('hidden');
+    adminView.classList.add('hidden');
+    
+    await loadItems();
+}
+
+function handleDetailBackNavigation() {
+    const dept = globalDepartments.find(d => d.name === currentDepartment);
+    if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
+        enterAccessoriesMenu(currentDepartment);
+    } else {
+        showDepartmentsView();
+    }
+}
+
+let globalDepartments = [];
+let userPermissionsList = [];
+
+async function fetchDepartmentCounts() {
+    try {
+        // Fetch departments and items
+        const [deptsResponse, itemsResponse] = await Promise.all([
+            authFetch(`${API_URL.replace('/items', '/departments')}/`),
+            authFetch(`${API_URL}/`)
+        ]);
+        
+        if (!deptsResponse.ok) {
+            throw await handleBadResponse(deptsResponse, 'فشل جلب الأقسام الرئيسية');
+        }
+        if (!itemsResponse.ok) {
+            throw await handleBadResponse(itemsResponse, 'فشل جلب البنود');
+        }
+        
+        globalDepartments = await deptsResponse.json();
+        const items = await itemsResponse.json();
+        
+        // Fetch permissions if not admin
+        const username = localStorage.getItem('username');
+        if (username === 'admin') {
+            document.getElementById('adminDepartmentControls').classList.remove('hidden');
+        } else {
+            document.getElementById('adminDepartmentControls').classList.add('hidden');
+            const permUrl = `${API_URL.replace('/items', '/users')}/me/permissions`;
+            console.log('[DEBUG] Fetching permissions from:', permUrl);
+            const permsResponse = await authFetch(permUrl);
+            console.log('[DEBUG] Permissions response status:', permsResponse.status);
+            if (permsResponse.ok) {
+                userPermissionsList = await permsResponse.json();
+                console.log('[DEBUG] userPermissionsList loaded:', JSON.stringify(userPermissionsList));
+            } else {
+                const errText = await permsResponse.text();
+                console.error('[DEBUG] Permissions fetch failed:', errText);
+            }
+        }
+        
+        // Calculate counts
+        const counts = {};
+        const subCounts = {};
+        items.forEach(item => {
+            counts[item.category] = (counts[item.category] || 0) + 1;
+            if (item.subcategory) {
+                subCounts[`${item.category}-${item.subcategory}`] = (subCounts[`${item.category}-${item.subcategory}`] || 0) + 1;
+            }
+        });
+        
+        // Render Main Departments Grid
+        const departmentsGrid = document.getElementById('departmentsGrid');
+        departmentsGrid.innerHTML = '';
+        
+        const colors = ['blue', 'purple', 'amber', 'emerald', 'rose', 'cyan'];
+        
+        globalDepartments.forEach((dept, index) => {
+            const c = colors[index % colors.length];
+            const hasSubDepts = dept.subdepartments && dept.subdepartments.length > 0;
+            const clickHandler = hasSubDepts ? `enterAccessoriesMenu('${dept.name}')` : `enterDepartment('${dept.name}')`;
+            
+            const card = document.createElement('div');
+            card.onclick = () => eval(clickHandler);
+            card.className = `group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 flex flex-col justify-between min-h-[250px] relative overflow-hidden`;
+            
+            card.innerHTML = `
+                <div class="absolute -right-10 -top-10 w-32 h-32 bg-${c}-500/5 rounded-full group-hover:scale-125 transition-transform duration-500"></div>
+                <div>
+                    <div class="w-12 h-12 rounded-xl bg-${c}-500/10 text-${c}-600 flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">${dept.name}</h3>
+                    <p class="text-slate-500 text-sm">${hasSubDepts ? 'يحتوي على أقسام فرعية' : 'إدارة بنود القسم مباشرة'}</p>
+                </div>
+                <div class="mt-6 flex justify-between items-center">
+                    <span class="text-xs font-semibold px-3 py-1 bg-${c}-50 text-${c}-700 rounded-full border border-${c}-100">${counts[dept.name] || 0} بند</span>
+                    <span class="text-${c}-600 group-hover:translate-x-[-4px] transition-transform font-bold text-sm flex items-center gap-1">
+                        ${hasSubDepts ? 'تصفح الأقسام الفرعية' : 'دخول القسم'}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </span>
+                </div>
+            `;
+            departmentsGrid.appendChild(card);
+        });
+        
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        showToast('خطأ أثناء تحميل الأقسام: ' + error.message, 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- ADMIN VIEW LOGIC -----------------
+
+async function showAdminView() {
+    userMenuDropdown.classList.add('hidden'); // Close dropdown
+    
+    departmentsView.classList.add('hidden');
+    accessoriesSubDeptView.classList.add('hidden');
+    departmentDetailView.classList.add('hidden');
+    adminView.classList.remove('hidden');
+    
+    await loadUsers();
+}
+
+async function loadUsers() {
+    usersTableBody.innerHTML = '';
+    adminLoading.classList.remove('hidden');
+    
+    try {
+        const response = await authFetch(USERS_URL);
+        if (!response.ok) {
+            throw await handleBadResponse(response, 'فشلت عملية جلب المستخدمين');
+        }
+        const users = await response.json();
+        
+        users.forEach(user => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition text-sm';
+            
+            row.innerHTML = `
+                <td class="p-4 text-slate-500 font-semibold">#${user.id}</td>
+                <td class="p-4 font-bold text-slate-800">${user.username}</td>
+                <td class="p-4">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200">
+                            ⚙️ الحساب
+                        </button>
+                        ${user.username !== 'admin' ? `
+                        <button onclick="openPermissionsModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition text-xs font-bold border border-amber-200">
+                            🛡️ الصلاحيات
+                        </button>
+                        ` : ''}
+                    </div>
+                </td>
+            `;
+            usersTableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Admin load users error:', error);
+        showToast('خطأ أثناء تحميل الحسابات: ' + error.message, 'bg-rose-500', '✗');
+    } finally {
+        adminLoading.classList.add('hidden');
+    }
+}
+
+function openEditUserModal(id, usernameVal) {
+    editUserId.value = id;
+    editUsername.value = usernameVal;
+    editPassword.value = ''; // keep blank by default
+    
+    editUserModal.classList.remove('hidden');
+    void editUserModal.offsetWidth;
+    editUserModal.classList.remove('opacity-0');
+    editUserModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeEditUserModal() {
+    editUserModal.classList.add('opacity-0');
+    editUserModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        editUserModal.classList.add('hidden');
+    }, 300);
+}
+
+function setupEditUserAction() {
+    editUserForm.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const id = editUserId.value;
+        const usernameVal = editUsername.value;
+        const passwordVal = editPassword.value;
+        
+        const payload = {
+            username: usernameVal,
+            password: passwordVal || null
+        };
+        
+        try {
+            const response = await authFetch(`${USERS_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) throw new Error('فشل تعديل بيانات الحساب');
+            
+            showToast('تم تعديل بيانات الحساب بنجاح', 'bg-emerald-500', '✓');
+            closeEditUserModal();
+            
+            // If the admin changed their own username/password, they might need to log in again,
+            // but for simplicity, we just reload the users table:
+            await loadUsers();
+            
+            // Update logged-in user display if editing 'admin' username
+            if (id === '1') { // admin is id 1
+                localStorage.setItem('username', usernameVal);
+                activeUserDisplay.textContent = usernameVal;
+            }
+        } catch (error) {
+            console.error('Edit user error:', error);
+            showToast(error.message || 'حدث خطأ أثناء التعديل', 'bg-rose-500', '✗');
+        }
+    };
+}
+
+// ----------------- ITEM MANAGEMENT -----------------
+
+function normalizeArabic(str) {
+    if (!str) return '';
+    return String(str)
+        .trim()
+        .replace(/[أإآا]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/ى/g, 'ي');
+}
+
+async function loadItems() {
+    showDeptLoading();
+    try {
+        const username = localStorage.getItem('username');
+        if (username && username !== 'admin') {
+            try {
+                const permUrl = `${API_URL.replace('/items', '/users')}/me/permissions`;
+                console.log('[DEBUG] loadItems: Fetching permissions from:', permUrl);
+                const permsResponse = await authFetch(permUrl);
+                console.log('[DEBUG] loadItems: Permissions response status:', permsResponse.status);
+                if (permsResponse.ok) {
+                    userPermissionsList = await permsResponse.json();
+                    console.log('[DEBUG] loadItems: userPermissionsList:', JSON.stringify(userPermissionsList));
+                } else {
+                    const errText = await permsResponse.text();
+                    console.error('[DEBUG] loadItems: Permissions fetch failed:', errText);
+                }
+            } catch (err) {
+                console.error('Error loading user permissions in loadItems:', err);
+            }
+        }
+        
+        let url = `${API_URL}/?category=${encodeURIComponent(currentDepartment)}`;
+        if (currentSubcategory) {
+            url += `&subcategory=${encodeURIComponent(currentSubcategory)}`;
+        }
+        
+        const response = await authFetch(url);
+        if (!response.ok) throw new Error('Failed to fetch items');
+        allItems = await response.json();
+        renderItemsGrid();
+    } catch (error) {
+        console.error('Error fetching items:', error);
+        showToast('خطأ في جلب بيانات البنود', 'bg-red-500', '✗');
+    } finally {
+        hideDeptLoading();
+    }
+}
+
+function renderItemsGrid() {
+    itemsGrid.innerHTML = '';
+    
+    const username = localStorage.getItem('username');
+    const hasEditPermission = username === 'admin' || userPermissionsList.some(p => normalizeArabic(p.department_name) === normalizeArabic(currentDepartment) && (p.can_edit == 1 || p.can_edit === true));
+    console.log('[DEBUG] renderItemsGrid: username=', username, ' currentDepartment=', currentDepartment, ' userPermissionsList=', JSON.stringify(userPermissionsList), ' hasEditPermission=', hasEditPermission);
+    
+    const mainAddBtn = document.getElementById('mainAddItemBtn');
+    if (mainAddBtn) {
+        if (hasEditPermission) {
+            mainAddBtn.classList.remove('hidden');
+        } else {
+            mainAddBtn.classList.add('hidden');
+        }
+    }
+    
+    if (allItems.length === 0) {
+        deptEmptyState.classList.remove('hidden');
+        return;
+    }
+    
+    deptEmptyState.classList.add('hidden');
+    
+    allItems.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200';
+        
+        const imageHTML = item.image_url 
+            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-cover">`
+            : ''; // Blank background instead of question marks
+        
+        let badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">${item.category}</span>`;
+        if (item.category === 'إكسسوارات' && item.subcategory) {
+            badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100 mb-4">${item.category} / ${item.subcategory}</span>`;
+        }
+
+        const descriptionHTML = item.description 
+            ? `<p class="text-xs text-slate-500 mt-0.5 mb-3">${item.description}</p>`
+            : '';
+
+        card.innerHTML = `
+            <div>
+                <!-- Item Image -->
+                <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                    ${imageHTML}
+                </div>
+                <!-- Content -->
+                <div class="p-5">
+                    <h4 class="text-lg font-bold text-slate-800 mb-1">${item.name}</h4>
+                    ${descriptionHTML}
+                    ${badgeHTML}
+                    <div class="flex justify-between items-center bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                        <span class="text-sm text-slate-500 font-medium">الكمية المتوفرة:</span>
+                        <span class="text-2xl font-black ${item.quantity > 0 ? 'text-slate-800' : 'text-rose-500'}">${item.quantity}</span>
+                    </div>
+                    <!-- Reservations Summary display -->
+                    ${(() => {
+                        if (item.reservations && item.reservations.length > 0) {
+                            const resTexts = item.reservations.map(r => `تم حجز ${r.quantity} قطع لمشروع ${r.project_name}`).join('، ');
+                            return `
+                                <div class="mt-2 text-right">
+                                    <span class="text-xs text-slate-500 font-medium font-tajawal">
+                                        (${resTexts})
+                                    </span>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    })()}
+                </div>
+            </div>
+            <!-- Actions -->
+            <div class="p-5 pt-0 flex flex-col gap-2">
+                ${hasEditPermission ? `
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="openTxModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        تعديل الكمية
+                    </button>
+                    <button onclick="openLogModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        سجل الحركة
+                    </button>
+                </div>
+                <button onclick="openReservationModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
+                    📌 حجز كمية للمشروع
+                </button>
+                ${username === 'admin' ? `
+                <button onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow mt-1">
+                    🗑️ حذف البند
+                </button>
+                <button onclick="openEditItemModal(${item.id}, '${item.name.replace(/'/g, "\\'")}', '${(item.description || '').replace(/'/g, "\\'")}')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow mt-1">
+                    ✏️ تعديل معلومات البند
+                </button>
+                ` : ''}
+                ` : `
+                <button onclick="openLogModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    عرض السجل فقط
+                </button>
+                `}
+            </div>
+        `;
+        itemsGrid.appendChild(card);
+    });
+}
+
+// ----------------- ADD ITEM MODAL LOGIC -----------------
+
+function openAddItemModal() {
+    addItemModalDeptTitle.textContent = currentDepartment;
+    
+    if (currentDepartment === 'إكسسوارات') {
+        subcategoryFieldContainer.classList.remove('hidden');
+        if (currentSubcategory) {
+            document.getElementById('itemSubcategory').value = currentSubcategory;
+        }
+    } else {
+        subcategoryFieldContainer.classList.add('hidden');
+    }
+
+    addItemModal.classList.remove('hidden');
+    void addItemModal.offsetWidth;
+    addItemModal.classList.remove('opacity-0');
+    addItemModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeAddItemModal() {
+    addItemModal.classList.add('opacity-0');
+    addItemModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        addItemModal.classList.add('hidden');
+        addItemForm.reset();
+        document.getElementById('imageUploadName').textContent = 'اضغط هنا لرفع صورة البند';
+    }, 300);
+}
+
+// File Change Helper
+function handleFileChange(input, labelId) {
+    const label = document.getElementById(labelId);
+    if (input.files && input.files.length > 0) {
+        label.textContent = `مستعد للرفع: ${input.files[0].name}`;
+        label.classList.add('text-indigo-600', 'font-semibold');
+    } else {
+        label.textContent = 'اضغط هنا لرفع صورة البند';
+        label.classList.remove('text-indigo-600', 'font-semibold');
+    }
+}
+
+addItemForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('itemName').value;
+    const description = document.getElementById('itemDescription').value;
+    const quantity = parseInt(document.getElementById('itemQuantity').value) || 0;
+    const imageFile = document.getElementById('itemImage').files[0];
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('category', currentDepartment);
+    formData.append('quantity', quantity);
+    
+    if (description) {
+        formData.append('description', description);
+    }
+    
+    if (currentDepartment === 'إكسسوارات') {
+        const subcategory = document.getElementById('itemSubcategory').value;
+        formData.append('subcategory', subcategory);
+    }
+    
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'جاري الحفظ...';
+    }
+    
+    try {
+        const response = await authFetch(`${API_URL}/`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error('Failed to create item');
+        
+        showToast('تم حفظ البند بنجاح', 'bg-emerald-500', '✓');
+        closeAddItemModal();
+        await loadItems();
+    } catch (error) {
+        console.error('Error adding item:', error);
+        showToast('خطأ أثناء حفظ البند', 'bg-rose-500', '✗');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+});
+
+async function deleteItem(itemId, itemName) {
+    if (!confirm(`هل أنت متأكد من رغبتك في حذف البند "${itemName}" بالكامل؟ سيتم حذف جميع الحركات والحجوزات المرتبطة به. لا يمكن التراجع عن هذا الإجراء.`)) {
+        return;
+    }
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/items/${itemId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.detail || 'فشل حذف البند');
+        }
+        
+        showToast('تم حذف البند بنجاح', 'bg-emerald-500', '✓');
+        await loadItems(); // Refresh the items list
+        fetchDepartmentCounts(); // Refresh the counts on the home page
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        showToast(error.message || 'خطأ أثناء حذف البند', 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- EDIT ITEM INFO LOGIC -----------------
+
+const editItemModal = document.getElementById('editItemModal');
+const editItemForm = document.getElementById('editItemForm');
+
+function openEditItemModal(itemId, currentName, currentDesc) {
+    document.getElementById('editItemId').value = itemId;
+    document.getElementById('editItemName').value = currentName || '';
+    document.getElementById('editItemDescription').value = currentDesc || '';
+    
+    editItemModal.classList.remove('hidden');
+    void editItemModal.offsetWidth;
+    editItemModal.classList.remove('opacity-0');
+    editItemModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeEditItemModal() {
+    editItemModal.classList.add('opacity-0');
+    editItemModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        editItemModal.classList.add('hidden');
+        if (editItemForm) editItemForm.reset();
+    }, 300);
+}
+
+if (editItemForm) {
+    editItemForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = editItemForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> جاري الحفظ...';
+        
+        try {
+            const itemId = document.getElementById('editItemId').value;
+            const name = document.getElementById('editItemName').value;
+            const description = document.getElementById('editItemDescription').value;
+            
+            const response = await authFetch(`${API_HOST}/api/items/${itemId}/info`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description })
+            });
+            
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.detail || 'فشل تحديث بيانات البند');
+            }
+            
+            showToast('تم تحديث معلومات البند بنجاح', 'bg-emerald-500', '✓');
+            closeEditItemModal();
+            await loadItems();
+        } catch (error) {
+            console.error('Error updating item info:', error);
+            showToast(error.message || 'خطأ أثناء تحديث معلومات البند', 'bg-rose-500', '✗');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+}
+
+// ----------------- TRANSACTION MODAL LOGIC -----------------
+
+
+function openTxModal(itemId, itemName) {
+    txItemId.value = itemId;
+    txItemName.textContent = itemName;
+    
+    // reset form
+    txForm.reset();
+    document.querySelector('input[value="add"]').checked = true;
+    document.querySelector('input[value="add"]').dispatchEvent(new Event('change'));
+
+    txModal.classList.remove('hidden');
+    void txModal.offsetWidth;
+    txModal.classList.remove('opacity-0');
+    txModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeTxModal() {
+    txModal.classList.add('opacity-0');
+    txModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        txModal.classList.add('hidden');
+    }, 300);
+}
+
+txForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const itemId = txItemId.value;
+    const amount = parseInt(document.getElementById('txAmount').value);
+    const txType = document.querySelector('input[name="txType"]:checked').value;
+    const project = document.getElementById('txProject').value;
+    const notes = document.getElementById('txNotes').value;
+    
+    const finalChange = txType === 'add' ? amount : -amount;
+    
+    const payload = {
+        change: finalChange,
+        project_name: project || null,
+        notes: notes || null
+    };
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'جاري الحفظ...';
+    }
+    
+    try {
+        const response = await authFetch(`${API_URL}/${itemId}/transactions/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to log transaction');
+        }
+        
+        showToast('تم تعديل الكمية بنجاح', 'bg-emerald-500', '✓');
+        closeTxModal();
+        await loadItems();
+    } catch (error) {
+        console.error('Error recording transaction:', error);
+        showToast(error.message || 'خطأ في تعديل الكمية. تأكد من أن الرصيد يكفي للخصم.', 'bg-rose-500', '✗');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    }
+});
+
+// ----------------- LOG/HISTORY MODAL LOGIC -----------------
+
+async function openLogModal(itemId, itemName) {
+    activeLogItemId = itemId;
+    logItemName.textContent = itemName;
+    logTableBody.innerHTML = '';
+    
+    // Populate description input & handle admin-only controls visibility
+    const item = allItems.find(i => i.id === itemId);
+    const username = localStorage.getItem('username');
+    const descriptionEditContainer = document.getElementById('logDescriptionEditContainer');
+    const descriptionReadOnlyContainer = document.getElementById('logDescriptionReadOnlyContainer');
+    const descriptionText = document.getElementById('logItemDescriptionText');
+    const imageUploadLabel = document.getElementById('logImageUploadLabel');
+    
+    if (username === 'admin') {
+        if (descriptionEditContainer) descriptionEditContainer.classList.remove('hidden');
+        if (descriptionReadOnlyContainer) descriptionReadOnlyContainer.classList.add('hidden');
+        if (imageUploadLabel) imageUploadLabel.classList.remove('hidden');
+        
+        if (item) {
+            document.getElementById('logItemDescriptionInput').value = item.description || '';
+        } else {
+            document.getElementById('logItemDescriptionInput').value = '';
+        }
+    } else {
+        if (descriptionEditContainer) descriptionEditContainer.classList.add('hidden');
+        if (descriptionReadOnlyContainer) descriptionReadOnlyContainer.classList.remove('hidden');
+        if (imageUploadLabel) imageUploadLabel.classList.add('hidden');
+        
+        if (item && item.description) {
+            descriptionText.textContent = item.description;
+        } else {
+            descriptionText.textContent = 'لا يوجد وصف لهذا البند';
+        }
+    }
+    
+    // Render active reservations
+    const reservationsContainer = document.getElementById('activeReservationsContainer');
+    const reservationsList = document.getElementById('activeReservationsList');
+    reservationsList.innerHTML = '';
+    
+    if (item && item.reservations && item.reservations.length > 0) {
+        reservationsContainer.classList.remove('hidden');
+        item.reservations.forEach(res => {
+            const row = document.createElement('div');
+            row.className = 'flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm text-xs';
+            row.innerHTML = `
+                <div>
+                    <span class="font-bold text-slate-800">حجز ${res.quantity} قطع</span>
+                    <span class="text-slate-500">لمشروع</span>
+                    <span class="font-black text-indigo-700">${res.project_name}</span>
+                    <span class="text-slate-400"> (بواسطة: ${res.username || 'النظام'})</span>
+                </div>
+                <button onclick="cancelReservation(${res.id})" class="text-rose-600 hover:text-rose-800 font-bold hover:underline transition">
+                    ❌ إلغاء الحجز
+                </button>
+            `;
+            reservationsList.appendChild(row);
+        });
+    } else {
+        reservationsContainer.classList.add('hidden');
+    }
+    
+    logModal.classList.remove('hidden');
+    void logModal.offsetWidth;
+    logModal.classList.remove('opacity-0');
+    logModal.querySelector('.transform').classList.remove('scale-95');
+    
+    showLogLoading();
+    
+    try {
+        const response = await authFetch(`${API_URL}/${itemId}/transactions/`);
+        if (!response.ok) throw new Error('Failed to fetch transactions');
+        const txs = await response.json();
+        renderLogTable(txs);
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+        showToast('خطأ أثناء جلب سجل الحركات', 'bg-rose-500', '✗');
+    } finally {
+        hideLogLoading();
+    }
+}
+
+function renderLogTable(txs) {
+    logTableBody.innerHTML = '';
+    
+    if (txs.length === 0) {
+        logEmpty.classList.remove('hidden');
+        btnRevertLastTx.disabled = true;
+        btnRevertLastTx.classList.add('opacity-50', 'cursor-not-allowed');
+        return;
+    }
+    
+    logEmpty.classList.add('hidden');
+    btnRevertLastTx.disabled = false;
+    btnRevertLastTx.classList.remove('opacity-50', 'cursor-not-allowed');
+    
+    txs.forEach(tx => {
+        const row = document.createElement('tr');
+        row.className = 'border-b hover:bg-slate-50 transition text-sm';
+        
+        const dateStr = new Date(tx.timestamp).toLocaleString('ar-EG', {
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        
+        const isAdd = tx.change > 0;
+        const changeBadge = isAdd 
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">+${tx.change}</span>`
+            : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">${tx.change}</span>`;
+            
+        const userDisplay = tx.username || 'النظام';
+
+        row.innerHTML = `
+            <td class="p-3 text-slate-500 text-xs">${dateStr}</td>
+            <td class="p-3 font-semibold text-slate-800">${isAdd ? 'إضافة للمخزن' : 'خصم من المخزن'}</td>
+            <td class="p-3">${changeBadge}</td>
+            <td class="p-3 text-slate-700">${tx.project_name || '-'}</td>
+            <td class="p-3 text-slate-500 text-xs">${tx.notes || '-'}</td>
+            <td class="p-3 text-indigo-600 font-bold text-xs">${userDisplay}</td>
+        `;
+        
+        logTableBody.appendChild(row);
+    });
+}
+
+function closeLogModal() {
+    logModal.classList.add('opacity-0');
+    logModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        logModal.classList.add('hidden');
+        activeLogItemId = null;
+    }, 300);
+}
+
+// ----------------- LOADING STATE HELPERS -----------------
+
+function showDeptLoading() {
+    itemsGrid.innerHTML = '';
+    deptEmptyState.classList.add('hidden');
+    deptLoadingIndicator.classList.remove('hidden');
+}
+
+function hideDeptLoading() {
+    deptLoadingIndicator.classList.add('hidden');
+}
+
+function showLogLoading() {
+    logEmpty.classList.add('hidden');
+    logLoading.classList.remove('hidden');
+}
+
+function hideLogLoading() {
+    logLoading.classList.add('hidden');
+}
+
+// Toast Helpers
+let toastTimeout;
+function showToast(message, bgColorClass = 'bg-emerald-500', icon = '✓') {
+    toastMessage.textContent = message;
+    toastIcon.textContent = icon;
+    
+    toast.className = `fixed bottom-4 left-4 right-auto text-white px-6 py-3.5 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50 text-sm font-semibold flex items-center gap-2 ${bgColorClass}`;
+    
+    void toast.offsetWidth;
+    
+    toast.classList.add('toast-visible');
+    
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('toast-visible');
+    }, 4000);
+}
+
+// ----------------- RESERVATION SYSTEM LOGIC -----------------
+
+const reservationModal = document.getElementById('reservationModal');
+const reservationForm = document.getElementById('reservationForm');
+const resItemId = document.getElementById('resItemId');
+const resItemName = document.getElementById('resItemName');
+
+function openReservationModal(itemId, itemName) {
+    resItemId.value = itemId;
+    resItemName.textContent = itemName;
+    reservationForm.reset();
+
+    reservationModal.classList.remove('hidden');
+    void reservationModal.offsetWidth;
+    reservationModal.classList.remove('opacity-0');
+    reservationModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeReservationModal() {
+    reservationModal.classList.add('opacity-0');
+    reservationModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        reservationModal.classList.add('hidden');
+    }, 300);
+}
+
+reservationForm.onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const itemId = resItemId.value;
+    const qty = parseInt(document.getElementById('resQuantity').value);
+    const project = document.getElementById('resProject').value;
+    
+    const payload = {
+        quantity: qty,
+        project_name: project
+    };
+    
+    try {
+        const response = await authFetch(`${API_URL}/${itemId}/reservations/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'فشل حجز الكمية');
+        }
+        
+        showToast('تم حجز الكمية للمشروع بنجاح', 'bg-emerald-500', '✓');
+        closeReservationModal();
+        await loadItems();
+    } catch (error) {
+        console.error('Error reserving item:', error);
+        showToast(error.message || 'خطأ أثناء الحجز. تأكد من توفر الكمية المطلوبة.', 'bg-rose-500', '✗');
+    }
+};
+
+async function cancelReservation(reservationId) {
+    if (!confirm('هل أنت متأكد من رغبتك في إلغاء هذا الحجز؟')) return;
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/reservations/${reservationId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to cancel reservation');
+        }
+        
+        showToast('تم إلغاء الحجز بنجاح وإعادة إتاحة الكمية للجميع', 'bg-emerald-500', '✓');
+        closeLogModal();
+        await loadItems();
+        
+    } catch (error) {
+        console.error('Error cancelling reservation:', error);
+        showToast(error.message || 'خطأ أثناء إلغاء الحجز', 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- AUTOMATIC SYNC POLLING -----------------
+
+setInterval(() => {
+    const token = localStorage.getItem('token');
+    // Poll only if logged in, in app view, not in admin panel, and no active dialog modals are open
+    if (token && 
+        !appContainer.classList.contains('hidden') && 
+        adminView.classList.contains('hidden') &&
+        addItemModal.classList.contains('hidden') &&
+        txModal.classList.contains('hidden') &&
+        logModal.classList.contains('hidden') &&
+        reservationModal.classList.contains('hidden') &&
+        editUserModal.classList.contains('hidden') &&
+        currentDepartment) {
+        
+        fetchDepartmentCounts();
+        silentLoadItems();
+    }
+}, 5000);
+
+async function silentLoadItems() {
+    try {
+        let url = `${API_URL}/?category=${encodeURIComponent(currentDepartment)}`;
+        if (currentSubcategory) {
+            url += `&subcategory=${encodeURIComponent(currentSubcategory)}`;
+        }
+        
+        const response = await authFetch(url);
+        if (response.ok) {
+            allItems = await response.json();
+            renderItemsGrid();
+        }
+    } catch (error) {
+        console.error('Silent refresh failed:', error);
+    }
+}
+
+// ----------------- ADMIN DEPARTMENTS LOGIC -----------------
+
+const addDepartmentModal = document.getElementById('addDepartmentModal');
+const addDepartmentForm = document.getElementById('addDepartmentForm');
+const permissionsModal = document.getElementById('permissionsModal');
+
+function openAddDepartmentModal() {
+    addDepartmentForm.reset();
+    addDepartmentModal.classList.remove('hidden');
+    void addDepartmentModal.offsetWidth;
+    addDepartmentModal.classList.remove('opacity-0');
+    addDepartmentModal.querySelector('.transform').classList.remove('scale-95');
+}
+
+function closeAddDepartmentModal() {
+    addDepartmentModal.classList.add('opacity-0');
+    addDepartmentModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        addDepartmentModal.classList.add('hidden');
+    }, 300);
+}
+
+if(addDepartmentForm) {
+    addDepartmentForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const deptName = document.getElementById('newDepartmentName').value;
+        try {
+            const response = await authFetch(`${API_URL.replace('/items', '/departments')}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: deptName })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to add department');
+            }
+            showToast('تمت إضافة القسم بنجاح', 'bg-emerald-500', '✓');
+            closeAddDepartmentModal();
+            fetchDepartmentCounts(); // Reload grid
+        } catch (err) {
+            showToast(err.message, 'bg-rose-500', '✗');
+        }
+    };
+}
+
+async function deleteCurrentDepartment() {
+    if (!confirm(`هل أنت متأكد من حذف القسم ${currentDepartment}؟ سيتم الرفض إذا كان يحتوي على بنود.`)) return;
+    try {
+        const dept = globalDepartments.find(d => d.name === currentDepartment);
+        if(!dept) throw new Error("Department not found");
+        
+        const response = await authFetch(`${API_URL.replace('/items', '/departments')}/${dept.id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to delete department');
+        }
+        showToast('تم الحذف بنجاح', 'bg-emerald-500', '✓');
+        showDepartmentsView();
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    }
+}
+
+const addSubDeptForm = document.getElementById('addSubDeptForm');
+if(addSubDeptForm) {
+    addSubDeptForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const subName = document.getElementById('newSubDeptName').value;
+        const dept = globalDepartments.find(d => d.name === currentDepartment);
+        if(!dept) return;
+        
+        try {
+            const response = await authFetch(`${API_URL.replace('/items', '/departments')}/${dept.id}/sub/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: subName })
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Failed to add sub-department');
+            }
+            showToast('تمت إضافة القسم الفرعي بنجاح', 'bg-emerald-500', '✓');
+            document.getElementById('newSubDeptName').value = '';
+            // Reload
+            await fetchDepartmentCounts();
+            enterAccessoriesMenu(currentDepartment);
+        } catch (err) {
+            showToast(err.message, 'bg-rose-500', '✗');
+        }
+    };
+}
+
+async function deleteSubDepartment(subId) {
+    if (!confirm(`هل أنت متأكد من حذف القسم الفرعي؟ سيتم الرفض إذا كان يحتوي على بنود.`)) return;
+    try {
+        const response = await authFetch(`${API_URL.replace('/items', '/subdepartments')}/${subId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to delete sub-department');
+        }
+        showToast('تم الحذف بنجاح', 'bg-emerald-500', '✓');
+        await fetchDepartmentCounts();
+        enterAccessoriesMenu(currentDepartment);
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// ----------------- ADMIN PERMISSIONS LOGIC -----------------
+
+async function openPermissionsModal(userId, username) {
+    document.getElementById('permissionsUserName').textContent = username;
+    const permissionsList = document.getElementById('permissionsList');
+    permissionsList.innerHTML = '<p class="text-slate-500 text-sm">جاري تحميل الصلاحيات...</p>';
+    
+    permissionsModal.classList.remove('hidden');
+    void permissionsModal.offsetWidth;
+    permissionsModal.classList.remove('opacity-0');
+    permissionsModal.querySelector('.transform').classList.remove('scale-95');
+    
+    try {
+        // Load all users and their permissions from USERS_URL which now returns permissions inside the user object
+        const usersResp = await authFetch(USERS_URL);
+        if (!usersResp.ok) {
+            throw await handleBadResponse(usersResp, 'فشلت عملية جلب الحسابات');
+        }
+        const users = await usersResp.json();
+        const user = users.find(u => u.id === userId);
+        
+        if (!user) throw new Error('User not found');
+        
+        // Ensure globalDepartments are loaded
+        if (globalDepartments.length === 0) {
+            const deptsResponse = await authFetch(`${API_URL.replace('/items', '/departments')}/`);
+            globalDepartments = await deptsResponse.json();
+        }
+        
+        permissionsList.innerHTML = '';
+        
+        globalDepartments.forEach(dept => {
+            const perm = user.permissions.find(p => normalizeArabic(p.department_name) === normalizeArabic(dept.name));
+            const canEdit = perm && (perm.can_edit == 1 || perm.can_edit === true);
+            
+            permissionsList.innerHTML += `
+                <div class="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+                    <div>
+                        <p class="font-bold text-slate-800">${dept.name}</p>
+                        <p class="text-xs text-slate-500">منح صلاحية الإضافة والتعديل</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" ${canEdit ? 'checked' : ''} onchange="togglePermission(${userId}, '${dept.name}', this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+            `;
+        });
+        
+    } catch (err) {
+        permissionsList.innerHTML = `<p class="text-rose-500 text-sm">${err.message}</p>`;
+    }
+}
+
+function closePermissionsModal() {
+    permissionsModal.classList.add('opacity-0');
+    permissionsModal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        permissionsModal.classList.add('hidden');
+    }, 300);
+}
+
+async function togglePermission(userId, deptName, canEdit) {
+    try {
+        const response = await authFetch(`${API_URL.replace('/items', '/users')}/${userId}/permissions/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ department_name: deptName, can_edit: canEdit ? 1 : 0 })
+        });
+        if (!response.ok) {
+            throw new Error('Failed to update permission');
+        }
+        showToast('تم تحديث الصلاحية بنجاح', 'bg-emerald-500', '✓');
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    }
+}
