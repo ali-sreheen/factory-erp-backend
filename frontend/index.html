@@ -113,9 +113,253 @@
 
         <!-- Main Content -->
         <main class="flex-grow container mx-auto px-6 py-8">
-            
+
+            <!-- ================= MODULE SELECTOR VIEW ================= -->
+            <div id="moduleSelectorView" class="space-y-8 animate-fade-in">
+                <div class="text-center max-w-xl mx-auto py-4">
+                    <h2 class="text-3xl font-extrabold text-slate-900 mb-2">مرحباً بك في نظام الإدارة</h2>
+                    <p class="text-slate-500 text-sm">الرجاء اختيار النظام الذي تود الدخول إليه اليوم.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                    <!-- Inventory Module -->
+                    <div onclick="showDepartmentsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">نظام إدارة المخازن</h3>
+                        <p class="text-slate-500 text-sm">تتبع البنود، الحجوزات، والأقسام</p>
+                    </div>
+                    <!-- Projects Module -->
+                    <div onclick="showProjectsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">نظام إدارة المشاريع</h3>
+                        <p class="text-slate-500 text-sm">إضافة ومتابعة المشاريع الجديدة</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= PROJECTS MAIN VIEW ================= -->
+            <div id="projectsView" class="hidden space-y-6 animate-fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
+                    <div class="flex items-center gap-4">
+                        <button onclick="showModuleSelectorView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع للقائمة الرئيسية">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-slate-900">إدارة المشاريع</h2>
+                            <p class="text-slate-500 text-sm mt-0.5">قائمة بجميع المشاريع المسجلة في النظام.</p>
+                        </div>
+                    </div>
+                    <button onclick="openProjectWizard()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        إضافة مشروع جديد
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                    <th class="p-4 font-bold">الرقم</th>
+                                    <th class="p-4 font-bold">الاسم</th>
+                                    <th class="p-4 font-bold">المقاول</th>
+                                    <th class="p-4 font-bold">تاريخ التسليم</th>
+                                    <th class="p-4 font-bold">الحالة</th>
+                                    <th class="p-4 font-bold text-center">التفاصيل</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectsTableBody">
+                                <!-- Projects will be injected here -->
+                            </tbody>
+                        </table>
+                        <div id="projectsLoadingIndicator" class="text-center py-12 hidden">
+                            <div class="inline-block w-6 h-6 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                            <p class="text-slate-400 text-xs mt-2">جاري تحميل المشاريع...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= PROJECT WIZARD VIEW ================= -->
+            <div id="projectWizardView" class="hidden space-y-6 animate-fade-in max-w-4xl mx-auto">
+                <!-- Header -->
+                <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
+                    <button onclick="showProjectsView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="إلغاء والعودة">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-900">إضافة مشروع جديد</h2>
+                        <p class="text-slate-500 text-sm mt-0.5">اتبع الخطوات لإدخال كافة تفاصيل المشروع.</p>
+                    </div>
+                </div>
+                
+                <!-- Progress Indicator -->
+                <div class="flex justify-between items-center mb-8 relative">
+                    <div class="absolute left-0 right-0 top-1/2 h-1 bg-slate-200 -z-10 -translate-y-1/2"></div>
+                    <div id="wizardProgressLine" class="absolute right-0 top-1/2 h-1 bg-emerald-500 -z-10 -translate-y-1/2 transition-all duration-300" style="width: 0%;"></div>
+                    
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-emerald-600 text-white shadow-md wizard-step-indicator" data-step="1">1</div>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 wizard-step-indicator transition-colors" data-step="2">2</div>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 wizard-step-indicator transition-colors" data-step="3">3</div>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500 wizard-step-indicator transition-colors" data-step="4">4</div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+                    <!-- Form Starts Here -->
+                    <form id="projectWizardForm">
+                        
+                        <!-- STEP 1: Basic Info -->
+                        <div id="wizardStep1" class="wizard-step-content">
+                            <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">1. المعلومات الأساسية</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">اسم المشروع *</label>
+                                    <input type="text" id="pwName" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">رقم المشروع *</label>
+                                    <input type="text" id="pwProjectNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">اسم المقاول</label>
+                                    <input type="text" id="pwContractor" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">تاريخ التسليم المتوقع</label>
+                                    <input type="date" id="pwDeliveryDate" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">المهندس المسؤول</label>
+                                    <input type="text" id="pwEngineerName" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">رقم هاتف المهندس</label>
+                                    <input type="text" id="pwEngineerPhone" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" dir="ltr">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">موقع المشروع</label>
+                                    <input type="text" id="pwLocation" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">المستخدم المسؤول عن التنفيذ (Assignee)</label>
+                                    <select id="pwAssignee" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition bg-white">
+                                        <option value="">-- اختر مستخدم --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-8 flex justify-end">
+                                <button type="button" onclick="goToWizardStep(2)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow">التالي: التفاصيل الهندسية</button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2: Engineering Details -->
+                        <div id="wizardStep2" class="wizard-step-content hidden">
+                            <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">2. التفاصيل الهندسية</h3>
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">لون الدهان للمشروع (اختياري)</label>
+                                <input type="text" id="pwPaintColor" class="w-full max-w-md px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" placeholder="مثال: أبيض مطفي / RAL 9010">
+                            </div>
+
+                            <div class="flex justify-between items-end mb-2">
+                                <h4 class="font-bold text-slate-700">جدول الأبواب والشبابيك</h4>
+                                <button type="button" onclick="addProjectDetailRow()" class="text-sm bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold py-1 px-3 rounded-lg border border-indigo-200 transition flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة سطر
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto border border-slate-200 rounded-xl mb-6">
+                                <table class="w-full text-right border-collapse text-sm min-w-max">
+                                    <thead>
+                                        <tr class="bg-slate-50 text-slate-600">
+                                            <th class="p-2 border-b">رقم الباب</th>
+                                            <th class="p-2 border-b">العرض</th>
+                                            <th class="p-2 border-b">الطول</th>
+                                            <th class="p-2 border-b">العمق</th>
+                                            <th class="p-2 border-b">نوع الزرفيل</th>
+                                            <th class="p-2 border-b">المقطع</th>
+                                            <th class="p-2 border-b">نوع الباب</th>
+                                            <th class="p-2 border-b text-center">مقاوم حريق</th>
+                                            <th class="p-2 border-b">الشباك</th>
+                                            <th class="p-2 border-b text-center">حذف</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="projectDetailsTableBody">
+                                        <!-- Rows added dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-8 flex justify-between">
+                                <button type="button" onclick="goToWizardStep(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl transition border border-slate-300">السابق</button>
+                                <button type="button" onclick="goToWizardStep(3)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow">التالي: المرفقات</button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: Attachments -->
+                        <div id="wizardStep3" class="wizard-step-content hidden">
+                            <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">3. المرفقات (اختياري)</h3>
+                            
+                            <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-2xl p-10 text-center hover:bg-slate-100 transition cursor-pointer" onclick="document.getElementById('pwAttachments').click()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                <h4 class="text-lg font-bold text-slate-700">اضغط لاختيار الملفات أو اسحبها هنا</h4>
+                                <p class="text-sm text-slate-500 mt-2">يُسمح برفع ملفات PDF وصور المخططات</p>
+                                <input type="file" id="pwAttachments" multiple class="hidden" onchange="updateAttachmentsList(this)">
+                            </div>
+                            
+                            <div id="attachmentsList" class="mt-4 space-y-2">
+                                <!-- Selected files show here -->
+                            </div>
+
+                            <div class="mt-8 flex justify-between">
+                                <button type="button" onclick="goToWizardStep(2)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl transition border border-slate-300">السابق</button>
+                                <button type="button" onclick="goToWizardStep(4)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow">التالي: الحالة والاعتماد</button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 4: Activation -->
+                        <div id="wizardStep4" class="wizard-step-content hidden">
+                            <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">4. حالة المشروع</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <label class="border-2 rounded-2xl p-6 cursor-pointer transition focus-within:ring-2 hover:bg-slate-50 border-amber-500 bg-amber-50" id="statusLabelPending">
+                                    <div class="flex items-start gap-4">
+                                        <input type="radio" name="pwStatus" value="pending" checked class="mt-1 w-5 h-5 text-amber-600" onchange="updateStatusStyling('pending')">
+                                        <div>
+                                            <h4 class="font-bold text-lg text-amber-800">قيد الانتظار (Pending)</h4>
+                                            <p class="text-sm text-amber-600/80 mt-1">المشروع بانتظار الموافقات النهائية ولن تبدأ عملية التصنيع أو صرف المواد بعد.</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label class="border-2 rounded-2xl p-6 cursor-pointer transition focus-within:ring-2 hover:bg-slate-50 border-slate-200" id="statusLabelActive">
+                                    <div class="flex items-start gap-4">
+                                        <input type="radio" name="pwStatus" value="active" class="mt-1 w-5 h-5 text-emerald-600" onchange="updateStatusStyling('active')">
+                                        <div>
+                                            <h4 class="font-bold text-lg text-slate-800">تفعيل المشروع (Active)</h4>
+                                            <p class="text-sm text-slate-500 mt-1">المشروع جاهز وسيبدأ فريق التنفيذ بالعمل، ويمكن صرف المواد المخصصة له.</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="mt-8 flex justify-between border-t pt-6">
+                                <button type="button" onclick="goToWizardStep(3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl transition border border-slate-300">السابق</button>
+                                <button type="submit" id="btnSubmitProject" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition shadow-lg text-lg flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    اعتماد وحفظ المشروع
+                                </button>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
             <!-- ================= DEPARTMENTS VIEW ================= -->
-            <div id="departmentsView" class="space-y-8 animate-fade-in">
+            <div id="departmentsView" class="hidden space-y-8 animate-fade-in">
                 <div class="text-center max-w-xl mx-auto py-4">
                     <h2 class="text-3xl font-extrabold text-slate-900 mb-2">أقسام المستودع الرئيسية</h2>
                     <p class="text-slate-500 text-sm">يرجى اختيار القسم الذي ترغب في تصفح بنوده أو إدارتها.</p>
