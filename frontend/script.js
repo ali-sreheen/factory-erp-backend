@@ -1740,10 +1740,10 @@ async function loadProjects() {
                     : '<span class="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-xs">قيد الانتظار</span>';
                 
                 tr.innerHTML = `
-                    <td class="p-4 font-bold text-slate-800">${p.project_number}</td>
-                    <td class="p-4">${p.name}</td>
-                    <td class="p-4 text-slate-500">${p.contractor || '-'}</td>
-                    <td class="p-4 text-slate-500" dir="ltr">${p.expected_delivery_date ? new Date(p.expected_delivery_date).toLocaleDateString() : '-'}</td>
+                    <td class="p-4 font-bold text-slate-800">${p.project_number || '-'}</td>
+                    <td class="p-4">${p.name || '-'}</td>
+                    <td class="p-4 text-slate-500">${p.contractor_name || '-'}</td>
+                    <td class="p-4 text-slate-500" dir="ltr">${p.delivery_date ? new Date(p.delivery_date).toLocaleDateString() : '-'}</td>
                     <td class="p-4">${statusBadge}</td>
                     <td class="p-4 text-center">
                         <button onclick="viewProjectDetails(${p.id})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-bold text-xs">التفاصيل</button>
@@ -1762,7 +1762,7 @@ async function loadProjects() {
     }
 }
 
-async function viewProjectDetails(id) {
+function viewProjectDetails(id) {
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
@@ -1855,37 +1855,21 @@ if (projectWizardForm) {
         btnSubmit.disabled = true;
         
         try {
-            const details = [];
-            const rows = document.querySelectorAll('#projectDetailsTableBody tr');
-            rows.forEach(tr => {
-                const inputs = tr.querySelectorAll('input');
-                details.push({
-                    door_number: inputs[0].value,
-                    width: inputs[1].value ? parseFloat(inputs[1].value) : null,
-                    height: inputs[2].value ? parseFloat(inputs[2].value) : null,
-                    depth: inputs[3].value ? parseFloat(inputs[3].value) : null,
-                    lock_type: inputs[4].value,
-                    profile: inputs[5].value,
-                    door_type: inputs[6].value,
-                    fire_resistant: inputs[7].checked,
-                    window_type: inputs[8].value
-                });
-            });
-            
+            // Collect basic info matching ProjectCreate schema
             const payload = {
                 name: document.getElementById('pwName').value,
                 project_number: document.getElementById('pwProjectNumber').value,
-                contractor: document.getElementById('pwContractor').value,
-                expected_delivery_date: document.getElementById('pwDeliveryDate').value || null,
+                contractor_name: document.getElementById('pwContractor').value,
+                delivery_date: document.getElementById('pwDeliveryDate').value || null,
                 engineer_name: document.getElementById('pwEngineerName').value,
                 engineer_phone: document.getElementById('pwEngineerPhone').value,
                 location: document.getElementById('pwLocation').value,
-                assignee_id: document.getElementById('pwAssignee').value ? parseInt(document.getElementById('pwAssignee').value) : null,
+                executive_manager_id: document.getElementById('pwAssignee').value ? parseInt(document.getElementById('pwAssignee').value) : null,
                 paint_color: document.getElementById('pwPaintColor').value,
-                status: document.querySelector('input[name="pwStatus"]:checked').value,
-                engineering_details: details
+                status: document.querySelector('input[name="pwStatus"]:checked').value
             };
             
+            // POST to create project
             const response = await authFetch(PROJECTS_URL + '/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1896,19 +1880,42 @@ if (projectWizardForm) {
                 const err = await response.json();
                 throw new Error(err.detail || 'Failed to create project');
             }
-            
             const createdProject = await response.json();
             
+            // Post details ONE by ONE matching ProjectDetailCreate
+            const rows = document.querySelectorAll('#projectDetailsTableBody tr');
+            for (let tr of rows) {
+                const inputs = tr.querySelectorAll('input');
+                const detailPayload = {
+                    door_number: inputs[0].value || null,
+                    width: inputs[1].value || null,
+                    height: inputs[2].value || null,
+                    depth: inputs[3].value || null,
+                    lock_type: inputs[4].value || null,
+                    profile_type: inputs[5].value || null,
+                    door_type: inputs[6].value || null,
+                    fire_resistance: inputs[7].checked ? 'نعم' : 'لا',
+                    window_details: inputs[8].value || null
+                };
+                
+                await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(detailPayload)
+                });
+            }
+            
+            // Post attachments ONE by ONE matching ProjectAttachmentCreate
             const attachmentsInput = document.getElementById('pwAttachments');
             if (attachmentsInput.files.length > 0) {
-                const formData = new FormData();
-                Array.from(attachmentsInput.files).forEach(file => {
-                    formData.append('files', file);
-                });
-                await authFetch(`${PROJECTS_URL}/${createdProject.id}/attachments`, {
-                    method: 'POST',
-                    body: formData
-                });
+                for (let file of attachmentsInput.files) {
+                    const formData = new FormData();
+                    formData.append('file', file); // API expects singular 'file'
+                    await authFetch(`${PROJECTS_URL}/${createdProject.id}/attachments/`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
             }
             
             showToast('تم إضافة المشروع بنجاح!', 'bg-emerald-500', '✓');
