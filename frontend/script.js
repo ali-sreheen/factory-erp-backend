@@ -1762,7 +1762,7 @@ async function loadProjects() {
     }
 }
 
-function viewProjectDetails(id) {
+async function viewProjectDetails(id) {
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
@@ -1779,16 +1779,23 @@ function viewProjectDetails(id) {
         const p = await response.json();
         
         document.getElementById('pdTitle').textContent = p.name;
-        document.getElementById('pdSubtitle').textContent = p.expected_delivery_date ? `تاريخ التسليم المتوقع: ${new Date(p.expected_delivery_date).toLocaleDateString()}` : '';
+        document.getElementById('pdSubtitle').textContent = p.delivery_date ? `تاريخ التسليم المتوقع: ${new Date(p.delivery_date).toLocaleDateString()}` : '';
         
         document.getElementById('pdNumber').textContent = p.project_number;
-        document.getElementById('pdContractor').textContent = p.contractor || '-';
-        document.getElementById('pdDelivery').textContent = p.expected_delivery_date ? new Date(p.expected_delivery_date).toLocaleDateString() : '-';
+        document.getElementById('pdContractor').textContent = p.contractor_name || '-';
+        document.getElementById('pdDelivery').textContent = p.delivery_date ? new Date(p.delivery_date).toLocaleDateString() : '-';
         document.getElementById('pdEngineer').textContent = p.engineer_name || '-';
         document.getElementById('pdEngineerPhone').textContent = p.engineer_phone || '-';
         document.getElementById('pdLocation').textContent = p.location || '-';
         document.getElementById('pdPaint').textContent = p.paint_color || '-';
-        document.getElementById('pdAssignee').textContent = p.assignee ? p.assignee.username : '-';
+        
+        document.getElementById('pdAssignee').textContent = '-';
+        if (p.executive_manager_id) {
+            authFetch(USERS_URL).then(res => res.json()).then(users => {
+                const assignee = users.find(u => u.id === p.executive_manager_id);
+                if (assignee) document.getElementById('pdAssignee').textContent = assignee.username;
+            }).catch(() => {});
+        }
         
         const badge = document.getElementById('pdStatusBadge');
         if (p.status === 'active') {
@@ -1799,20 +1806,20 @@ function viewProjectDetails(id) {
         
         const tbody = document.getElementById('pdEngineeringTableBody');
         tbody.innerHTML = '';
-        if (p.engineering_details && p.engineering_details.length > 0) {
-            p.engineering_details.forEach(d => {
+        if (p.details && p.details.length > 0) {
+            p.details.forEach(d => {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition text-sm';
                 tr.innerHTML = `
-                    <td class="p-3 font-bold">${d.door_number}</td>
+                    <td class="p-3 font-bold">${d.door_number || '-'}</td>
                     <td class="p-3">${d.width || '-'}</td>
                     <td class="p-3">${d.height || '-'}</td>
                     <td class="p-3">${d.depth || '-'}</td>
                     <td class="p-3">${d.lock_type || '-'}</td>
-                    <td class="p-3">${d.profile || '-'}</td>
+                    <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
-                    <td class="p-3">${d.fire_resistant ? '✔️' : '❌'}</td>
-                    <td class="p-3">${d.window_type || '-'}</td>
+                    <td class="p-3">${d.fire_resistance || '-'}</td>
+                    <td class="p-3">${d.window_details || '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1825,12 +1832,12 @@ function viewProjectDetails(id) {
         if (p.attachments && p.attachments.length > 0) {
             p.attachments.forEach(a => {
                 const link = document.createElement('a');
-                link.href = `${API_HOST}${a.file_path}`;
+                link.href = `${API_HOST}${a.file_url}`;
                 link.target = '_blank';
                 link.className = 'flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition text-slate-700 font-bold text-sm';
                 link.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                    <span class="truncate">${a.filename}</span>
+                    <span class="truncate">${a.file_name}</span>
                 `;
                 attachContainer.appendChild(link);
             });
@@ -1843,7 +1850,6 @@ function viewProjectDetails(id) {
         document.getElementById('pdSubtitle').textContent = "فشل التحميل";
     }
 }
-
 const projectWizardForm = document.getElementById('projectWizardForm');
 if (projectWizardForm) {
     projectWizardForm.addEventListener('submit', async (e) => {
