@@ -1740,9 +1740,12 @@ async function loadProjects() {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition text-sm';
                 
-                const statusBadge = p.status === 'active' 
-                    ? '<span class="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-xs">فعال</span>'
-                    : '<span class="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-xs">قيد الانتظار</span>';
+                let statusBadge = '<span class="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-xs">قيد الانتظار</span>';
+                if (p.status === 'active') {
+                    statusBadge = '<span class="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-xs">فعال</span>';
+                } else if (p.status === 'completed') {
+                    statusBadge = '<span class="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs">منتهي</span>';
+                }
                 
                 tr.innerHTML = `
                     <td class="p-4 font-bold text-slate-800">${p.project_number || '-'}</td>
@@ -1803,10 +1806,55 @@ async function viewProjectDetails(id) {
         }
         
         const badge = document.getElementById('pdStatusBadge');
-        if (p.status === 'active') {
-            badge.innerHTML = '<span class="px-4 py-2 bg-emerald-100 text-emerald-800 rounded-xl font-bold border border-emerald-200">مشروع فعال</span>';
-        } else {
-            badge.innerHTML = '<span class="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl font-bold border border-amber-200">قيد الانتظار</span>';
+        
+        // Default static badge
+        function renderStaticBadge(status) {
+            if (status === 'active') return '<span class="px-4 py-2 bg-emerald-100 text-emerald-800 rounded-xl font-bold border border-emerald-200">مشروع فعال</span>';
+            if (status === 'completed') return '<span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-xl font-bold border border-blue-200">مشروع منتهي</span>';
+            return '<span class="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl font-bold border border-amber-200">قيد الانتظار</span>';
+        }
+        
+        badge.innerHTML = renderStaticBadge(p.status);
+
+        // Make interactive if current user is the assignee or admin
+        const currentUser = localStorage.getItem('username');
+        let isAuthorized = (currentUser === 'admin');
+        
+        if (p.executive_manager_id) {
+            authFetch(USERS_BASIC_URL).then(res => res.json()).then(users => {
+                const assignee = users.find(u => u.id === p.executive_manager_id);
+                if (assignee && assignee.username === currentUser) {
+                    isAuthorized = true;
+                }
+                
+                if (isAuthorized) {
+                    const selectHtml = `
+                        <select onchange="updateProjectStatus(${p.id}, this.value)" class="px-4 py-2 rounded-xl font-bold border focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
+                            p.status === 'active' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 
+                            p.status === 'completed' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
+                            'bg-amber-100 text-amber-800 border-amber-200'
+                        }">
+                            <option value="pending" ${p.status === 'pending' ? 'selected' : ''}>قيد الانتظار</option>
+                            <option value="active" ${p.status === 'active' ? 'selected' : ''}>مشروع فعال</option>
+                            <option value="completed" ${p.status === 'completed' ? 'selected' : ''}>مشروع منتهي</option>
+                        </select>
+                    `;
+                    badge.innerHTML = selectHtml;
+                }
+            }).catch(() => {});
+        } else if (isAuthorized) {
+            const selectHtml = `
+                <select onchange="updateProjectStatus(${p.id}, this.value)" class="px-4 py-2 rounded-xl font-bold border focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
+                    p.status === 'active' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 
+                    p.status === 'completed' ? 'bg-blue-100 text-blue-800 border-blue-200' : 
+                    'bg-amber-100 text-amber-800 border-amber-200'
+                }">
+                    <option value="pending" ${p.status === 'pending' ? 'selected' : ''}>قيد الانتظار</option>
+                    <option value="active" ${p.status === 'active' ? 'selected' : ''}>مشروع فعال</option>
+                    <option value="completed" ${p.status === 'completed' ? 'selected' : ''}>مشروع منتهي</option>
+                </select>
+            `;
+            badge.innerHTML = selectHtml;
         }
         
         const tbody = document.getElementById('pdEngineeringTableBody');
@@ -1939,3 +1987,21 @@ if (projectWizardForm) {
         }
     });
 }
+
+
+// Update Project Status
+window.updateProjectStatus = async function(projectId, newStatus) {
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        if (!response.ok) throw new Error('فشل تحديث حالة المشروع');
+        showToast('تم تحديث حالة المشروع بنجاح', 'bg-emerald-500', '✓');
+        // Refresh details view
+        viewProjectDetails(projectId);
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
