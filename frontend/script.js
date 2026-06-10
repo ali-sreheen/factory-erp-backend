@@ -1689,10 +1689,10 @@ function addProjectDetailRow() {
     const tr = document.createElement('tr');
     tr.className = 'border-b hover:bg-slate-50';
     tr.innerHTML = `
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="رقم"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-full px-2 py-1 border rounded" placeholder="عرض"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-full px-2 py-1 border rounded" placeholder="طول"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-full px-2 py-1 border rounded" placeholder="عمق"></td>
+        <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم"></td>
+        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض"></td>
+        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
+        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الزرفيل"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="المقطع"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="نوع الباب"></td>
@@ -2116,10 +2116,10 @@ window.editProject = async function(projectId) {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition';
                 tr.innerHTML = `
-                    <td class="p-2"><input type="text" class="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center font-bold" value="${d.door_number || ''}"></td>
-                    <td class="p-2"><input type="number" step="0.1" class="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
-                    <td class="p-2"><input type="number" step="0.1" class="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
-                    <td class="p-2"><input type="number" step="0.1" class="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
+                    <td class="p-2"><input type="text" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center font-bold" value="${d.door_number || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.lock_type || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.profile_type || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.door_type || ''}"></td>
