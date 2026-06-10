@@ -1839,7 +1839,13 @@ async function viewProjectDetails(id) {
                             <option value="completed" ${p.status === 'completed' ? 'selected' : ''}>مشروع منتهي</option>
                         </select>
                     `;
-                    badge.innerHTML = selectHtml;
+                    const deleteHtml = `
+                        <button onclick="deleteProjectWithConfirmation(${p.id})" class="mr-3 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl transition font-bold flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            حذف المشروع
+                        </button>
+                    `;
+                    badge.innerHTML = `<div class="flex items-center">` + selectHtml + deleteHtml + `</div>`;
                 }
             }).catch(() => {});
         } else if (isAuthorized) {
@@ -2003,5 +2009,24 @@ window.updateProjectStatus = async function(projectId, newStatus) {
         viewProjectDetails(projectId);
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+
+// Delete Project With Confirmation
+window.deleteProjectWithConfirmation = async function(projectId) {
+    if (confirm("هل أنت متأكد أنك تريد حذف هذا المشروع بشكل نهائي؟ لا يمكن التراجع عن هذا الإجراء.")) {
+        if (confirm("تأكيد أخير: هل أنت متأكد 100% من حذف هذا المشروع بجميع بياناته وملفاته؟")) {
+            try {
+                const response = await authFetch(`${PROJECTS_URL}/${projectId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error('فشل حذف المشروع');
+                showToast('تم حذف المشروع بنجاح', 'bg-emerald-500', '✓');
+                showProjectsView(); // Go back to projects list
+            } catch (e) {
+                showToast(e.message, 'bg-rose-500', '✗');
+            }
+        }
     }
 };
