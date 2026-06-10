@@ -2,6 +2,7 @@ const API_HOST = window.location.protocol === 'file:' ? 'http://localhost:8000' 
 const API_URL = `${API_HOST}/api/items`;
 const AUTH_URL = `${API_HOST}/api/auth`;
 const USERS_URL = `${API_HOST}/api/users`;
+const USERS_BASIC_URL = `${API_HOST}/api/users/basic`;
 
 // State
 let currentDepartment = '';
@@ -1708,7 +1709,7 @@ function updateAttachmentsList(input) {
 
 async function loadAssignees() {
     try {
-        const response = await authFetch(USERS_URL);
+        const response = await authFetch(USERS_BASIC_URL);
         if (response.ok) {
             const users = await response.json();
             const select = document.getElementById('pwAssignee');
@@ -1795,7 +1796,7 @@ async function viewProjectDetails(id) {
         
         document.getElementById('pdAssignee').textContent = '-';
         if (p.executive_manager_id) {
-            authFetch(USERS_URL).then(res => res.json()).then(users => {
+            authFetch(USERS_BASIC_URL).then(res => res.json()).then(users => {
                 const assignee = users.find(u => u.id === p.executive_manager_id);
                 if (assignee) document.getElementById('pdAssignee').textContent = assignee.username;
             }).catch(() => {});

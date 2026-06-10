@@ -169,6 +169,14 @@ def list_users(
     # We will return users with permissions using the UserWithPermissionsResponse schema
     return users
 
+@app.get("/api/users/basic", response_model=List[schemas.UserResponse])
+def list_users_basic(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    users = crud.get_all_users(db)
+    return users
+
 @app.put("/api/users/{user_id}", response_model=schemas.UserResponse)
 def update_user_credentials(
     user_id: int,
