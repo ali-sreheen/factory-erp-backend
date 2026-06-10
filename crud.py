@@ -326,6 +326,11 @@ def delete_project_detail(db: Session, detail_id: int):
         return True
     return False
 
+def delete_project_details(db: Session, project_id: int):
+    db.query(models.ProjectDetail).filter(models.ProjectDetail.project_id == project_id).delete()
+    db.commit()
+    return True
+
 # --- Project Attachments ---
 def create_project_attachment(db: Session, project_id: int, file_name: str, file_url: str):
     db_attachment = models.ProjectAttachment(project_id=project_id, file_name=file_name, file_url=file_url)

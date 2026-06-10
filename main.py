@@ -543,9 +543,14 @@ def get_project(project_id: int, db: Session = Depends(get_db), current_user: mo
 
 @app.put("/api/projects/{project_id}", response_model=schemas.ProjectResponse)
 def update_project(project_id: int, project_update: schemas.ProjectUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    project = crud.update_project(db, project_id, project_update)
-    if not project:
+    existing = crud.get_project_by_id(db, project_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    if current_user.username != "admin" and current_user.id != existing.executive_manager_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    project = crud.update_project(db, project_id, project_update)
     return project
 
 @app.delete("/api/projects/{project_id}")
@@ -572,6 +577,14 @@ def delete_project_detail(detail_id: int, db: Session = Depends(get_db), current
     if not success:
         raise HTTPException(status_code=404, detail="Detail not found")
     return {"message": "Deleted successfully"}
+
+@app.delete("/api/projects/{project_id}/details")
+def delete_project_details(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    project = crud.get_project_by_id(db, project_id)
+    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    crud.delete_project_details(db, project_id)
+    return {"message": "All details deleted successfully"}
 
 @app.post("/api/projects/{project_id}/attachments/", response_model=schemas.ProjectAttachmentResponse)
 def create_project_attachment(project_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
