@@ -1613,6 +1613,8 @@ function showProjectsView() {
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');
     adminView.classList.add('hidden');
+    const pdView = document.getElementById('projectDetailView');
+    if(pdView) pdView.classList.add('hidden');
     loadProjects();
 }
 
@@ -1624,6 +1626,8 @@ function openProjectWizard() {
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');
     adminView.classList.add('hidden');
+    const pdView = document.getElementById('projectDetailView');
+    if(pdView) pdView.classList.add('hidden');
     
     document.getElementById('projectWizardForm').reset();
     document.getElementById('projectDetailsTableBody').innerHTML = '';
