@@ -1693,9 +1693,32 @@ function addProjectDetailRow() {
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الزرفيل"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="المقطع"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="نوع الباب"></td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                <option value="" disabled selected>الزرفيل</option>
+                <option value="devon mortice lock">devon mortice lock</option>
+                <option value="euroart mortice lock">euroart mortice lock</option>
+                <option value="euroart roller">euroart roller</option>
+                <option value="consort mortice lock">consort mortice lock</option>
+                <option value="special">special</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                <option value="" disabled selected>المقطع</option>
+                <option value="single rabbit with rubber">single rabbit with rubber</option>
+                <option value="double rabbit with rubber">double rabbit with rubber</option>
+                <option value="single rabbit">single rabbit</option>
+                <option value="double rabbit">double rabbit</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                <option value="" disabled selected>نوع الباب</option>
+                <option value="single leaf">single leaf</option>
+                <option value="double leaf">double leaf</option>
+            </select>
+        </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
@@ -1977,7 +2000,7 @@ if (projectWizardForm) {
             // Post details ONE by ONE matching ProjectDetailCreate
             const rows = document.querySelectorAll('#projectDetailsTableBody tr');
             for (let tr of rows) {
-                const inputs = tr.querySelectorAll('input');
+                const inputs = tr.querySelectorAll('input, select');
                 const detailPayload = {
                     door_number: inputs[0].value || null,
                     width: inputs[1].value || null,
@@ -2120,9 +2143,32 @@ window.editProject = async function(projectId) {
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.lock_type || ''}"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.profile_type || ''}"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.door_type || ''}"></td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.lock_type ? 'selected' : ''}>الزرفيل</option>
+                            <option value="devon mortice lock" ${d.lock_type === 'devon mortice lock' ? 'selected' : ''}>devon mortice lock</option>
+                            <option value="euroart mortice lock" ${d.lock_type === 'euroart mortice lock' ? 'selected' : ''}>euroart mortice lock</option>
+                            <option value="euroart roller" ${d.lock_type === 'euroart roller' ? 'selected' : ''}>euroart roller</option>
+                            <option value="consort mortice lock" ${d.lock_type === 'consort mortice lock' ? 'selected' : ''}>consort mortice lock</option>
+                            <option value="special" ${d.lock_type === 'special' ? 'selected' : ''}>special</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>
+                            <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
+                            <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
+                            <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
+                            <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.door_type ? 'selected' : ''}>نوع الباب</option>
+                            <option value="single leaf" ${d.door_type === 'single leaf' ? 'selected' : ''}>single leaf</option>
+                            <option value="double leaf" ${d.door_type === 'double leaf' ? 'selected' : ''}>double leaf</option>
+                        </select>
+                    </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
                     <td class="p-2 text-center">
