@@ -2625,7 +2625,7 @@ async function loadPurchaseRequests() {
             const ownerName = r.requested_by ? r.requested_by.username : 'غير معروف';
 
             tbody.innerHTML += `
-                <tr class="border-b hover:bg-slate-50 transition">
+                <tr class="border-b hover:bg-slate-50 transition cursor-pointer" onclick="openPurchaseRequestDetails(${r.id})">
                     <td class="p-4 font-bold text-slate-500">#${r.id}</td>
                     <td class="p-4 font-bold text-slate-800">${r.title}</td>
                     <td class="p-4">${r.quantity || '-'}</td>
@@ -2633,7 +2633,7 @@ async function loadPurchaseRequests() {
                     <td class="p-4 text-slate-600">${ownerName}</td>
                     <td class="p-4 text-sm text-slate-500" dir="ltr">${dateStr}</td>
                     <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 text-center">
+                    <td class="p-4 text-center" onclick="event.stopPropagation()">
                         ${actionButtons}
                         <button onclick="deletePurchaseRequest(${r.id})" class="text-rose-600 hover:text-rose-800 p-1 align-middle"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                     </td>
@@ -2656,18 +2656,25 @@ function closePurchaseRequestModal() {
 
 document.getElementById('purchaseRequestForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = {
-        title: document.getElementById('prTitle').value,
-        quantity: document.getElementById('prQuantity').value ? parseInt(document.getElementById('prQuantity').value) : null,
-        expected_price: document.getElementById('prExpectedPrice').value,
-        description: document.getElementById('prDescription').value
-    };
+    const formData = new FormData();
+    formData.append("title", document.getElementById('prTitle').value);
+    
+    const qty = document.getElementById('prQuantity').value;
+    if(qty) formData.append("quantity", qty);
+    
+    const price = document.getElementById('prExpectedPrice').value;
+    if(price) formData.append("expected_price", price);
+    
+    const desc = document.getElementById('prDescription').value;
+    if(desc) formData.append("description", desc);
+
+    const imageFile = document.getElementById('prAttachedImage').files[0];
+    if(imageFile) formData.append("attached_image", imageFile);
 
     try {
         const res = await authFetch(`${PURCHASE_REQUESTS_URL}/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: formData
         });
         if (!res.ok) throw new Error("فشل إنشاء الطلب");
         closePurchaseRequestModal();
@@ -2710,13 +2717,8 @@ document.getElementById('markPurchasedForm').addEventListener('submit', async (e
     const invoiceFile = document.getElementById('prInvoiceFile').files[0];
     const itemsFile = document.getElementById('prItemsFile').files[0];
 
-    if(!invoiceFile) {
-        showToast("صورة الفاتورة إجبارية", "bg-rose-500", "✗");
-        return;
-    }
-
     const formData = new FormData();
-    formData.append("invoice_image", invoiceFile);
+    if(invoiceFile) formData.append("invoice_image", invoiceFile);
     if(itemsFile) formData.append("items_image", itemsFile);
 
     try {
@@ -2744,6 +2746,148 @@ async function deletePurchaseRequest(id) {
         showToast(err.message, "bg-rose-500", "✗");
     }
 }
+
+// --- Purchase Request Details Logic ---
+async function openPurchaseRequestDetails(id) {
+    document.getElementById('purchaseView').classList.add('hidden');
+    document.getElementById('purchaseRequestDetailView').classList.remove('hidden');
+    document.getElementById('prdTitle').innerText = 'جاري التحميل...';
+    
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}`);
+        if (!res.ok) throw new Error("فشل جلب تفاصيل الطلب");
+        const data = await res.json();
+        renderPurchaseRequestDetails(data);
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+}
+
+function closePurchaseRequestDetails() {
+    document.getElementById('purchaseRequestDetailView').classList.add('hidden');
+    document.getElementById('purchaseView').classList.remove('hidden');
+    loadPurchaseRequests();
+}
+
+function renderPurchaseRequestDetails(r) {
+    document.getElementById('prdId').innerText = r.id;
+    document.getElementById('prdTitle').innerText = r.title;
+    document.getElementById('prdOwner').innerText = r.requested_by ? r.requested_by.username : 'غير معروف';
+    document.getElementById('prdQuantity').innerText = r.quantity || '-';
+    document.getElementById('prdExpectedPrice').innerText = r.expected_price || '-';
+    document.getElementById('prdDescription').innerText = r.description || 'لا يوجد تفاصيل';
+
+    const statusBadge = document.getElementById('prdStatusBadge');
+    statusBadge.className = 'text-sm px-3 py-1 rounded-full font-bold border ';
+    if (r.status === 'Pending') {
+        statusBadge.classList.add('bg-amber-100', 'text-amber-800', 'border-amber-200');
+        statusBadge.innerText = 'قيد الانتظار';
+    } else if (r.status === 'Active') {
+        statusBadge.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-200');
+        statusBadge.innerText = 'مُعتمد (جاهز للشراء)';
+    } else {
+        statusBadge.classList.add('bg-emerald-100', 'text-emerald-800', 'border-emerald-200');
+        statusBadge.innerText = 'تم الشراء';
+    }
+
+    const actionsContainer = document.getElementById('prdActionsContainer');
+    actionsContainer.innerHTML = '';
+    
+    if (r.status === 'Pending' && localStorage.getItem('username') === 'admin') {
+        actionsContainer.innerHTML += `<button onclick="approvePurchaseRequestDetails(${r.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>موافقة على الطلب</button>`;
+    } else if (r.status === 'Active') {
+        actionsContainer.innerHTML += `<button onclick="openMarkPurchasedModal(${r.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">إتمام عملية الشراء</button>`;
+    }
+    actionsContainer.innerHTML += `<button onclick="deletePurchaseRequestDetails(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">حذف</button>`;
+
+    const imagesContainer = document.getElementById('prdImagesContainer');
+    imagesContainer.innerHTML = '';
+    if(!r.attached_image_url && !r.invoice_image_url && !r.items_image_url) {
+        imagesContainer.innerHTML = `<p class="col-span-full text-center py-4 text-slate-500 font-bold">لا يوجد صور مرفقة</p>`;
+    } else {
+        if(r.attached_image_url) {
+            imagesContainer.innerHTML += `
+                <a href="${API_HOST}${r.attached_image_url}" target="_blank" class="block border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                    <img src="${API_HOST}${r.attached_image_url}" class="w-full h-32 object-cover" />
+                    <div class="bg-slate-50 p-2 text-center text-sm font-bold text-slate-700">الصورة المرفقة</div>
+                </a>`;
+        }
+        if(r.invoice_image_url) {
+            imagesContainer.innerHTML += `
+                <a href="${API_HOST}${r.invoice_image_url}" target="_blank" class="block border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                    <img src="${API_HOST}${r.invoice_image_url}" class="w-full h-32 object-cover" />
+                    <div class="bg-slate-50 p-2 text-center text-sm font-bold text-slate-700">صورة الفاتورة</div>
+                </a>`;
+        }
+        if(r.items_image_url) {
+            imagesContainer.innerHTML += `
+                <a href="${API_HOST}${r.items_image_url}" target="_blank" class="block border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
+                    <img src="${API_HOST}${r.items_image_url}" class="w-full h-32 object-cover" />
+                    <div class="bg-slate-50 p-2 text-center text-sm font-bold text-slate-700">صورة المشتريات</div>
+                </a>`;
+        }
+    }
+
+    const timelineContainer = document.getElementById('prdTimeline');
+    const dDate = new Date(r.created_at).toLocaleDateString('ar-SA') + ' ' + new Date(r.created_at).toLocaleTimeString('ar-SA', {hour: '2-digit', minute:'2-digit'});
+    
+    let timelineHTML = `
+        <div class="relative">
+            <span class="absolute -right-6 top-1.5 w-3 h-3 rounded-full bg-slate-300 ring-4 ring-white"></span>
+            <p class="font-bold text-slate-800">إنشاء الطلب</p>
+            <p class="text-xs text-slate-500 mt-1">${dDate} بواسطة ${document.getElementById('prdOwner').innerText}</p>
+        </div>`;
+        
+    if(r.status === 'Active' || r.status === 'Purchased') {
+        timelineHTML += `
+        <div class="relative">
+            <span class="absolute -right-6 top-1.5 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white shadow-sm"></span>
+            <p class="font-bold text-slate-800">اعتماد الطلب</p>
+            <p class="text-xs text-slate-500 mt-1">تم الموافقة من قبل الإدارة</p>
+        </div>`;
+    }
+    
+    if(r.status === 'Purchased') {
+        timelineHTML += `
+        <div class="relative">
+            <span class="absolute -right-6 top-1.5 w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-white shadow-sm shadow-emerald-200"></span>
+            <p class="font-bold text-slate-800">إتمام الشراء</p>
+            <p class="text-xs text-slate-500 mt-1">تم رفع الفواتير وإغلاق الطلب</p>
+        </div>`;
+    }
+    
+    timelineContainer.innerHTML = timelineHTML;
+}
+
+async function approvePurchaseRequestDetails(id) {
+    if(!confirm("هل أنت متأكد من الموافقة على طلب الشراء؟")) return;
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Active' })
+        });
+        if (!res.ok) throw new Error("فشل الموافقة (يجب أن تكون مدير النظام)");
+        showToast("تم اعتماد الطلب بنجاح", "bg-emerald-500", "✓");
+        // reload details
+        openPurchaseRequestDetails(id);
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+}
+
+async function deletePurchaseRequestDetails(id) {
+    if(!confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}`, { method: 'DELETE' });
+        if(!res.ok) throw new Error("فشل الحذف أو ليس لديك صلاحية");
+        showToast("تم الحذف", "bg-emerald-500", "✓");
+        closePurchaseRequestDetails();
+    } catch(err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+}
+
 
 function updateExpectedDateColor() {
     const input = document.getElementById('ptExpectedDate');

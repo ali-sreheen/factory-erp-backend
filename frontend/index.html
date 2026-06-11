@@ -1218,6 +1218,10 @@
                     <label class="block text-sm font-bold text-slate-700 mb-1">التفاصيل/الوصف</label>
                     <textarea id="prDescription" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"></textarea>
                 </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">إرفاق صورة (اختياري)</label>
+                    <input type="file" id="prAttachedImage" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+                </div>
                 <div class="flex gap-3 pt-4">
                     <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl transition shadow">إرسال الطلب</button>
                     <button type="button" onclick="closePurchaseRequestModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
@@ -1238,10 +1242,10 @@
             <form id="markPurchasedForm" class="p-6 space-y-5 text-right">
                 <input type="hidden" id="markPrId">
                 <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                    <p class="text-sm text-emerald-800 font-semibold mb-2">الرجاء إرفاق صور الفاتورة والمشتريات لإتمام الطلب</p>
+                    <p class="text-sm text-emerald-800 font-semibold mb-2">الرجاء إرفاق صور الفاتورة والمشتريات (كلاهما اختياري)</p>
                     <div class="space-y-4 mt-4">
                         <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">صورة الفاتورة</label>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">صورة الفاتورة (اختياري)</label>
                             <input type="file" id="prInvoiceFile" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
                         </div>
                         <div>
@@ -1258,6 +1262,68 @@
         </div>
     </div>
 
+
+    <!-- ================= PURCHASE REQUEST DETAIL VIEW ================= -->
+    <div id="purchaseRequestDetailView" class="hidden space-y-6 animate-fade-in max-w-5xl mx-auto pb-10">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
+            <div class="flex items-center gap-4">
+                <button onclick="closePurchaseRequestDetails()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="العودة لطلبات الشراء">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </button>
+                <div>
+                    <h2 class="text-3xl font-extrabold text-slate-900 flex items-center gap-3">
+                        <span id="prdTitle">تفاصيل الطلب</span>
+                        <span id="prdStatusBadge" class="text-sm px-3 py-1 rounded-full font-bold"></span>
+                    </h2>
+                    <p class="text-slate-500 text-sm mt-0.5">رقم الطلب: <span id="prdId"></span> | مُقدم من: <span id="prdOwner"></span></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2" id="prdActionsContainer">
+                <!-- Action buttons populated by JS -->
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-2 space-y-6">
+                <!-- Info Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 border-b pb-3 mb-4">معلومات الطلب</h3>
+                    <div class="grid grid-cols-2 gap-6 text-sm text-slate-700">
+                        <div>
+                            <span class="block text-slate-400 font-bold mb-1">الكمية</span>
+                            <span class="font-bold text-lg" id="prdQuantity"></span>
+                        </div>
+                        <div>
+                            <span class="block text-slate-400 font-bold mb-1">السعر المتوقع</span>
+                            <span class="font-bold text-lg text-emerald-600" id="prdExpectedPrice"></span>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="block text-slate-400 font-bold mb-1">التفاصيل</span>
+                            <p class="bg-slate-50 p-4 rounded-xl border border-slate-100 min-h-[80px]" id="prdDescription"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Images Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 border-b pb-3 mb-4">المرفقات والصور</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="prdImagesContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="space-y-6">
+                <!-- Timeline/Status Card -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="text-lg font-bold text-slate-800 border-b pb-3 mb-4">مسار الطلب</h3>
+                    <div class="relative pl-4 pr-4 border-r-2 border-slate-100 space-y-6" id="prdTimeline">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Toast -->
     <div id="toast" class="fixed bottom-4 left-4 right-auto bg-emerald-500 text-white px-6 py-3.5 rounded-xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50 text-sm font-semibold flex items-center gap-2">

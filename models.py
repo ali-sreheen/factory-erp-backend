@@ -180,6 +180,7 @@ class PurchaseRequest(Base):
     expected_price = Column(String, nullable=True) # string or float, float is better but string is safer for "100 JOD". I'll use String.
     requested_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(String, default="Pending") # Pending, Active, Purchased
+    attached_image_url = Column(String, nullable=True)
     invoice_image_url = Column(String, nullable=True)
     items_image_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -78,6 +78,17 @@ def check_and_update_db_schema(db_engine):
                 except Exception as ex:
                     pass
 
+    # Check purchase_requests table
+    if "purchase_requests" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("purchase_requests")]
+        if "attached_image_url" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE purchase_requests ADD COLUMN attached_image_url VARCHAR"))
+            except Exception as e:
+                pass
+
+
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
@@ -738,11 +749,42 @@ def get_purchase_requests(db: Session = Depends(get_db), current_user: models.Us
     return db.query(models.PurchaseRequest).order_by(models.PurchaseRequest.created_at.desc()).all()
 
 @app.post("/api/purchase-requests/", response_model=schemas.PurchaseRequestResponse)
-def create_purchase_request(request: schemas.PurchaseRequestCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    db_req = models.PurchaseRequest(**request.model_dump(), requested_by_id=current_user.id)
+def create_purchase_request(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    quantity: Optional[int] = Form(None),
+    expected_price: Optional[str] = Form(None),
+    attached_image: UploadFile = File(None),
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    attached_image_url = None
+    if attached_image and attached_image.filename:
+        ext = os.path.splitext(attached_image.filename)[1]
+        fname = f"attached_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(attached_image.file, buffer)
+        attached_image_url = f"/uploads/{fname}"
+
+    db_req = models.PurchaseRequest(
+        title=title,
+        description=description,
+        quantity=quantity,
+        expected_price=expected_price,
+        attached_image_url=attached_image_url,
+        requested_by_id=current_user.id
+    )
     db.add(db_req)
     db.commit()
     db.refresh(db_req)
+    return db_req
+
+@app.get("/api/purchase-requests/{req_id}", response_model=schemas.PurchaseRequestResponse)
+def get_purchase_request(req_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
     return db_req
 
 @app.put("/api/purchase-requests/{req_id}", response_model=schemas.PurchaseRequestResponse)

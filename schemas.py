@@ -321,6 +321,7 @@ class PurchaseRequestUpdate(BaseModel):
     status: Optional[str] = None
     invoice_image_url: Optional[str] = None
     items_image_url: Optional[str] = None
+    attached_image_url: Optional[str] = None
 
 class PurchaseRequestResponse(PurchaseRequestBase):
     id: int
@@ -328,6 +329,7 @@ class PurchaseRequestResponse(PurchaseRequestBase):
     status: str
     invoice_image_url: Optional[str] = None
     items_image_url: Optional[str] = None
+    attached_image_url: Optional[str] = None
     created_at: datetime
     requested_by: Optional[UserResponse] = None
 
