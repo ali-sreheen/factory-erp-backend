@@ -1821,7 +1821,7 @@ async function viewProjectDetails(id) {
     if (projectDetailView) projectDetailView.classList.remove('hidden');
     
     document.getElementById('pdSubtitle').textContent = "جاري التحميل...";
-    document.getElementById('pdEngineeringTableBody').innerHTML = '<tr><td colspan="9" class="p-4 text-center">جاري التحميل...</td></tr>';
+    document.getElementById('pdEngineeringTableBody').innerHTML = '<tr><td colspan="14" class="p-4 text-center">جاري التحميل...</td></tr>';
     
     try {
         const response = await authFetch(`${PROJECTS_URL}/${id}`);
@@ -1929,13 +1929,17 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.lock_type || '-'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
-                    <td class="p-3">${d.fire_resistance || '-'}</td>
+                    <td class="p-3 text-center">${d.fire_resistance || '-'}</td>
+                    <td class="p-3">${d.architrave || '-'}</td>
+                    <td class="p-3">${d.architrave_2 || '-'}</td>
+                    <td class="p-3">${d.under_tile || '-'}</td>
                     <td class="p-3">${d.window_details || '-'}</td>
+                    <td class="p-3">${d.notes || '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
