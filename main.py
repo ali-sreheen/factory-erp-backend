@@ -70,10 +70,13 @@ def check_and_update_db_schema(db_engine):
         if "expected_completion_date" not in columns:
             try:
                 with db_engine.begin() as conn:
-                    # SQLite doesn't natively support DATETIME altering well with default, but we can just use VARCHAR/DATETIME 
-                    conn.execute(text("ALTER TABLE projects ADD COLUMN expected_completion_date DATETIME"))
+                    conn.execute(text("ALTER TABLE projects ADD COLUMN expected_completion_date TIMESTAMP WITH TIME ZONE"))
             except Exception as e:
-                pass
+                try:
+                    with db_engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE projects ADD COLUMN expected_completion_date DATETIME"))
+                except Exception as ex:
+                    pass
 
     # Check project_details table
     if "project_details" in inspector.get_table_names():
