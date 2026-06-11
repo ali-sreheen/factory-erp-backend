@@ -1965,6 +1965,12 @@ async function viewProjectDetails(id) {
             attachContainer.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">لا يوجد مرفقات</p>';
         }
         
+        // Reset sheet section
+        document.getElementById('sheetCalculationSection').classList.remove('hidden');
+        document.getElementById('sheetLoading').classList.add('hidden');
+        document.getElementById('sheetResults').classList.add('hidden');
+        document.getElementById('sheetEmpty').classList.add('hidden');
+        
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
         document.getElementById('pdSubtitle').textContent = "فشل التحميل";
@@ -2436,3 +2442,49 @@ function updateExpectedDateColor() {
         input.className = 'w-full border border-rose-300 bg-rose-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-rose-700';
     }
 }
+
+async function calculateSheetRequirements() {
+    if (!window.currentProjectData) return;
+    
+    document.getElementById('sheetLoading').classList.remove('hidden');
+    document.getElementById('sheetResults').classList.add('hidden');
+    document.getElementById('sheetEmpty').classList.add('hidden');
+    
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/sheet-requirements`);
+        if (!response.ok) throw new Error('فشل حساب كميات الصاج');
+        
+        const data = await response.json();
+        const t1_5 = data.thickness_1_5 || [];
+        const t1_2 = data.thickness_1_2 || [];
+        
+        const tbody1_5 = document.getElementById('sheetBody1_5');
+        const tbody1_2 = document.getElementById('sheetBody1_2');
+        
+        tbody1_5.innerHTML = '';
+        tbody1_2.innerHTML = '';
+        
+        if (t1_5.length === 0 && t1_2.length === 0) {
+            document.getElementById('sheetEmpty').classList.remove('hidden');
+        } else {
+            t1_5.forEach(item => {
+                tbody1_5.innerHTML += `<tr><td class="py-2 px-3">${item.size}</td><td class="py-2 px-3 font-bold text-indigo-700">${item.count} ألواح</td></tr>`;
+            });
+            if (t1_5.length === 0) tbody1_5.innerHTML = '<tr><td colspan="2" class="py-2 text-slate-400">لا يوجد بيانات</td></tr>';
+            
+            t1_2.forEach(item => {
+                tbody1_2.innerHTML += `<tr><td class="py-2 px-3">${item.size}</td><td class="py-2 px-3 font-bold text-indigo-700">${item.count} ألواح</td></tr>`;
+            });
+            if (t1_2.length === 0) tbody1_2.innerHTML = '<tr><td colspan="2" class="py-2 text-slate-400">لا يوجد بيانات</td></tr>';
+            
+            document.getElementById('sheetResults').classList.remove('hidden');
+        }
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+        document.getElementById('sheetEmpty').classList.remove('hidden');
+        document.getElementById('sheetEmpty').textContent = 'حدث خطأ أثناء الحساب.';
+    } finally {
+        document.getElementById('sheetLoading').classList.add('hidden');
+    }
+}
+

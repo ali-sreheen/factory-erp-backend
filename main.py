@@ -601,6 +601,25 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"message": "Deleted successfully"}
 
+from sheet_calculator import calculate_sheets
+
+@app.get("/api/projects/{project_id}/sheet-requirements")
+def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    project = crud.get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    details_dicts = []
+    for detail in project.details:
+        details_dicts.append({
+            "height": detail.height,
+            "width": detail.width,
+            "depth": detail.depth,
+            "architrave": detail.architrave
+        })
+        
+    return calculate_sheets(details_dicts)
+
 @app.post("/api/projects/{project_id}/details/", response_model=schemas.ProjectDetailResponse)
 def create_project_detail(project_id: int, detail: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     return crud.create_project_detail(db, project_id, detail)
