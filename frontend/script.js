@@ -2143,6 +2143,8 @@ window.editProject = async function(projectId) {
         document.getElementById('pwLocation').value = p.location || '';
         document.getElementById('pwAssignee').value = p.executive_manager_id || '';
         document.getElementById('pwPaintColor').value = p.paint_color || '';
+        if(document.getElementById('pwManufacturingType')) document.getElementById('pwManufacturingType').value = p.manufacturing_type || '';
+        if(document.getElementById('pwInstallationType')) document.getElementById('pwInstallationType').value = p.installation_type || '';
         if(document.getElementById('pwNotes')) document.getElementById('pwNotes').value = p.notes || '';
         
         const statusRadios = document.querySelectorAll('input[name="pwStatus"]');

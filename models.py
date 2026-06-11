@@ -100,6 +100,8 @@ class Project(Base):
     location = Column(String, nullable=True)
     executive_manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     paint_color = Column(String, nullable=True)
+    manufacturing_type = Column(String, nullable=True)
+    installation_type = Column(String, nullable=True)
     notes = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Active, Completed
 

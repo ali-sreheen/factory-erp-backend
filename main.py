@@ -58,12 +58,13 @@ def check_and_update_db_schema(db_engine):
     # Check projects table
     if "projects" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("projects")]
-        if "notes" not in columns:
-            try:
-                with db_engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE projects ADD COLUMN notes VARCHAR"))
-            except Exception as e:
-                pass
+        for col in ["notes", "manufacturing_type", "installation_type"]:
+            if col not in columns:
+                try:
+                    with db_engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} VARCHAR"))
+                except Exception as e:
+                    pass
 
     # Check project_details table
     if "project_details" in inspector.get_table_names():

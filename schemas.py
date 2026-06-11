@@ -233,6 +233,8 @@ class ProjectBase(BaseModel):
     location: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
+    manufacturing_type: Optional[str] = None
+    installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: str = "Pending"
 
@@ -248,6 +250,8 @@ class ProjectUpdate(BaseModel):
     location: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
+    manufacturing_type: Optional[str] = None
+    installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
