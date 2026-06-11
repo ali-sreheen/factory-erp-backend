@@ -237,6 +237,14 @@ class ProjectBase(BaseModel):
     installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: str = "Pending"
+    step_design: Optional[str] = "لم يتم البدء"
+    step_cutting: Optional[str] = "لم يتم البدء"
+    step_forming: Optional[str] = "لم يتم البدء"
+    step_assembly: Optional[str] = "لم يتم البدء"
+    step_painting: Optional[str] = "لم يتم البدء"
+    step_accessories: Optional[str] = "لم يتم البدء"
+    step_installation: Optional[str] = "لم يتم البدء"
+    expected_completion_date: Optional[datetime] = None
 
 class ProjectCreate(ProjectBase):
     pass
@@ -254,6 +262,14 @@ class ProjectUpdate(BaseModel):
     installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    step_design: Optional[str] = None
+    step_cutting: Optional[str] = None
+    step_forming: Optional[str] = None
+    step_assembly: Optional[str] = None
+    step_painting: Optional[str] = None
+    step_accessories: Optional[str] = None
+    step_installation: Optional[str] = None
+    expected_completion_date: Optional[datetime] = None
 
 class ProjectResponse(ProjectBase):
     id: int

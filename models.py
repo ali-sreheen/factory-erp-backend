@@ -104,6 +104,16 @@ class Project(Base):
     installation_type = Column(String, nullable=True)
     notes = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Active, Completed
+    
+    # Tracking fields
+    step_design = Column(String, default="لم يتم البدء")
+    step_cutting = Column(String, default="لم يتم البدء")
+    step_forming = Column(String, default="لم يتم البدء")
+    step_assembly = Column(String, default="لم يتم البدء")
+    step_painting = Column(String, default="لم يتم البدء")
+    step_accessories = Column(String, default="لم يتم البدء")
+    step_installation = Column(String, default="لم يتم البدء")
+    expected_completion_date = Column(DateTime(timezone=True), nullable=True)
 
     executive_manager = relationship("User", foreign_keys=[executive_manager_id], back_populates="managed_projects")
     details = relationship("ProjectDetail", back_populates="project", cascade="all, delete-orphan")

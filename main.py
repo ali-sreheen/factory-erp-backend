@@ -58,13 +58,22 @@ def check_and_update_db_schema(db_engine):
     # Check projects table
     if "projects" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("projects")]
-        for col in ["notes", "manufacturing_type", "installation_type"]:
+        for col in ["notes", "manufacturing_type", "installation_type", 
+                    "step_design", "step_cutting", "step_forming", 
+                    "step_assembly", "step_painting", "step_accessories", "step_installation"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:
-                        conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} VARCHAR"))
+                        conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} VARCHAR DEFAULT 'لم يتم البدء'"))
                 except Exception as e:
                     pass
+        if "expected_completion_date" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    # SQLite doesn't natively support DATETIME altering well with default, but we can just use VARCHAR/DATETIME 
+                    conn.execute(text("ALTER TABLE projects ADD COLUMN expected_completion_date DATETIME"))
+            except Exception as e:
+                pass
 
     # Check project_details table
     if "project_details" in inspector.get_table_names():

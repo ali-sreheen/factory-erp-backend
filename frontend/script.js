@@ -1799,11 +1799,14 @@ async function loadProjects() {
                     <td class="p-4 text-center">
                         <button onclick="viewProjectDetails(${p.id})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition font-bold text-xs">التفاصيل</button>
                     </td>
+                    <td class="p-4 text-center">
+                        <button onclick="openProjectTracking(${p.id})" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition font-bold text-xs border border-indigo-200">متابعة</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
             if(projects.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">لا يوجد مشاريع مسجلة حالياً.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">لا يوجد مشاريع مسجلة حالياً.</td></tr>`;
             }
         }
     } catch (e) {
@@ -2297,3 +2300,139 @@ window.editProject = async function(projectId) {
         showToast(e.message, 'bg-rose-500', '✗');
     }
 };
+
+// ================= PROJECT TRACKING =================
+let currentTrackingProjectId = null;
+let currentTrackingProjectData = null;
+
+async function openProjectTracking(projectId) {
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${projectId}`);
+        if (!response.ok) throw new Error('فشل جلب بيانات المشروع');
+        
+        currentTrackingProjectData = await response.json();
+        currentTrackingProjectId = projectId;
+        
+        document.getElementById('ptProjectName').textContent = currentTrackingProjectData.name;
+        document.getElementById('ptDeliveryDate').textContent = currentTrackingProjectData.delivery_date ? new Date(currentTrackingProjectData.delivery_date).toLocaleDateString() : 'غير محدد';
+        
+        const expDateInput = document.getElementById('ptExpectedDate');
+        if (currentTrackingProjectData.expected_completion_date) {
+            expDateInput.value = currentTrackingProjectData.expected_completion_date.split('T')[0];
+        } else {
+            expDateInput.value = '';
+        }
+        updateExpectedDateColor();
+        
+        const steps = [
+            { key: 'step_design', label: 'التصميم' },
+            { key: 'step_cutting', label: 'القص' },
+            { key: 'step_forming', label: 'التشكيل' },
+            { key: 'step_assembly', label: 'التجميع' },
+            { key: 'step_painting', label: 'الدهان' },
+            { key: 'step_accessories', label: 'الإكسسوارات' },
+            { key: 'step_installation', label: 'التركيب' }
+        ];
+        
+        const tbody = document.getElementById('ptStepsBody');
+        tbody.innerHTML = '';
+        
+        steps.forEach(step => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            
+            const currentValue = currentTrackingProjectData[step.key] || 'لم يتم البدء';
+            
+            tr.innerHTML = `
+                <td class="p-4 font-bold text-slate-800 text-base border-l border-slate-100">${step.label}</td>
+                <td class="p-4">
+                    <select onchange="updateTrackingStep('${step.key}', this)" class="w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(currentValue)}">
+                        <option value="لم يتم البدء" ${currentValue === 'لم يتم البدء' ? 'selected' : ''}>لم يتم البدء</option>
+                        <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
+                        <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        document.getElementById('projectTrackingView').classList.remove('hidden');
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+}
+
+function getStepColorClasses(val) {
+    if (val === 'تم الانتهاء') return 'bg-emerald-50 border-emerald-200 text-emerald-700 focus:ring-emerald-500';
+    if (val === 'جاري العمل') return 'bg-amber-50 border-amber-200 text-amber-700 focus:ring-amber-500';
+    return 'bg-slate-50 border-slate-200 text-slate-600 focus:ring-slate-500'; // لم يتم البدء
+}
+
+async function updateTrackingStep(field, selectEl) {
+    const newVal = selectEl.value;
+    selectEl.className = `w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(newVal)}`;
+    
+    if (!currentTrackingProjectId) return;
+    
+    try {
+        const payload = {};
+        payload[field] = newVal;
+        
+        const response = await authFetch(`${PROJECTS_URL}/${currentTrackingProjectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error('فشل الحفظ التلقائي');
+        showToast('تم الحفظ تلقائياً', 'bg-emerald-500', '✓');
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function updateExpectedDate() {
+    if (!currentTrackingProjectId) return;
+    const dateVal = document.getElementById('ptExpectedDate').value;
+    
+    try {
+        const payload = { expected_completion_date: dateVal ? new Date(dateVal).toISOString() : null };
+        const response = await authFetch(`${PROJECTS_URL}/${currentTrackingProjectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) throw new Error('فشل الحفظ التلقائي لتاريخ الانتهاء المتوقع');
+        
+        if (currentTrackingProjectData) {
+             currentTrackingProjectData.expected_completion_date = payload.expected_completion_date;
+        }
+        updateExpectedDateColor();
+        showToast('تم حفظ تاريخ الانتهاء المتوقع', 'bg-emerald-500', '✓');
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+}
+
+function updateExpectedDateColor() {
+    const input = document.getElementById('ptExpectedDate');
+    if (!input.value || !currentTrackingProjectData || !currentTrackingProjectData.delivery_date) {
+        input.className = 'w-full border border-indigo-200 bg-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-900';
+        return;
+    }
+    
+    // Compare dates ignoring time
+    const expected = new Date(input.value);
+    expected.setHours(0,0,0,0);
+    const delivery = new Date(currentTrackingProjectData.delivery_date);
+    delivery.setHours(0,0,0,0);
+    
+    if (expected <= delivery) {
+        // Green
+        input.className = 'w-full border border-emerald-300 bg-emerald-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-700';
+    } else {
+        // Red
+        input.className = 'w-full border border-rose-300 bg-rose-50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 font-bold text-rose-700';
+    }
+}
