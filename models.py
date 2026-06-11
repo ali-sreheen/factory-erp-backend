@@ -119,6 +119,7 @@ class ProjectDetail(Base):
     width = Column(String, nullable=True)
     height = Column(String, nullable=True)
     depth = Column(String, nullable=True)
+    direction = Column(String, nullable=True)
     lock_type = Column(String, nullable=True)
     profile_type = Column(String, nullable=True)
     door_type = Column(String, nullable=True)

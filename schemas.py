@@ -201,6 +201,7 @@ class ProjectDetailBase(BaseModel):
     width: Optional[str] = None
     height: Optional[str] = None
     depth: Optional[str] = None
+    direction: Optional[str] = None
     lock_type: Optional[str] = None
     profile_type: Optional[str] = None
     door_type: Optional[str] = None

@@ -2011,15 +2011,16 @@ if (projectWizardForm) {
                     width: inputs[1].value || null,
                     height: inputs[2].value || null,
                     depth: inputs[3].value || null,
-                    lock_type: inputs[4].value || null,
-                    profile_type: inputs[5].value || null,
-                    door_type: inputs[6].value || null,
-                    fire_resistance: inputs[7].checked ? 'نعم' : 'لا',
-                    architrave: inputs[8].value || null,
-                    architrave_2: inputs[9].value || null,
-                    under_tile: inputs[10].value || null,
-                    window_details: inputs[11].value || null,
-                    notes: inputs[12].value || null
+                    direction: inputs[4].value || null,
+                    lock_type: inputs[5].value || null,
+                    profile_type: inputs[6].value || null,
+                    door_type: inputs[7].value || null,
+                    fire_resistance: inputs[8].checked ? 'نعم' : 'لا',
+                    architrave: inputs[9].value || null,
+                    architrave_2: inputs[10].value || null,
+                    under_tile: inputs[11].value || null,
+                    window_details: inputs[12].value || null,
+                    notes: inputs[13].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
