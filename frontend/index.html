@@ -452,7 +452,13 @@
 
                 <div class="w-full">
                         <div class="bg-white rounded-2xl shadow border border-slate-100 p-6 overflow-hidden">
-                            <h3 class="font-bold text-lg text-slate-800 mb-4 border-b pb-2">التفاصيل الهندسية</h3>
+                            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                <h3 class="font-bold text-lg text-slate-800">التفاصيل الهندسية</h3>
+                                <button onclick="downloadEngineeringCSV()" class="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition text-sm font-bold">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    تصدير CSV
+                                </button>
+                            </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-right border-collapse text-sm">
                                     <thead>
@@ -962,6 +968,6 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=27"></script>
+    <script src="script.js?v=28"></script>
 </body>
 </html>

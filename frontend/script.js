@@ -1828,6 +1828,7 @@ async function viewProjectDetails(id) {
         if (!response.ok) throw new Error('فشل جلب تفاصيل المشروع');
         
         const p = await response.json();
+        window.currentProjectData = p;
         
         document.getElementById('pdTitle').textContent = p.name;
         document.getElementById('pdSubtitle').textContent = p.delivery_date ? `تاريخ التسليم المتوقع: ${new Date(p.delivery_date).toLocaleDateString()}` : '';
@@ -2089,6 +2090,49 @@ window.updateProjectStatus = async function(projectId, newStatus) {
     }
 };
 
+function downloadEngineeringCSV() {
+    if (!window.currentProjectData || !window.currentProjectData.details || window.currentProjectData.details.length === 0) {
+        showToast('لا توجد تفاصيل هندسية لتحميلها', 'bg-rose-500', '✗');
+        return;
+    }
+    
+    const headers = [
+        "رقم الباب", "العرض", "الطول", "العمق", "الاتجاه", "الزرفيل", 
+        "المقطع", "نوع الباب", "حريق", "الكشفة", "الكشفة 2", 
+        "تحت البلاط", "تفصيل الشباك", "ملاحظات"
+    ];
+    
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += headers.join(",") + "\r\n";
+    
+    window.currentProjectData.details.forEach(d => {
+        const row = [
+            d.door_number || '',
+            d.width || '',
+            d.height || '',
+            d.depth || '',
+            d.direction || '',
+            d.lock_type || '',
+            d.profile_type || '',
+            d.door_type || '',
+            d.fire_resistance || '',
+            d.architrave || '',
+            d.architrave_2 || '',
+            d.under_tile || '',
+            d.window_details || '',
+            (d.notes || '').replace(/,/g, "،").replace(/\n/g, " ")
+        ];
+        csvContent += row.join(",") + "\r\n";
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `التفاصيل_الهندسية_${window.currentProjectData.project_number || 'مشروع'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 // Delete Project With Confirmation
 window.deleteProjectWithConfirmation = async function(projectId) {
