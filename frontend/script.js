@@ -1695,6 +1695,13 @@ function addProjectDetailRow() {
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                <option value="" disabled selected>الاتجاه</option>
+                <option value="RH">RH</option>
+                <option value="LH">LH</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
                 <option value="" disabled selected>الزرفيل</option>
                 <option value="devon mortice lock">devon mortice lock</option>
                 <option value="euroart mortice lock">euroart mortice lock</option>
@@ -1916,6 +1923,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.width || '-'}</td>
                     <td class="p-3">${d.height || '-'}</td>
                     <td class="p-3">${d.depth || '-'}</td>
+                    <td class="p-3">${d.direction || '-'}</td>
                     <td class="p-3">${d.lock_type || '-'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
@@ -2154,6 +2162,13 @@ window.editProject = async function(projectId) {
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.direction ? 'selected' : ''}>الاتجاه</option>
+                            <option value="RH" ${d.direction === 'RH' ? 'selected' : ''}>RH</option>
+                            <option value="LH" ${d.direction === 'LH' ? 'selected' : ''}>LH</option>
+                        </select>
+                    </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
                             <option value="" disabled ${!d.lock_type ? 'selected' : ''}>الزرفيل</option>
