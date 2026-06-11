@@ -2331,7 +2331,7 @@ async function openProjectTracking(projectId) {
             { key: 'step_assembly', label: 'التجميع' },
             { key: 'step_painting', label: 'الدهان' },
             { key: 'step_accessories', label: 'الإكسسوارات' },
-            { key: 'step_installation', label: 'التركيب' }
+            { key: 'step_installation', label: 'التركيب / التسليم' }
         ];
         
         const tbody = document.getElementById('ptStepsBody');
