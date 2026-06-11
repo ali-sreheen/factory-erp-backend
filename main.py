@@ -55,6 +55,27 @@ def check_and_update_db_schema(db_engine):
             except Exception as e:
                 pass
 
+    # Check projects table
+    if "projects" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("projects")]
+        if "notes" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE projects ADD COLUMN notes VARCHAR"))
+            except Exception as e:
+                pass
+
+    # Check project_details table
+    if "project_details" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("project_details")]
+        for col in ["architrave", "architrave_2", "under_tile", "notes"]:
+            if col not in columns:
+                try:
+                    with db_engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR"))
+                except Exception as e:
+                    pass
+
 check_and_update_db_schema(engine)
 
 def seed_default_departments(db: Session):

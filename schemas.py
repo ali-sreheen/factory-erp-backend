@@ -206,6 +206,10 @@ class ProjectDetailBase(BaseModel):
     door_type: Optional[str] = None
     fire_resistance: Optional[str] = None
     window_details: Optional[str] = None
+    architrave: Optional[str] = None
+    architrave_2: Optional[str] = None
+    under_tile: Optional[str] = None
+    notes: Optional[str] = None
 
 class ProjectDetailCreate(ProjectDetailBase):
     pass
@@ -228,6 +232,7 @@ class ProjectBase(BaseModel):
     location: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
+    notes: Optional[str] = None
     status: str = "Pending"
 
 class ProjectCreate(ProjectBase):
@@ -242,6 +247,7 @@ class ProjectUpdate(BaseModel):
     location: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
+    notes: Optional[str] = None
     status: Optional[str] = None
 
 class ProjectResponse(ProjectBase):

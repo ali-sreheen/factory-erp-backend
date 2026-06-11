@@ -100,6 +100,7 @@ class Project(Base):
     location = Column(String, nullable=True)
     executive_manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     paint_color = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Active, Completed
 
     executive_manager = relationship("User", foreign_keys=[executive_manager_id], back_populates="managed_projects")
@@ -123,6 +124,10 @@ class ProjectDetail(Base):
     door_type = Column(String, nullable=True)
     fire_resistance = Column(String, nullable=True)
     window_details = Column(String, nullable=True)
+    architrave = Column(String, nullable=True)
+    architrave_2 = Column(String, nullable=True)
+    under_tile = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
 
     project = relationship("Project", back_populates="details")
 

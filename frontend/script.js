@@ -1720,6 +1720,10 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
     `;
@@ -1969,6 +1973,7 @@ if (projectWizardForm) {
                 location: document.getElementById('pwLocation').value,
                 executive_manager_id: document.getElementById('pwAssignee').value ? parseInt(document.getElementById('pwAssignee').value) : null,
                 paint_color: document.getElementById('pwPaintColor').value,
+                notes: document.getElementById('pwNotes') ? document.getElementById('pwNotes').value : null,
                 status: document.querySelector('input[name="pwStatus"]:checked').value
             };
             
@@ -2010,7 +2015,11 @@ if (projectWizardForm) {
                     profile_type: inputs[5].value || null,
                     door_type: inputs[6].value || null,
                     fire_resistance: inputs[7].checked ? 'نعم' : 'لا',
-                    window_details: inputs[8].value || null
+                    architrave: inputs[8].value || null,
+                    architrave_2: inputs[9].value || null,
+                    under_tile: inputs[10].value || null,
+                    notes: inputs[11].value || null,
+                    window_details: inputs[12].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2125,6 +2134,7 @@ window.editProject = async function(projectId) {
         document.getElementById('pwLocation').value = p.location || '';
         document.getElementById('pwAssignee').value = p.executive_manager_id || '';
         document.getElementById('pwPaintColor').value = p.paint_color || '';
+        if(document.getElementById('pwNotes')) document.getElementById('pwNotes').value = p.notes || '';
         
         const statusRadios = document.querySelectorAll('input[name="pwStatus"]');
         statusRadios.forEach(r => {
@@ -2170,6 +2180,10 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.architrave || ''}"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.architrave_2 || ''}"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
                     <td class="p-2 text-center">
                         <button type="button" onclick="this.closest('tr').remove()" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="حذف السطر">
