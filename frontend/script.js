@@ -1839,6 +1839,8 @@ async function viewProjectDetails(id) {
         document.getElementById('pdEngineerPhone').textContent = p.engineer_phone || '-';
         document.getElementById('pdLocation').textContent = p.location || '-';
         document.getElementById('pdPaint').textContent = p.paint_color || '-';
+        if(document.getElementById('pdManufacturingType')) document.getElementById('pdManufacturingType').textContent = p.manufacturing_type || '-';
+        if(document.getElementById('pdInstallationType')) document.getElementById('pdInstallationType').textContent = p.installation_type || '-';
         
         document.getElementById('pdAssignee').textContent = '-';
         if (p.executive_manager_id) {
@@ -1981,6 +1983,8 @@ if (projectWizardForm) {
                 location: document.getElementById('pwLocation').value,
                 executive_manager_id: document.getElementById('pwAssignee').value ? parseInt(document.getElementById('pwAssignee').value) : null,
                 paint_color: document.getElementById('pwPaintColor').value,
+                manufacturing_type: document.getElementById('pwManufacturingType') ? document.getElementById('pwManufacturingType').value : null,
+                installation_type: document.getElementById('pwInstallationType') ? document.getElementById('pwInstallationType').value : null,
                 notes: document.getElementById('pwNotes') ? document.getElementById('pwNotes').value : null,
                 status: document.querySelector('input[name="pwStatus"]:checked').value
             };
