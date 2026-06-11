@@ -2609,7 +2609,7 @@ async function loadPurchaseRequests() {
             
             if (r.status === 'Pending') {
                 statusBadge = '<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-bold border border-amber-200">قيد الانتظار</span>';
-                if (window.currentUser && window.currentUser.username === 'admin') {
+                if (localStorage.getItem('username') === 'admin') {
                     actionButtons += `<button onclick="approvePurchaseRequest(${r.id})" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-2 py-1 rounded font-bold mx-1">موافقة</button>`;
                 }
             } else if (r.status === 'Active') {
