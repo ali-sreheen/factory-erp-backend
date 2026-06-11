@@ -2428,8 +2428,320 @@ async function updateExpectedDate() {
         }
         updateExpectedDateColor();
         showToast('تم حفظ تاريخ الانتهاء المتوقع', 'bg-emerald-500', '✓');
-    } catch (e) {
-        showToast(e.message, 'bg-rose-500', '✗');
+    } catch (err) {
+        console.error("Error calculating sheets:", err);
+    } finally {
+        document.getElementById('sheetLoading').classList.add('hidden');
+    }
+}
+
+// ==========================================
+//           PURCHASING MODULE
+// ==========================================
+const SUPPLIERS_URL = `${API_HOST}/api/suppliers`;
+const PURCHASE_REQUESTS_URL = `${API_HOST}/api/purchase-requests`;
+
+function showPurchasingView() {
+    document.getElementById('moduleSelectorView').classList.add('hidden');
+    document.getElementById('projectsView').classList.add('hidden');
+    document.getElementById('projectWizardView').classList.add('hidden');
+    document.getElementById('projectDetailView').classList.add('hidden');
+    departmentsView.classList.add('hidden');
+    accessoriesSubDeptView.classList.add('hidden');
+    departmentDetailView.classList.add('hidden');
+    adminView.classList.add('hidden');
+
+    document.getElementById('purchasingView').classList.remove('hidden');
+    switchPurchasingTab('requests'); // Default tab
+}
+
+function switchPurchasingTab(tab) {
+    const reqTab = document.getElementById('purchaseRequestsTab');
+    const supTab = document.getElementById('suppliersTab');
+    const btnReq = document.getElementById('tabPurchaseRequests');
+    const btnSup = document.getElementById('tabSuppliers');
+
+    if (tab === 'requests') {
+        reqTab.classList.remove('hidden');
+        supTab.classList.add('hidden');
+        btnReq.classList.replace('bg-white', 'bg-amber-600');
+        btnReq.classList.replace('text-slate-700', 'text-white');
+        btnReq.classList.add('shadow');
+        btnSup.classList.replace('bg-amber-600', 'bg-white');
+        btnSup.classList.replace('text-white', 'text-slate-700');
+        btnSup.classList.remove('shadow');
+        loadPurchaseRequests();
+    } else {
+        reqTab.classList.add('hidden');
+        supTab.classList.remove('hidden');
+        btnSup.classList.replace('bg-white', 'bg-amber-600');
+        btnSup.classList.replace('text-slate-700', 'text-white');
+        btnSup.classList.add('shadow');
+        btnReq.classList.replace('bg-amber-600', 'bg-white');
+        btnReq.classList.replace('text-white', 'text-slate-700');
+        btnReq.classList.remove('shadow');
+        loadSuppliers();
+    }
+}
+
+// --- Suppliers Logic ---
+async function loadSuppliers() {
+    try {
+        const response = await authFetch(`${SUPPLIERS_URL}/`);
+        const suppliers = await response.json();
+        const tbody = document.getElementById('suppliersTableBody');
+        tbody.innerHTML = '';
+        if (suppliers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">لا يوجد موردين مضافين بعد</td></tr>`;
+            return;
+        }
+        suppliers.forEach(s => {
+            const mapsLink = s.maps_url ? `<a href="${s.maps_url}" target="_blank" class="text-blue-500 hover:underline">عرض الخريطة</a>` : '-';
+            tbody.innerHTML += `
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="p-4 font-bold text-slate-800">${s.name}</td>
+                    <td class="p-4" dir="ltr">${s.phone || '-'}</td>
+                    <td class="p-4 text-slate-600">${s.supply_type || '-'}</td>
+                    <td class="p-4">${s.location || '-'} <br> ${mapsLink}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="editSupplier(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                        <button onclick="deleteSupplier(${s.id})" class="text-rose-600 hover:text-rose-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        showToast("فشل تحميل قائمة الموردين", "bg-rose-500", "✗");
+    }
+}
+
+let allSuppliers = []; // cache
+async function getSupplierDetails(id) {
+    if(allSuppliers.length === 0) {
+        const response = await authFetch(`${SUPPLIERS_URL}/`);
+        allSuppliers = await response.json();
+    }
+    return allSuppliers.find(s => s.id === id);
+}
+
+function openSupplierModal() {
+    document.getElementById('supplierForm').reset();
+    document.getElementById('supplierId').value = '';
+    document.getElementById('supplierModalTitle').innerText = 'إضافة مورد جديد';
+    document.getElementById('supplierModal').classList.remove('hidden');
+}
+
+async function editSupplier(id) {
+    const sup = await getSupplierDetails(id);
+    if(sup) {
+        document.getElementById('supplierId').value = sup.id;
+        document.getElementById('supName').value = sup.name || '';
+        document.getElementById('supPhone').value = sup.phone || '';
+        document.getElementById('supType').value = sup.supply_type || '';
+        document.getElementById('supLocation').value = sup.location || '';
+        document.getElementById('supMapsUrl').value = sup.maps_url || '';
+        document.getElementById('supplierModalTitle').innerText = 'تعديل بيانات المورد';
+        document.getElementById('supplierModal').classList.remove('hidden');
+    }
+}
+
+function closeSupplierModal() {
+    document.getElementById('supplierModal').classList.add('hidden');
+}
+
+document.getElementById('supplierForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('supplierId').value;
+    const data = {
+        name: document.getElementById('supName').value,
+        phone: document.getElementById('supPhone').value,
+        supply_type: document.getElementById('supType').value,
+        location: document.getElementById('supLocation').value,
+        maps_url: document.getElementById('supMapsUrl').value
+    };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${SUPPLIERS_URL}/${id}` : `${SUPPLIERS_URL}/`;
+        const res = await authFetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error("فشل حفظ المورد");
+        allSuppliers = []; // invalidate cache
+        closeSupplierModal();
+        loadSuppliers();
+        showToast("تم الحفظ بنجاح", "bg-emerald-500", "✓");
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+});
+
+async function deleteSupplier(id) {
+    if(!confirm("هل أنت متأكد من حذف هذا المورد؟")) return;
+    try {
+        const res = await authFetch(`${SUPPLIERS_URL}/${id}`, { method: 'DELETE' });
+        if(!res.ok) throw new Error("فشل الحذف");
+        allSuppliers = [];
+        loadSuppliers();
+        showToast("تم الحذف", "bg-emerald-500", "✓");
+    } catch(err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+}
+
+// --- Purchase Requests Logic ---
+async function loadPurchaseRequests() {
+    try {
+        const response = await authFetch(`${PURCHASE_REQUESTS_URL}/`);
+        const requests = await response.json();
+        const tbody = document.getElementById('purchaseRequestsTableBody');
+        tbody.innerHTML = '';
+        if (requests.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">لا يوجد طلبات شراء حالياً</td></tr>`;
+            return;
+        }
+        
+        requests.forEach(r => {
+            let statusBadge = '';
+            let actionButtons = '';
+            
+            if (r.status === 'Pending') {
+                statusBadge = '<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-bold border border-amber-200">قيد الانتظار</span>';
+                if (window.currentUser && window.currentUser.username === 'admin') {
+                    actionButtons += `<button onclick="approvePurchaseRequest(${r.id})" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-2 py-1 rounded font-bold mx-1">موافقة</button>`;
+                }
+            } else if (r.status === 'Active') {
+                statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-bold border border-blue-200">مُعتمد</span>';
+                actionButtons += `<button onclick="openMarkPurchasedModal(${r.id})" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded font-bold mx-1 border border-indigo-200">إتمام الشراء</button>`;
+            } else if (r.status === 'Purchased') {
+                statusBadge = '<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">تم الشراء</span>';
+                if(r.invoice_image_url) actionButtons += `<a href="${API_HOST}${r.invoice_image_url}" target="_blank" class="text-xs text-blue-600 hover:underline mx-1">الفاتورة</a>`;
+                if(r.items_image_url) actionButtons += `<a href="${API_HOST}${r.items_image_url}" target="_blank" class="text-xs text-blue-600 hover:underline mx-1">المشتريات</a>`;
+            }
+
+            const dateStr = new Date(r.created_at).toLocaleDateString('ar-SA');
+            const ownerName = r.requested_by ? r.requested_by.username : 'غير معروف';
+
+            tbody.innerHTML += `
+                <tr class="border-b hover:bg-slate-50 transition">
+                    <td class="p-4 font-bold text-slate-500">#${r.id}</td>
+                    <td class="p-4 font-bold text-slate-800">${r.title}</td>
+                    <td class="p-4">${r.quantity || '-'}</td>
+                    <td class="p-4 text-emerald-700 font-bold">${r.expected_price || '-'}</td>
+                    <td class="p-4 text-slate-600">${ownerName}</td>
+                    <td class="p-4 text-sm text-slate-500" dir="ltr">${dateStr}</td>
+                    <td class="p-4">${statusBadge}</td>
+                    <td class="p-4 text-center">
+                        ${actionButtons}
+                        <button onclick="deletePurchaseRequest(${r.id})" class="text-rose-600 hover:text-rose-800 p-1 align-middle"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (err) {
+        showToast("فشل تحميل طلبات الشراء", "bg-rose-500", "✗");
+    }
+}
+
+function openPurchaseRequestModal() {
+    document.getElementById('purchaseRequestForm').reset();
+    document.getElementById('purchaseRequestModal').classList.remove('hidden');
+}
+
+function closePurchaseRequestModal() {
+    document.getElementById('purchaseRequestModal').classList.add('hidden');
+}
+
+document.getElementById('purchaseRequestForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('prTitle').value,
+        quantity: document.getElementById('prQuantity').value ? parseInt(document.getElementById('prQuantity').value) : null,
+        expected_price: document.getElementById('prExpectedPrice').value,
+        description: document.getElementById('prDescription').value
+    };
+
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error("فشل إنشاء الطلب");
+        closePurchaseRequestModal();
+        loadPurchaseRequests();
+        showToast("تم إرسال طلب الشراء", "bg-emerald-500", "✓");
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+});
+
+async function approvePurchaseRequest(id) {
+    if(!confirm("هل أنت متأكد من الموافقة على طلب الشراء؟")) return;
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Active' })
+        });
+        if (!res.ok) throw new Error("فشل الموافقة (يجب أن تكون مدير النظام)");
+        loadPurchaseRequests();
+        showToast("تم اعتماد الطلب بنجاح", "bg-emerald-500", "✓");
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+}
+
+function openMarkPurchasedModal(id) {
+    document.getElementById('markPurchasedForm').reset();
+    document.getElementById('markPrId').value = id;
+    document.getElementById('markPurchasedModal').classList.remove('hidden');
+}
+
+function closeMarkPurchasedModal() {
+    document.getElementById('markPurchasedModal').classList.add('hidden');
+}
+
+document.getElementById('markPurchasedForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('markPrId').value;
+    const invoiceFile = document.getElementById('prInvoiceFile').files[0];
+    const itemsFile = document.getElementById('prItemsFile').files[0];
+
+    if(!invoiceFile) {
+        showToast("صورة الفاتورة إجبارية", "bg-rose-500", "✗");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("invoice_image", invoiceFile);
+    if(itemsFile) formData.append("items_image", itemsFile);
+
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}/upload-images`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error("فشل إتمام الشراء");
+        closeMarkPurchasedModal();
+        loadPurchaseRequests();
+        showToast("تم تسجيل الشراء بنجاح", "bg-emerald-500", "✓");
+    } catch (err) {
+        showToast(err.message, "bg-rose-500", "✗");
+    }
+});
+
+async function deletePurchaseRequest(id) {
+    if(!confirm("هل أنت متأكد من حذف هذا الطلب؟")) return;
+    try {
+        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/${id}`, { method: 'DELETE' });
+        if(!res.ok) throw new Error("فشل الحذف أو ليس لديك صلاحية");
+        loadPurchaseRequests();
+        showToast("تم الحذف", "bg-emerald-500", "✓");
+    } catch(err) {
+        showToast(err.message, "bg-rose-500", "✗");
     }
 }
 

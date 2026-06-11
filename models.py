@@ -169,3 +169,29 @@ class ProjectTask(Base):
     project = relationship("Project", back_populates="tasks")
     assignee = relationship("User", foreign_keys=[assigned_to], back_populates="assigned_tasks")
     creator = relationship("User", foreign_keys=[created_by], back_populates="created_tasks")
+
+class PurchaseRequest(Base):
+    __tablename__ = "purchase_requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    quantity = Column(Integer, nullable=True)
+    expected_price = Column(String, nullable=True) # string or float, float is better but string is safer for "100 JOD". I'll use String.
+    requested_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default="Pending") # Pending, Active, Purchased
+    invoice_image_url = Column(String, nullable=True)
+    items_image_url = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    requested_by = relationship("User", foreign_keys=[requested_by_id])
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    phone = Column(String, nullable=True)
+    supply_type = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    maps_url = Column(String, nullable=True)

@@ -279,3 +279,57 @@ class ProjectResponse(ProjectBase):
 
     class Config:
         from_attributes = True
+
+# Purchasing schemas
+class SupplierBase(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    supply_type: Optional[str] = None
+    location: Optional[str] = None
+    maps_url: Optional[str] = None
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    supply_type: Optional[str] = None
+    location: Optional[str] = None
+    maps_url: Optional[str] = None
+
+class SupplierResponse(SupplierBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class PurchaseRequestBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    quantity: Optional[int] = None
+    expected_price: Optional[str] = None
+
+class PurchaseRequestCreate(PurchaseRequestBase):
+    pass
+
+class PurchaseRequestUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    quantity: Optional[int] = None
+    expected_price: Optional[str] = None
+    status: Optional[str] = None
+    invoice_image_url: Optional[str] = None
+    items_image_url: Optional[str] = None
+
+class PurchaseRequestResponse(PurchaseRequestBase):
+    id: int
+    requested_by_id: int
+    status: str
+    invoice_image_url: Optional[str] = None
+    items_image_url: Optional[str] = None
+    created_at: datetime
+    requested_by: Optional[UserResponse] = None
+
+    class Config:
+        from_attributes = True

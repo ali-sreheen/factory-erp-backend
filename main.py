@@ -694,6 +694,116 @@ def delete_project_task(task_id: int, db: Session = Depends(get_db), current_use
     success = crud.delete_project_task(db, task_id)
     return {"message": "Deleted successfully"}
 
+# ==========================================
+#           PURCHASING MODULE
+# ==========================================
+
+@app.get("/api/suppliers/", response_model=List[schemas.SupplierResponse])
+def get_suppliers(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.Supplier).all()
+
+@app.post("/api/suppliers/", response_model=schemas.SupplierResponse)
+def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_supplier = models.Supplier(**supplier.model_dump())
+    db.add(db_supplier)
+    db.commit()
+    db.refresh(db_supplier)
+    return db_supplier
+
+@app.put("/api/suppliers/{supplier_id}", response_model=schemas.SupplierResponse)
+def update_supplier(supplier_id: int, supplier_update: schemas.SupplierUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    
+    update_data = supplier_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_supplier, key, value)
+        
+    db.commit()
+    db.refresh(db_supplier)
+    return db_supplier
+
+@app.delete("/api/suppliers/{supplier_id}")
+def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Supplier not found")
+    db.delete(db_supplier)
+    db.commit()
+    return {"message": "Deleted successfully"}
+
+@app.get("/api/purchase-requests/", response_model=List[schemas.PurchaseRequestResponse])
+def get_purchase_requests(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.PurchaseRequest).order_by(models.PurchaseRequest.created_at.desc()).all()
+
+@app.post("/api/purchase-requests/", response_model=schemas.PurchaseRequestResponse)
+def create_purchase_request(request: schemas.PurchaseRequestCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_req = models.PurchaseRequest(**request.model_dump(), requested_by_id=current_user.id)
+    db.add(db_req)
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+@app.put("/api/purchase-requests/{req_id}", response_model=schemas.PurchaseRequestResponse)
+def update_purchase_request(req_id: int, req_update: schemas.PurchaseRequestUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
+    
+    update_data = req_update.model_dump(exclude_unset=True)
+    
+    # Check admin approval for "Active" status
+    if "status" in update_data and update_data["status"] == "Active" and current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can approve purchase requests")
+
+    for key, value in update_data.items():
+        setattr(db_req, key, value)
+        
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+@app.post("/api/purchase-requests/{req_id}/upload-images", response_model=schemas.PurchaseRequestResponse)
+def upload_purchase_images(req_id: int, invoice_image: UploadFile = File(None), items_image: UploadFile = File(None), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
+        
+    if invoice_image and invoice_image.filename:
+        ext = os.path.splitext(invoice_image.filename)[1]
+        fname = f"invoice_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(invoice_image.file, buffer)
+        db_req.invoice_image_url = f"/uploads/{fname}"
+
+    if items_image and items_image.filename:
+        ext = os.path.splitext(items_image.filename)[1]
+        fname = f"items_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(items_image.file, buffer)
+        db_req.items_image_url = f"/uploads/{fname}"
+
+    db_req.status = "Purchased"
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+@app.delete("/api/purchase-requests/{req_id}")
+def delete_purchase_request(req_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
+    if db_req.requested_by_id != current_user.id and current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db.delete(db_req)
+    db.commit()
+    return {"message": "Deleted successfully"}
+
+
 # Serve frontend files
 def get_frontend_dir():
     if getattr(sys, 'frozen', False):
