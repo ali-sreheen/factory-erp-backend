@@ -1841,6 +1841,7 @@ async function viewProjectDetails(id) {
         document.getElementById('pdPaint').textContent = p.paint_color || '-';
         if(document.getElementById('pdManufacturingType')) document.getElementById('pdManufacturingType').textContent = p.manufacturing_type || '-';
         if(document.getElementById('pdInstallationType')) document.getElementById('pdInstallationType').textContent = p.installation_type || '-';
+        if(document.getElementById('pdNotes')) document.getElementById('pdNotes').textContent = p.notes || 'لا توجد ملاحظات عامة مسجلة لهذا المشروع.';
         
         document.getElementById('pdAssignee').textContent = '-';
         if (p.executive_manager_id) {
