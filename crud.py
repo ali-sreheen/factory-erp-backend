@@ -85,7 +85,7 @@ def create_item(db: Session, name: str, category: str, quantity: int, subcategor
         name=name,
         category=category,
         subcategory=subcategory,
-        quantity=quantity,
+        quantity=0,
         description=description,
         image_url=image_url
     )
