@@ -533,6 +533,7 @@ function handleDetailBackNavigation() {
 }
 
 let globalDepartments = [];
+let globalItems = [];
 let userPermissionsList = [];
 
 async function fetchDepartmentCounts() {
@@ -552,6 +553,7 @@ async function fetchDepartmentCounts() {
         
         globalDepartments = await deptsResponse.json();
         const items = await itemsResponse.json();
+        globalItems = items;
         
         // Fetch permissions if not admin
         const username = localStorage.getItem('username');
