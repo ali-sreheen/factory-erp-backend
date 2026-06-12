@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form, sta
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import timedelta
@@ -782,7 +783,14 @@ def create_purchase_request(
         if existing:
             raise HTTPException(status_code=400, detail="رقم الطلب هذا موجود مسبقاً")
         db_req.id = req_id
-        
+    else:
+        # Automatically use max(id) + 1 to avoid gaps when latest is deleted
+        max_id = db.query(func.max(models.PurchaseRequest.id)).scalar()
+        if max_id is not None:
+            db_req.id = max_id + 1
+        else:
+            db_req.id = 1
+            
     db.add(db_req)
     db.commit()
     db.refresh(db_req)
