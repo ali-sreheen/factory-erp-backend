@@ -104,12 +104,22 @@ function checkAuthStatus() {
 }
 
 function showAuthView() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     authContainer.classList.remove('hidden');
     appContainer.classList.add('hidden');
     toggleAuthMode('login');
 }
 
 function showAppView(username) {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     authContainer.classList.add('hidden');
     appContainer.classList.remove('hidden');
     activeUserDisplay.textContent = username;
@@ -368,6 +378,11 @@ function setupDescriptionEditAction() {
 // ----------------- VIEW ROUTING -----------------
 
 async function showDepartmentsView() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     currentDepartment = '';
     currentSubcategory = '';
     
@@ -380,6 +395,11 @@ async function showDepartmentsView() {
 }
 
 async function enterAccessoriesMenu(deptName) {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     currentDepartment = deptName;
     currentSubcategory = '';
     
@@ -432,6 +452,11 @@ async function enterAccessoriesMenu(deptName) {
 }
 
 async function enterSubDepartment(subDept) {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     currentSubcategory = subDept;
     
     currentDeptTitle.textContent = currentDepartment;
@@ -447,6 +472,11 @@ async function enterSubDepartment(subDept) {
 }
 
 async function enterDepartment(deptName) {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     currentDepartment = deptName;
     currentSubcategory = '';
     
@@ -568,6 +598,11 @@ async function fetchDepartmentCounts() {
 // ----------------- ADMIN VIEW LOGIC -----------------
 
 async function showAdminView() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     userMenuDropdown.classList.add('hidden'); // Close dropdown
     
     departmentsView.classList.add('hidden');
@@ -1595,6 +1630,11 @@ async function togglePermission(userId, deptName, canEdit) {
 const PROJECTS_URL = `${API_HOST}/api/projects`;
 
 function showModuleSelectorView() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     document.getElementById('moduleSelectorView').classList.remove('hidden');
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
@@ -1607,6 +1647,11 @@ function showModuleSelectorView() {
 }
 
 function showProjectsView() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.remove('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
@@ -1622,6 +1667,11 @@ function showProjectsView() {
 let currentEditingProjectId = null;
 
 function openProjectWizard() {
+    const _pView = document.getElementById('purchasingView');
+    if(_pView) _pView.classList.add('hidden');
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     currentEditingProjectId = null;
     const title = document.getElementById('wizardTitle');
     if (title) title.textContent = 'إضافة مشروع جديد';
@@ -2442,6 +2492,9 @@ const SUPPLIERS_URL = `${API_HOST}/api/suppliers`;
 const PURCHASE_REQUESTS_URL = `${API_HOST}/api/purchase-requests`;
 
 function showPurchasingView() {
+    const _prdView = document.getElementById('purchaseRequestDetailView');
+    if(_prdView) _prdView.classList.add('hidden');
+
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
