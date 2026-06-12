@@ -3150,7 +3150,7 @@ window.updateMoveItemSubcategories = function(defaultSub = null) {
     }
 }
 
-document.getElementById('moveItemForm').onsubmit = async (e) => {
+window.submitMoveItemForm = async (e) => {
     e.preventDefault();
     showToast('جار معالجة النقل...', 'bg-blue-500', 'ℹ');
     if (!currentMovingItemId) {
