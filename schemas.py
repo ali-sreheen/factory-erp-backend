@@ -108,6 +108,7 @@ class ItemBase(BaseModel):
     subcategory: Optional[SubcategoryType] = None
     quantity: int = 0
     image_url: Optional[str] = None
+    position: Optional[int] = 0
 
 class ItemMove(BaseModel):
     new_category: str

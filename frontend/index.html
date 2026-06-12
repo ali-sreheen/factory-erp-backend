@@ -780,13 +780,34 @@
                         </button>
                     </div>
                     </div>
-                    
-                    <button id="mainAddItemBtn" onclick="openAddItemModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <button id="btnToggleReorder" onclick="toggleReorderMode()" class="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-5 rounded-xl transition border border-slate-300 flex items-center justify-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                            <span id="reorderBtnText">تعديل الترتيب</span>
+                        </button>
+                        <button id="mainAddItemBtn" onclick="openAddItemModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            إضافة بند جديد
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reorder Banner Alert -->
+                <div id="reorderAlertBanner" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-800 text-sm flex items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        إضافة بند جديد
-                    </button>
+                        <span>وضع إعادة الترتيب نشط: اسحب وأفلت البنود بالترتيب الذي تريده، ثم اضغط على زر حفظ الترتيب.</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="saveNewOrder()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-lg text-xs transition">حفظ الترتيب</button>
+                        <button onclick="cancelReorderMode()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold py-1 px-3 rounded-lg text-xs transition">إلغاء</button>
+                    </div>
                 </div>
 
                 <!-- Search Bar -->
@@ -1364,7 +1385,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=50"></script>
+    <script src="script.js?v=51"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

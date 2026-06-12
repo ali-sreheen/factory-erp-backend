@@ -46,6 +46,7 @@ def get_items(db: Session, category: str = None, subcategory: str = None):
         query = query.filter(models.Item.category == category)
     if subcategory:
         query = query.filter(models.Item.subcategory == subcategory)
+    query = query.order_by(models.Item.position.asc(), models.Item.id.asc())
     items = query.all()
     for item in items:
         for res in item.reservations:

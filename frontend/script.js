@@ -8,6 +8,7 @@ const USERS_BASIC_URL = `${API_HOST}/api/users/basic`;
 let currentDepartment = '';
 let currentSubcategory = '';
 let allItems = [];
+let isReorderMode = false;
 let activeLogItemId = null; // Track current item open in log modal
 
 // DOM Views
@@ -760,6 +761,7 @@ function normalizeArabic(str) {
 }
 
 async function loadItems() {
+    isReorderMode = false;
     showDeptLoading();
     try {
         const username = localStorage.getItem('username');
@@ -805,12 +807,45 @@ function renderItemsGrid() {
     const hasEditPermission = username === 'admin' || userPermissionsList.some(p => normalizeArabic(p.department_name) === normalizeArabic(currentDepartment) && (p.can_edit == 1 || p.can_edit === true));
     console.log('[DEBUG] renderItemsGrid: username=', username, ' currentDepartment=', currentDepartment, ' userPermissionsList=', JSON.stringify(userPermissionsList), ' hasEditPermission=', hasEditPermission);
     
+    // Manage Toggle Reorder button and banner visibility
+    const reorderBtn = document.getElementById('btnToggleReorder');
+    const reorderBtnText = document.getElementById('reorderBtnText');
+    const reorderAlertBanner = document.getElementById('reorderAlertBanner');
     const mainAddBtn = document.getElementById('mainAddItemBtn');
-    if (mainAddBtn) {
+
+    if (reorderBtn) {
         if (hasEditPermission) {
-            mainAddBtn.classList.remove('hidden');
+            reorderBtn.classList.remove('hidden');
         } else {
-            mainAddBtn.classList.add('hidden');
+            reorderBtn.classList.add('hidden');
+        }
+    }
+
+    if (isReorderMode) {
+        if (reorderBtnText) reorderBtnText.textContent = 'حفظ الترتيب';
+        if (reorderBtn) {
+            reorderBtn.classList.replace('bg-slate-100', 'bg-emerald-600');
+            reorderBtn.classList.replace('text-slate-700', 'text-white');
+            reorderBtn.classList.replace('hover:bg-slate-200', 'hover:bg-emerald-700');
+            reorderBtn.classList.replace('border-slate-300', 'border-emerald-700');
+        }
+        if (reorderAlertBanner) reorderAlertBanner.classList.remove('hidden');
+        if (mainAddBtn) mainAddBtn.classList.add('hidden');
+    } else {
+        if (reorderBtnText) reorderBtnText.textContent = 'تعديل الترتيب';
+        if (reorderBtn) {
+            reorderBtn.classList.replace('bg-emerald-600', 'bg-slate-100');
+            reorderBtn.classList.replace('text-white', 'text-slate-700');
+            reorderBtn.classList.replace('hover:bg-emerald-700', 'hover:bg-slate-200');
+            reorderBtn.classList.replace('border-emerald-700', 'border-slate-300');
+        }
+        if (reorderAlertBanner) reorderAlertBanner.classList.add('hidden');
+        if (mainAddBtn) {
+            if (hasEditPermission) {
+                mainAddBtn.classList.remove('hidden');
+            } else {
+                mainAddBtn.classList.add('hidden');
+            }
         }
     }
     
@@ -822,8 +857,9 @@ function renderItemsGrid() {
     deptEmptyState.classList.add('hidden');
     
     let itemsToRender = allItems;
+    // Disable search filtering in reorder mode to prevent missing items in sequence
     const searchInput = document.getElementById('itemSearchInput');
-    if (searchInput && searchInput.value.trim() !== '') {
+    if (!isReorderMode && searchInput && searchInput.value.trim() !== '') {
         const query = searchInput.value.trim().toLowerCase();
         itemsToRender = allItems.filter(item => {
             const skuMatch = item.sku && item.sku.toLowerCase().includes(query);
@@ -839,16 +875,39 @@ function renderItemsGrid() {
     
     itemsToRender.forEach(item => {
         const card = document.createElement('div');
-        card.className = 'bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200';
+        card.dataset.itemId = item.id;
+        
+        if (isReorderMode) {
+            card.setAttribute('draggable', 'true');
+            card.className = 'bg-white rounded-2xl shadow-md border-2 border-amber-400/60 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200 cursor-move bg-amber-50/10 relative';
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('drop', handleDrop);
+            card.addEventListener('dragend', handleDragEnd);
+        } else {
+            card.className = 'bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200';
+        }
         
         const imageHTML = item.image_url 
             ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-cover">`
-            : ''; // Blank background instead of question marks
+            : ''; 
             
         const skuHTML = item.sku 
             ? `<div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-black text-slate-800 shadow-sm border border-slate-200 tracking-wider z-10 font-mono" dir="ltr">#${item.sku}</div>`
             : '';
         
+        let dragHandleHTML = '';
+        if (isReorderMode) {
+            dragHandleHTML = `
+                <div class="absolute top-3 right-3 bg-amber-500 text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm z-20 flex items-center gap-1 cursor-move animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    اسحب للترتيب
+                </div>
+            `;
+        }
+
         let badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">${item.category}</span>`;
         if (item.subcategory) {
             badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100 mb-4">${item.category} / ${item.subcategory}</span>`;
@@ -863,6 +922,7 @@ function renderItemsGrid() {
                 <!-- Item Image -->
                 <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
                     ${skuHTML}
+                    ${dragHandleHTML}
                     ${imageHTML}
                 </div>
                 <!-- Content -->
@@ -891,7 +951,7 @@ function renderItemsGrid() {
                 </div>
             </div>
             <!-- Actions -->
-            <div class="p-5 pt-0 flex flex-col gap-2">
+            <div class="p-5 pt-0 flex flex-col gap-2 ${isReorderMode ? 'hidden' : ''}">
                 ${hasEditPermission ? `
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="openTxModal(${item.id}, '${item.name.replace(/'/g, "\\'")}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow">
@@ -934,6 +994,92 @@ function renderItemsGrid() {
         `;
         itemsGrid.appendChild(card);
     });
+}
+
+// ----------------- DRAG & DROP AND REORDER LOGIC -----------------
+
+let draggedCard = null;
+
+function handleDragStart(e) {
+    draggedCard = this;
+    this.classList.add('opacity-40', 'scale-95');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', this.dataset.itemId);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedCard && draggedCard !== this) {
+        const grid = document.getElementById('itemsGrid');
+        const children = Array.from(grid.children);
+        const draggedIndex = children.indexOf(draggedCard);
+        const targetIndex = children.indexOf(this);
+        
+        if (draggedIndex < targetIndex) {
+            grid.insertBefore(draggedCard, this.nextSibling);
+        } else {
+            grid.insertBefore(draggedCard, this);
+        }
+    }
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('opacity-40', 'scale-95');
+    draggedCard = null;
+}
+
+function toggleReorderMode() {
+    isReorderMode = !isReorderMode;
+    if (!isReorderMode) {
+        saveNewOrder();
+        return;
+    }
+    renderItemsGrid();
+}
+
+function cancelReorderMode() {
+    isReorderMode = false;
+    renderItemsGrid();
+}
+
+async function saveNewOrder() {
+    const cards = Array.from(itemsGrid.children);
+    const itemIds = cards.map(c => parseInt(c.dataset.itemId)).filter(id => !isNaN(id));
+    
+    if (itemIds.length === 0) {
+        cancelReorderMode();
+        return;
+    }
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/items/reorder`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemIds)
+        });
+        
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || 'Failed to save order');
+        }
+        
+        showToast('تم حفظ الترتيب الجديد بنجاح', 'bg-emerald-500', '✓');
+        await loadItems();
+    } catch (error) {
+        console.error('Error saving item order:', error);
+        showToast(error.message || 'خطأ أثناء حفظ الترتيب', 'bg-rose-500', '✗');
+        cancelReorderMode();
+    }
 }
 
 // ----------------- ADD ITEM MODAL LOGIC -----------------

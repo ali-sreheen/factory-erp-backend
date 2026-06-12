@@ -53,6 +53,7 @@ class Item(Base):
     subcategory = Column(String, index=True, nullable=True) # Used for accessories
     quantity = Column(Integer, default=0)
     image_url = Column(String, nullable=True)
+    position = Column(Integer, default=0, nullable=True)
 
     transactions = relationship("Transaction", back_populates="item", cascade="all, delete-orphan")
     reservations = relationship("Reservation", back_populates="item", cascade="all, delete-orphan")

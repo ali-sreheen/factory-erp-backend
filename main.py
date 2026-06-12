@@ -107,6 +107,16 @@ def check_and_update_db_schema(db_engine):
             except Exception as e:
                 pass
 
+    # Check items table for position column
+    if "items" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("items")]
+        if "position" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE items ADD COLUMN position INTEGER DEFAULT 0"))
+            except Exception as e:
+                pass
+
     # Fix items subcategories if they are invalid for their category
     if "items" in inspector.get_table_names() and "departments" in inspector.get_table_names() and "subdepartments" in inspector.get_table_names():
         try:
@@ -360,6 +370,25 @@ def read_items(
 ):
     items = crud.get_items(db, category=category, subcategory=subcategory)
     return items
+
+@app.put("/api/items/reorder")
+def reorder_items(
+    item_ids: List[int],
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not item_ids:
+        return {"message": "No items provided"}
+    
+    items = db.query(models.Item).filter(models.Item.id.in_(item_ids)).all()
+    categories = {item.category for item in items}
+    for category in categories:
+        check_permission(db, current_user, category)
+        
+    for index, item_id in enumerate(item_ids):
+        db.query(models.Item).filter(models.Item.id == item_id).update({"position": index})
+    db.commit()
+    return {"message": "Reordered successfully"}
 
 
 @app.put("/api/items/{item_id}/move", response_model=schemas.Item)
