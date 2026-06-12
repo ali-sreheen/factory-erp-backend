@@ -2749,7 +2749,7 @@ async function deletePurchaseRequest(id) {
 
 // --- Purchase Request Details Logic ---
 async function openPurchaseRequestDetails(id) {
-    document.getElementById('purchaseView').classList.add('hidden');
+    document.getElementById('purchasingView').classList.add('hidden');
     document.getElementById('purchaseRequestDetailView').classList.remove('hidden');
     document.getElementById('prdTitle').innerText = 'جاري التحميل...';
     
@@ -2765,7 +2765,7 @@ async function openPurchaseRequestDetails(id) {
 
 function closePurchaseRequestDetails() {
     document.getElementById('purchaseRequestDetailView').classList.add('hidden');
-    document.getElementById('purchaseView').classList.remove('hidden');
+    document.getElementById('purchasingView').classList.remove('hidden');
     loadPurchaseRequests();
 }
 
