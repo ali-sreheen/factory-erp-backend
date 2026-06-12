@@ -107,6 +107,26 @@ def check_and_update_db_schema(db_engine):
             except Exception as e:
                 pass
 
+    # Fix items subcategories if they are invalid for their category
+    if "items" in inspector.get_table_names() and "departments" in inspector.get_table_names() and "subdepartments" in inspector.get_table_names():
+        try:
+            with db_engine.begin() as conn:
+                # Get all departments and their subdepartments
+                res_depts = conn.execute(text("SELECT id, name FROM departments")).fetchall()
+                for d_id, d_name in res_depts:
+                    # Get valid subdepartments
+                    res_subs = conn.execute(text("SELECT name FROM subdepartments WHERE department_id = :d_id"), {"d_id": d_id}).fetchall()
+                    valid_subs = {r[0] for r in res_subs}
+                    
+                    # Get items under this category
+                    items = conn.execute(text("SELECT id, name, subcategory FROM items WHERE category = :cat"), {"cat": d_name}).fetchall()
+                    for item_id, item_name, subcat in items:
+                        if subcat and subcat.strip() != "" and subcat not in valid_subs:
+                            print(f"[SCHEMA FIX] Fixing item '{item_name}' (ID: {item_id}): subcategory '{subcat}' is invalid for category '{d_name}'. Resetting to NULL.")
+                            conn.execute(text("UPDATE items SET subcategory = NULL WHERE id = :item_id"), {"item_id": item_id})
+        except Exception as e:
+            print(f"[SCHEMA FIX] Error fixing invalid item subcategories: {e}")
+
 check_and_update_db_schema(engine)
 
 def seed_default_departments(db: Session):
