@@ -941,13 +941,39 @@ function renderItemsGrid() {
 function openAddItemModal() {
     addItemModalDeptTitle.textContent = currentDepartment;
     
-    if (currentDepartment === 'إكسسوارات') {
-        subcategoryFieldContainer.classList.remove('hidden');
+    const subSelect = document.getElementById('itemSubcategory');
+    const subContainer = document.getElementById('subcategoryFieldContainer');
+    
+    // Find current department details
+    const dept = globalDepartments.find(d => normalizeArabic(d.name) === normalizeArabic(currentDepartment));
+    
+    if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
+        // Show subcategory dropdown
+        subContainer.classList.remove('hidden');
+        
+        // Update label text dynamically
+        const subLabel = subContainer.querySelector('label');
+        if (subLabel) {
+            subLabel.textContent = `القسم الفرعي لـ ${currentDepartment}`;
+        }
+        
+        // Populate options
+        subSelect.innerHTML = '<option value="">-- عام / غير مصنف --</option>';
+        dept.subdepartments.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub.name;
+            opt.textContent = sub.name;
+            subSelect.appendChild(opt);
+        });
+        
+        // If we are currently inside a specific subdepartment, pre-select it
         if (currentSubcategory) {
-            document.getElementById('itemSubcategory').value = currentSubcategory;
+            subSelect.value = currentSubcategory;
         }
     } else {
-        subcategoryFieldContainer.classList.add('hidden');
+        // Hide subcategory dropdown if no subdepartments exist
+        subContainer.classList.add('hidden');
+        subSelect.innerHTML = '';
     }
 
     addItemModal.classList.remove('hidden');
@@ -995,7 +1021,7 @@ addItemForm.addEventListener('submit', async (e) => {
         formData.append('description', description);
     }
     
-    const dept = globalDepartments.find(d => d.name === currentDepartment);
+    const dept = globalDepartments.find(d => normalizeArabic(d.name) === normalizeArabic(currentDepartment));
     if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
         const subcategory = document.getElementById('itemSubcategory').value;
         if(subcategory) formData.append('subcategory', subcategory);
