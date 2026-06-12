@@ -299,6 +299,28 @@ def read_items(
     items = crud.get_items(db, category=category, subcategory=subcategory)
     return items
 
+
+@app.put("/api/items/{item_id}/move", response_model=schemas.Item)
+def move_item(
+    item_id: int,
+    move_data: schemas.ItemMove,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بنقل البنود")
+        
+    updated_item = crud.move_item(
+        db,
+        item_id=item_id,
+        new_category=move_data.new_category,
+        new_subcategory=move_data.new_subcategory,
+        user_id=current_user.id
+    )
+    if not updated_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return updated_item
+
 @app.delete("/api/items/{item_id}")
 def delete_item(
     item_id: int,

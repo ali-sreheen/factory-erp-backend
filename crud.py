@@ -376,3 +376,33 @@ def delete_project_task(db: Session, task_id: int):
         db.commit()
         return True
     return False
+
+def move_item(db: Session, item_id: int, new_category: str, new_subcategory: str, user_id: int):
+    item = db.query(models.Item).filter(models.Item.id == item_id).first()
+    if not item:
+        return None
+    
+    old_category = item.category
+    old_subcategory = item.subcategory
+    
+    item.category = new_category
+    item.subcategory = new_subcategory
+    
+    # Create transaction log
+    action_text = f'نقل البند من {old_category}'
+    if old_subcategory:
+        action_text += f' / {old_subcategory}'
+    action_text += f' إلى {new_category}'
+    if new_subcategory:
+        action_text += f' / {new_subcategory}'
+        
+    tx = models.Transaction(
+        item_id=item_id,
+        user_id=user_id,
+        change=0,
+        project_name=action_text
+    )
+    db.add(tx)
+    db.commit()
+    db.refresh(item)
+    return item

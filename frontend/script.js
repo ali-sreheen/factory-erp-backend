@@ -396,7 +396,7 @@ async function showDepartmentsView() {
     await fetchDepartmentCounts();
 }
 
-async function enterAccessoriesMenu(deptName) {
+async function enterSubDeptView(deptName) {
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -465,6 +465,14 @@ async function enterSubDepartment(subDept) {
     currentSubDeptBadge.textContent = subDept;
     currentSubDeptBadge.classList.remove('hidden');
     
+    if (localStorage.getItem('username') === 'admin') {
+        const btn = document.getElementById('btnManageSubDepts');
+        if(btn) btn.classList.remove('hidden');
+    } else {
+        const btn = document.getElementById('btnManageSubDepts');
+        if(btn) btn.classList.add('hidden');
+    }
+    
     departmentsView.classList.add('hidden');
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.remove('hidden');
@@ -482,7 +490,15 @@ async function enterDepartment(deptName) {
     currentDepartment = deptName;
     currentSubcategory = '';
     
-    currentDeptTitle.textContent = deptName;
+    currentDeptTitle.textContent = deptName;\n
+    if (localStorage.getItem('username') === 'admin') {
+        const btn = document.getElementById('btnManageSubDepts');
+        if(btn) btn.classList.remove('hidden');
+    } else {
+        const btn = document.getElementById('btnManageSubDepts');
+        if(btn) btn.classList.add('hidden');
+    }
+
     currentSubDeptBadge.classList.add('hidden');
     
     departmentsView.classList.add('hidden');
@@ -496,7 +512,7 @@ async function enterDepartment(deptName) {
 function handleDetailBackNavigation() {
     const dept = globalDepartments.find(d => d.name === currentDepartment);
     if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
-        enterAccessoriesMenu(currentDepartment);
+        enterSubDeptView(currentDepartment);
     } else {
         showDepartmentsView();
     }
@@ -561,7 +577,7 @@ async function fetchDepartmentCounts() {
         globalDepartments.forEach((dept, index) => {
             const c = colors[index % colors.length];
             const hasSubDepts = dept.subdepartments && dept.subdepartments.length > 0;
-            const clickHandler = hasSubDepts ? `enterAccessoriesMenu('${dept.name}')` : `enterDepartment('${dept.name}')`;
+            const clickHandler = hasSubDepts ? `enterSubDeptView('${dept.name}')` : `enterDepartment('${dept.name}')`;
             
             const card = document.createElement('div');
             card.onclick = () => eval(clickHandler);
@@ -798,7 +814,7 @@ function renderItemsGrid() {
             : ''; // Blank background instead of question marks
         
         let badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">${item.category}</span>`;
-        if (item.category === 'إكسسوارات' && item.subcategory) {
+        if (item.subcategory) {
             badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100 mb-4">${item.category} / ${item.subcategory}</span>`;
         }
 
@@ -938,9 +954,10 @@ addItemForm.addEventListener('submit', async (e) => {
         formData.append('description', description);
     }
     
-    if (currentDepartment === 'إكسسوارات') {
+    const dept = globalDepartments.find(d => d.name === currentDepartment);
+    if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
         const subcategory = document.getElementById('itemSubcategory').value;
-        formData.append('subcategory', subcategory);
+        if(subcategory) formData.append('subcategory', subcategory);
     }
     
     if (imageFile) {
@@ -1522,7 +1539,7 @@ if(addSubDeptForm) {
             document.getElementById('newSubDeptName').value = '';
             // Reload
             await fetchDepartmentCounts();
-            enterAccessoriesMenu(currentDepartment);
+            enterSubDeptView(currentDepartment);
         } catch (err) {
             showToast(err.message, 'bg-rose-500', '✗');
         }
@@ -1541,7 +1558,7 @@ async function deleteSubDepartment(subId) {
         }
         showToast('تم الحذف بنجاح', 'bg-emerald-500', '✓');
         await fetchDepartmentCounts();
-        enterAccessoriesMenu(currentDepartment);
+        enterSubDeptView(currentDepartment);
     } catch (err) {
         showToast(err.message, 'bg-rose-500', '✗');
     }
@@ -3053,3 +3070,95 @@ async function calculateSheetRequirements() {
     }
 }
 
+
+
+// ------------- MOVE ITEM LOGIC -------------
+let currentMovingItemId = null;
+
+function openMoveItemModal(itemId) {
+    currentMovingItemId = itemId;
+    const item = globalItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const modal = document.getElementById('moveItemModal');
+    const catSelect = document.getElementById('moveItemCategory');
+    const subSelect = document.getElementById('moveItemSubcategory');
+    const subContainer = document.getElementById('moveItemSubcategoryContainer');
+
+    catSelect.innerHTML = '<option value="">-- اختر القسم الرئيسي --</option>';
+    globalDepartments.forEach(dept => {
+        const option = document.createElement('option');
+        option.value = dept.name;
+        option.textContent = dept.name;
+        if(dept.name === item.category) option.selected = true;
+        catSelect.appendChild(option);
+    });
+
+    updateMoveItemSubcategories(item.subcategory);
+    modal.classList.remove('hidden');
+}
+
+function closeMoveItemModal() {
+    document.getElementById('moveItemModal').classList.add('hidden');
+    currentMovingItemId = null;
+}
+
+window.updateMoveItemSubcategories = function(defaultSub = null) {
+    const catSelect = document.getElementById('moveItemCategory');
+    const subSelect = document.getElementById('moveItemSubcategory');
+    const subContainer = document.getElementById('moveItemSubcategoryContainer');
+    const selectedDept = catSelect.value;
+    
+    subSelect.innerHTML = '<option value="">بدون قسم فرعي (رئيسي)</option>';
+    
+    if (selectedDept) {
+        const dept = globalDepartments.find(d => d.name === selectedDept);
+        if (dept && dept.subdepartments && dept.subdepartments.length > 0) {
+            dept.subdepartments.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.name;
+                option.textContent = sub.name;
+                if(defaultSub && sub.name === defaultSub) option.selected = true;
+                subSelect.appendChild(option);
+            });
+            subContainer.classList.remove('hidden');
+        } else {
+            subContainer.classList.add('hidden');
+        }
+    } else {
+        subContainer.classList.add('hidden');
+    }
+}
+
+document.getElementById('moveItemForm').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!currentMovingItemId) return;
+    
+    const newCategory = document.getElementById('moveItemCategory').value;
+    const newSubcategory = document.getElementById('moveItemSubcategory').value;
+    
+    if(!newCategory) return;
+    
+    try {
+        const response = await authFetch(`${API_URL}/${currentMovingItemId}/move`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                new_category: newCategory,
+                new_subcategory: newSubcategory || null
+            })
+        });
+        
+        if (response.ok) {
+            showToast('تم نقل البند بنجاح', 'bg-emerald-500', '✓');
+            closeMoveItemModal();
+            await fetchDepartmentCounts();
+            enterDepartment(currentDepartment, currentSubcategory); // reload current view
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء نقل البند', 'bg-rose-500', '✗');
+        }
+    } catch (e) {
+        showToast('حدث خطأ أثناء نقل البند', 'bg-rose-500', '✗');
+    }
+};

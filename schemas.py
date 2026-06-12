@@ -109,6 +109,10 @@ class ItemBase(BaseModel):
     quantity: int = 0
     image_url: Optional[str] = None
 
+class ItemMove(BaseModel):
+    new_category: str
+    new_subcategory: Optional[str] = None
+
 class ItemCreate(ItemBase):
     pass
 
