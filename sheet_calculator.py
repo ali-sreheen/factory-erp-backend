@@ -55,35 +55,68 @@ def calculate_sheets(project_details):
 
     def pack_rectangles(rectangles):
         if not rectangles:
-            return []
+            return {}
 
-        # Available bin sizes (width, height)
-        # We will add 1000 of each to ensure enough capacity
-        bin_sizes = [(100, 230), (125, 230), (125, 250)]
-        
-        # Sort bins by area so Global bin_algo prefers smaller bins if equally good? 
-        # Actually rectpack's Global checks all bins and finds best fit.
-        packer = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
-        
+        # 1. Run baseline packing with all bins (Smallest first) to find a baseline limit K
+        packer_base = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
         for w, h in rectangles:
-            packer.add_rect(w, h)
-            
+            packer_base.add_rect(w, h)
+        
+        # Available bin sizes: 100*230 (2.3m²), 125*230 (2.875m²), 125*250 (3.125m²)
+        bin_sizes = [(100, 230), (125, 230), (125, 250)]
         for bin_w, bin_h in bin_sizes:
             for _ in range(500):
-                packer.add_bin(bin_w, bin_h)
-                
-        packer.pack()
+                packer_base.add_bin(bin_w, bin_h)
+        packer_base.pack()
         
-        # Collect results
-        used_bins = {}
-        for abin in packer:
-            bin_w, bin_h = abin.width, abin.height
-            size_str = f"{int(bin_w)}*{int(bin_h)}"
-            if size_str not in used_bins:
-                used_bins[size_str] = 0
-            used_bins[size_str] += 1
+        base_used = [b for b in packer_base if len(b) > 0]
+        K = len(base_used)
+        if K == 0:
+            return {}
             
-        return used_bins
+        # 2. Generate combinations of (c1, c2, c3) where c1 + c2 + c3 <= K
+        # Cap K to 40 to prevent any performance hit
+        max_k = min(K, 40)
+        combos = []
+        for c1 in range(max_k + 1):
+            for c2 in range(max_k + 1 - c1):
+                for c3 in range(max_k + 1 - c1 - c2):
+                    if c1 + c2 + c3 == 0:
+                        continue
+                    # Calculate total sheet area in cm²
+                    area = c1 * 23000 + c2 * 28750 + c3 * 31250
+                    combos.append((area, c1, c2, c3))
+                    
+        # Sort combinations by total area ascending
+        combos.sort(key=lambda x: x[0])
+        
+        # 3. Find the first mixture that successfully packs all rectangles
+        optimal_mix = None
+        for area, c1, c2, c3 in combos:
+            packer = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
+            for w, h in rectangles:
+                packer.add_rect(w, h)
+            for _ in range(c1):
+                packer.add_bin(100, 230)
+            for _ in range(c2):
+                packer.add_bin(125, 230)
+            for _ in range(c3):
+                packer.add_bin(125, 250)
+            packer.pack()
+            
+            if sum(len(b) for b in packer) == len(rectangles):
+                optimal_mix = {"100*230": c1, "125*230": c2, "125*250": c3}
+                break
+                
+        # Fallback to baseline if optimal search failed
+        if not optimal_mix:
+            used_bins = {}
+            for abin in base_used:
+                size_str = f"{int(abin.width)}*{int(abin.height)}"
+                used_bins[size_str] = used_bins.get(size_str, 0) + 1
+            return used_bins
+            
+        return {k: v for k, v in optimal_mix.items() if v > 0}
 
     bins_1_5 = pack_rectangles(rects_1_5)
     bins_1_2 = pack_rectangles(rects_1_2)
