@@ -53,7 +53,35 @@ def get_items(db: Session, category: str = None, subcategory: str = None):
     return items
 
 def create_item(db: Session, name: str, category: str, quantity: int, subcategory: str = None, description: str = None, image_url: str = None):
+    # Generate SKU
+    dept = db.query(models.Department).filter(models.Department.name == category).first()
+    dept_id = dept.id if dept else 0
+    
+    subdept_id = 0
+    if subcategory:
+        subdept = db.query(models.SubDepartment).filter(models.SubDepartment.name == subcategory).first()
+        if subdept:
+            subdept_id = subdept.id
+            
+    query = db.query(models.Item.sku).filter(models.Item.category == category)
+    if subcategory:
+        query = query.filter(models.Item.subcategory == subcategory)
+    else:
+        query = query.filter((models.Item.subcategory == None) | (models.Item.subcategory == ""))
+        
+    max_sku_row = query.order_by(models.Item.sku.desc()).first()
+    if max_sku_row and max_sku_row[0]:
+        try:
+            seq = int(max_sku_row[0][-3:]) + 1
+        except ValueError:
+            seq = 1
+    else:
+        seq = 1
+        
+    sku = f"{dept_id % 100:02d}{subdept_id % 100:02d}{seq % 1000:03d}"
+
     db_item = models.Item(
+        sku=sku,
         name=name,
         category=category,
         subcategory=subcategory,

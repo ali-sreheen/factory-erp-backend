@@ -821,13 +821,33 @@ function renderItemsGrid() {
     
     deptEmptyState.classList.add('hidden');
     
-    allItems.forEach(item => {
+    let itemsToRender = allItems;
+    const searchInput = document.getElementById('itemSearchInput');
+    if (searchInput && searchInput.value.trim() !== '') {
+        const query = searchInput.value.trim().toLowerCase();
+        itemsToRender = allItems.filter(item => {
+            const skuMatch = item.sku && item.sku.toLowerCase().includes(query);
+            const nameMatch = item.name && item.name.toLowerCase().includes(query);
+            return skuMatch || nameMatch;
+        });
+    }
+    
+    if (itemsToRender.length === 0 && allItems.length > 0) {
+        itemsGrid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-500">لا توجد نتائج مطابقة للبحث</div>';
+        return;
+    }
+    
+    itemsToRender.forEach(item => {
         const card = document.createElement('div');
         card.className = 'bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200';
         
         const imageHTML = item.image_url 
             ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-cover">`
             : ''; // Blank background instead of question marks
+            
+        const skuHTML = item.sku 
+            ? `<div class="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-black text-slate-800 shadow-sm border border-slate-200 tracking-wider z-10 font-mono" dir="ltr">#${item.sku}</div>`
+            : '';
         
         let badgeHTML = `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 mb-4">${item.category}</span>`;
         if (item.subcategory) {
@@ -842,6 +862,7 @@ function renderItemsGrid() {
             <div>
                 <!-- Item Image -->
                 <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                    ${skuHTML}
                     ${imageHTML}
                 </div>
                 <!-- Content -->

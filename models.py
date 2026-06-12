@@ -46,6 +46,7 @@ class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
+    sku = Column(String(7), unique=True, index=True, nullable=True)
     name = Column(String, index=True)
     description = Column(String, nullable=True)
     category = Column(String, index=True)

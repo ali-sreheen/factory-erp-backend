@@ -128,6 +128,7 @@ class ReservationBrief(BaseModel):
 
 class Item(ItemBase):
     id: int
+    sku: Optional[str] = None
     reservations: list[ReservationBrief] = []
 
     class Config:

@@ -787,6 +787,18 @@
                     </button>
                 </div>
 
+                <!-- Search Bar -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg class="w-5 h-5 text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                            </svg>
+                        </div>
+                        <input type="search" id="itemSearchInput" oninput="renderItemsGrid()" class="block w-full p-4 pr-10 text-sm text-slate-900 border border-slate-200 rounded-xl bg-white focus:ring-indigo-500 focus:border-indigo-500 shadow-sm" placeholder="ابحث برقم الرمز (SKU) أو اسم البند...">
+                    </div>
+                </div>
+
                 <!-- Items Grid -->
                 <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- Dynamic cards go here -->
@@ -1350,7 +1362,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=47"></script>
+    <script src="script.js?v=48"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
