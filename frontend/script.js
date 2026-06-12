@@ -2708,6 +2708,7 @@ function openPurchaseRequestModal(id = null) {
     currentEditingPurchaseRequestId = id;
     
     if (id) {
+        document.getElementById('prCustomIdContainer').classList.add('hidden');
         document.getElementById('purchaseRequestModalTitle').innerText = 'تعديل طلب الشراء';
         const req = globalPurchaseRequests.find(r => r.id === id);
         if (req) {
@@ -2717,6 +2718,7 @@ function openPurchaseRequestModal(id = null) {
             document.getElementById('prDescription').value = req.description || '';
         }
     } else {
+        document.getElementById('prCustomIdContainer').classList.remove('hidden');
         document.getElementById('purchaseRequestModalTitle').innerText = 'إنشاء طلب شراء جديد';
     }
     
@@ -2740,6 +2742,11 @@ document.getElementById('purchaseRequestForm').addEventListener('submit', async 
     
     const desc = document.getElementById('prDescription').value;
     if(desc) formData.append("description", desc);
+
+    if(!currentEditingPurchaseRequestId) {
+        const customId = document.getElementById('prCustomId').value;
+        if(customId) formData.append("req_id", customId);
+    }
 
     const imageFile = document.getElementById('prAttachedImage').files[0];
     if(imageFile) formData.append("attached_image", imageFile);

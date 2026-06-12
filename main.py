@@ -754,6 +754,7 @@ def create_purchase_request(
     description: Optional[str] = Form(None),
     quantity: Optional[int] = Form(None),
     expected_price: Optional[str] = Form(None),
+    req_id: Optional[int] = Form(None),
     attached_image: UploadFile = File(None),
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(auth.get_current_user)
@@ -775,6 +776,13 @@ def create_purchase_request(
         attached_image_url=attached_image_url,
         requested_by_id=current_user.id
     )
+    if req_id is not None:
+        # Check if exists
+        existing = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="رقم الطلب هذا موجود مسبقاً")
+        db_req.id = req_id
+        
     db.add(db_req)
     db.commit()
     db.refresh(db_req)
