@@ -21,7 +21,11 @@ def calculate_sheets(project_details):
         height = parse_dimension(detail.get('height', 0))
         width = parse_dimension(detail.get('width', 0))
         depth = parse_dimension(detail.get('depth', 0))
-        architrave = parse_dimension(detail.get('architrave', 0))
+        
+        arch_raw = detail.get('architrave')
+        architrave = parse_dimension(arch_raw)
+        if architrave == 0.0:
+            architrave = 4.0
 
         if height == 0 or width == 0:
             continue
@@ -36,12 +40,12 @@ def calculate_sheets(project_details):
 
         for _ in range(qty):
             # Rec 1, 2 (vertical posts) and Rec 3 (horizontal head) (1.5mm)
-            w1_2_3 = depth + 16.1
-            if w1_2_3 > 0:
+            w_halaq = depth + 12.1 + architrave
+            if w_halaq > 0:
                 if height > 0:
-                    rects_1_5.extend([(w1_2_3, height), (w1_2_3, height)])
+                    rects_1_5.extend([(w_halaq, height), (w_halaq, height)])
                 if width > 0:
-                    rects_1_5.append((w1_2_3, width))
+                    rects_1_5.append((w_halaq, width))
 
             # Rec 4, 5 (1.2mm)
             l4_5 = height - architrave - 1
