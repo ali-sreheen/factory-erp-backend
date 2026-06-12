@@ -129,6 +129,7 @@ class ProjectDetail(Base):
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     door_number = Column(String, nullable=True)
+    quantity = Column(Integer, nullable=True, default=1)
     width = Column(String, nullable=True)
     height = Column(String, nullable=True)
     depth = Column(String, nullable=True)

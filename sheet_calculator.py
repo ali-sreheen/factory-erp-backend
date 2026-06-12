@@ -26,21 +26,30 @@ def calculate_sheets(project_details):
         if height == 0 or width == 0:
             continue
 
-        # Rec 1, 2, 3 (1.5mm)
-        w1_2_3 = depth + 16.1
-        l1_2_3 = height
-        if w1_2_3 > 0 and l1_2_3 > 0:
-            rects_1_5.extend([(w1_2_3, l1_2_3), (w1_2_3, l1_2_3), (w1_2_3, l1_2_3)])
+        qty = detail.get('quantity')
+        try:
+            qty = int(qty) if qty is not None else 1
+        except (ValueError, TypeError):
+            qty = 1
+        if qty < 1:
+            qty = 1
 
-        # Rec 4, 5 (1.2mm)
-        l4_5 = height - architrave - 1
-        w4 = width + 5.2
-        w5 = width - 6.1
-        if l4_5 > 0:
-            if w4 > 0:
-                rects_1_2.append((w4, l4_5))
-            if w5 > 0:
-                rects_1_2.append((w5, l4_5))
+        for _ in range(qty):
+            # Rec 1, 2, 3 (1.5mm)
+            w1_2_3 = depth + 16.1
+            l1_2_3 = height
+            if w1_2_3 > 0 and l1_2_3 > 0:
+                rects_1_5.extend([(w1_2_3, l1_2_3), (w1_2_3, l1_2_3), (w1_2_3, l1_2_3)])
+
+            # Rec 4, 5 (1.2mm)
+            l4_5 = height - architrave - 1
+            w4 = width + 5.2
+            w5 = width - 6.1
+            if l4_5 > 0:
+                if w4 > 0:
+                    rects_1_2.append((w4, l4_5))
+                if w5 > 0:
+                    rects_1_2.append((w5, l4_5))
 
     def pack_rectangles(rectangles):
         if not rectangles:

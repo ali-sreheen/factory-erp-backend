@@ -100,6 +100,12 @@ def check_and_update_db_schema(db_engine):
                         conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR"))
                 except Exception as e:
                     pass
+        if "quantity" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE project_details ADD COLUMN quantity INTEGER DEFAULT 1"))
+            except Exception as e:
+                pass
 
 check_and_update_db_schema(engine)
 
@@ -685,7 +691,8 @@ def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), curre
             "height": detail.height,
             "width": detail.width,
             "depth": detail.depth,
-            "architrave": detail.architrave
+            "architrave": detail.architrave,
+            "quantity": detail.quantity
         })
         
     return calculate_sheets(details_dicts)

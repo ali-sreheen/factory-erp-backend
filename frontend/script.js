@@ -1800,6 +1800,7 @@ function addProjectDetailRow() {
     tr.className = 'border-b hover:bg-slate-50';
     tr.innerHTML = `
         <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم"></td>
+        <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
@@ -2049,6 +2050,7 @@ async function viewProjectDetails(id) {
                 tr.className = 'border-b hover:bg-slate-50 transition text-sm';
                 tr.innerHTML = `
                     <td class="p-3 font-bold">${d.door_number || '-'}</td>
+                    <td class="p-3">${d.quantity !== null && d.quantity !== undefined ? d.quantity : 1}</td>
                     <td class="p-3">${d.width || '-'}</td>
                     <td class="p-3">${d.height || '-'}</td>
                     <td class="p-3">${d.depth || '-'}</td>
@@ -2066,7 +2068,7 @@ async function viewProjectDetails(id) {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="14" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -2155,21 +2157,23 @@ if (projectWizardForm) {
             const rows = document.querySelectorAll('#projectDetailsTableBody tr');
             for (let tr of rows) {
                 const inputs = tr.querySelectorAll('input, select');
+                const qtyVal = parseInt(inputs[1].value);
                 const detailPayload = {
                     door_number: inputs[0].value || null,
-                    width: inputs[1].value || null,
-                    height: inputs[2].value || null,
-                    depth: inputs[3].value || null,
-                    direction: inputs[4].value || null,
-                    lock_type: inputs[5].value || null,
-                    profile_type: inputs[6].value || null,
-                    door_type: inputs[7].value || null,
-                    fire_resistance: inputs[8].checked ? 'نعم' : 'لا',
-                    architrave: inputs[9].value || null,
-                    architrave_2: inputs[10].value || null,
-                    under_tile: inputs[11].value || null,
-                    window_details: inputs[12].value || null,
-                    notes: inputs[13].value || null
+                    quantity: isNaN(qtyVal) ? 1 : qtyVal,
+                    width: inputs[2].value || null,
+                    height: inputs[3].value || null,
+                    depth: inputs[4].value || null,
+                    direction: inputs[5].value || null,
+                    lock_type: inputs[6].value || null,
+                    profile_type: inputs[7].value || null,
+                    door_type: inputs[8].value || null,
+                    fire_resistance: inputs[9].checked ? 'نعم' : 'لا',
+                    architrave: inputs[10].value || null,
+                    architrave_2: inputs[11].value || null,
+                    under_tile: inputs[12].value || null,
+                    window_details: inputs[13].value || null,
+                    notes: inputs[14].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2228,7 +2232,7 @@ function downloadEngineeringCSV() {
     }
     
     const headers = [
-        "رقم الباب", "العرض", "الطول", "العمق", "الاتجاه", "الزرفيل", 
+        "رقم الباب", "العدد", "العرض", "الطول", "العمق", "الاتجاه", "الزرفيل", 
         "المقطع", "نوع الباب", "حريق", "الكشفة", "الكشفة 2", 
         "تحت البلاط", "تفصيل الشباك", "ملاحظات"
     ];
@@ -2239,6 +2243,7 @@ function downloadEngineeringCSV() {
     window.currentProjectData.details.forEach(d => {
         const row = [
             d.door_number || '',
+            d.quantity !== null && d.quantity !== undefined ? d.quantity : 1,
             d.width || '',
             d.height || '',
             d.depth || '',
@@ -2345,6 +2350,7 @@ window.editProject = async function(projectId) {
                 tr.className = 'border-b hover:bg-slate-50 transition';
                 tr.innerHTML = `
                     <td class="p-2"><input type="text" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center font-bold" value="${d.door_number || ''}"></td>
+                    <td class="p-2"><input type="number" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.quantity !== null && d.quantity !== undefined ? d.quantity : 1}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
