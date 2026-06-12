@@ -806,6 +806,39 @@ def update_purchase_request(req_id: int, req_update: schemas.PurchaseRequestUpda
     db.refresh(db_req)
     return db_req
 
+@app.put("/api/purchase-requests/{req_id}/details", response_model=schemas.PurchaseRequestResponse)
+def update_purchase_request_details(
+    req_id: int,
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    quantity: Optional[int] = Form(None),
+    expected_price: Optional[str] = Form(None),
+    attached_image: UploadFile = File(None),
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="Purchase request not found")
+        
+    db_req.title = title
+    db_req.description = description
+    db_req.quantity = quantity
+    db_req.expected_price = expected_price
+    
+    if attached_image and attached_image.filename:
+        ext = os.path.splitext(attached_image.filename)[1]
+        fname = f"attached_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(attached_image.file, buffer)
+        db_req.attached_image_url = f"/uploads/{fname}"
+        
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+
 @app.post("/api/purchase-requests/{req_id}/upload-images", response_model=schemas.PurchaseRequestResponse)
 def upload_purchase_images(req_id: int, invoice_image: UploadFile = File(None), items_image: UploadFile = File(None), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()

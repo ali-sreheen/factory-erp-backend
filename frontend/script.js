@@ -2698,8 +2698,25 @@ async function loadPurchaseRequests() {
     }
 }
 
-function openPurchaseRequestModal() {
+let currentEditingPurchaseRequestId = null;
+
+function openPurchaseRequestModal(id = null) {
     document.getElementById('purchaseRequestForm').reset();
+    currentEditingPurchaseRequestId = id;
+    
+    if (id) {
+        document.getElementById('purchaseRequestModalTitle').innerText = 'تعديل طلب الشراء';
+        const req = globalPurchaseRequests.find(r => r.id === id);
+        if (req) {
+            document.getElementById('prTitle').value = req.title || '';
+            document.getElementById('prQuantity').value = req.quantity || '';
+            document.getElementById('prExpectedPrice').value = req.expected_price || '';
+            document.getElementById('prDescription').value = req.description || '';
+        }
+    } else {
+        document.getElementById('purchaseRequestModalTitle').innerText = 'إنشاء طلب شراء جديد';
+    }
+    
     document.getElementById('purchaseRequestModal').classList.remove('hidden');
 }
 
@@ -2725,14 +2742,28 @@ document.getElementById('purchaseRequestForm').addEventListener('submit', async 
     if(imageFile) formData.append("attached_image", imageFile);
 
     try {
-        const res = await authFetch(`${PURCHASE_REQUESTS_URL}/`, {
-            method: 'POST',
-            body: formData
-        });
-        if (!res.ok) throw new Error("فشل إنشاء الطلب");
+        let res;
+        if (currentEditingPurchaseRequestId) {
+            res = await authFetch(`${PURCHASE_REQUESTS_URL}/${currentEditingPurchaseRequestId}/details`, {
+                method: 'PUT',
+                body: formData
+            });
+        } else {
+            res = await authFetch(`${PURCHASE_REQUESTS_URL}/`, {
+                method: 'POST',
+                body: formData
+            });
+        }
+        
+        if (!res.ok) throw new Error("فشل الحفظ");
         closePurchaseRequestModal();
-        loadPurchaseRequests();
-        showToast("تم إرسال طلب الشراء", "bg-emerald-500", "✓");
+        await loadPurchaseRequests();
+        
+        if (currentEditingPurchaseRequestId && !document.getElementById('purchaseRequestDetailView').classList.contains('hidden')) {
+            openPurchaseRequestDetails(currentEditingPurchaseRequestId);
+        }
+        
+        showToast("تم الحفظ بنجاح", "bg-emerald-500", "✓");
     } catch (err) {
         showToast(err.message, "bg-rose-500", "✗");
     }
@@ -2851,6 +2882,7 @@ function renderPurchaseRequestDetails(r) {
     } else if (r.status === 'Active') {
         actionsContainer.innerHTML += `<button onclick="openMarkPurchasedModal(${r.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">إتمام عملية الشراء</button>`;
     }
+    actionsContainer.innerHTML += `<button onclick="openPurchaseRequestModal(${r.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">تعديل</button>`;
     actionsContainer.innerHTML += `<button onclick="deletePurchaseRequestDetails(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">حذف</button>`;
 
     const imagesContainer = document.getElementById('prdImagesContainer');
