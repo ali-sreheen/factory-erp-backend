@@ -35,11 +35,13 @@ def calculate_sheets(project_details):
             qty = 1
 
         for _ in range(qty):
-            # Rec 1, 2, 3 (1.5mm)
+            # Rec 1, 2 (vertical posts) and Rec 3 (horizontal head) (1.5mm)
             w1_2_3 = depth + 16.1
-            l1_2_3 = height
-            if w1_2_3 > 0 and l1_2_3 > 0:
-                rects_1_5.extend([(w1_2_3, l1_2_3), (w1_2_3, l1_2_3), (w1_2_3, l1_2_3)])
+            if w1_2_3 > 0:
+                if height > 0:
+                    rects_1_5.extend([(w1_2_3, height), (w1_2_3, height)])
+                if width > 0:
+                    rects_1_5.append((w1_2_3, width))
 
             # Rec 4, 5 (1.2mm)
             l4_5 = height - architrave - 1
