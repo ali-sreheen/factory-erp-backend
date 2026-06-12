@@ -2645,10 +2645,13 @@ async function deleteSupplier(id) {
 }
 
 // --- Purchase Requests Logic ---
+let globalPurchaseRequests = [];
+
 async function loadPurchaseRequests() {
     try {
         const response = await authFetch(`${PURCHASE_REQUESTS_URL}/`);
         const requests = await response.json();
+        globalPurchaseRequests = requests;
         const tbody = document.getElementById('purchaseRequestsTableBody');
         tbody.innerHTML = '';
         if (requests.length === 0) {
