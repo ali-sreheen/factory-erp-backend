@@ -386,6 +386,8 @@ async function showDepartmentsView() {
     currentDepartment = '';
     currentSubcategory = '';
     
+    document.getElementById('moduleSelectorView').classList.add('hidden');
+    document.getElementById('projectsView').classList.add('hidden');
     departmentsView.classList.remove('hidden');
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');

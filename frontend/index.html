@@ -695,10 +695,15 @@
             </div>
 
             <!-- ================= DEPARTMENTS VIEW ================= -->
-            <div id="departmentsView" class="hidden space-y-8 animate-fade-in">
-                <div class="text-center max-w-xl mx-auto py-4">
-                    <h2 class="text-3xl font-extrabold text-slate-900 mb-2">أقسام المستودع الرئيسية</h2>
-                    <p class="text-slate-500 text-sm">يرجى اختيار القسم الذي ترغب في تصفح بنوده أو إدارتها.</p>
+            <div id="departmentsView" class="hidden space-y-6 animate-fade-in">
+                <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
+                    <button onclick="showModuleSelectorView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="عودة للقائمة الرئيسية">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-slate-900">أقسام المستودع الرئيسية</h2>
+                        <p class="text-slate-500 text-sm mt-0.5">يرجى اختيار القسم الذي ترغب في تصفح بنوده أو إدارتها.</p>
+                    </div>
                 </div>
                 
                 <div id="departmentsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -1339,6 +1344,6 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=39"></script>
+    <script src="script.js?v=40"></script>
 </body>
 </html>
