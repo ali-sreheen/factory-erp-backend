@@ -490,7 +490,7 @@ async function enterDepartment(deptName) {
     currentDepartment = deptName;
     currentSubcategory = '';
     
-    currentDeptTitle.textContent = deptName;\n
+    currentDeptTitle.textContent = deptName;
     if (localStorage.getItem('username') === 'admin') {
         const btn = document.getElementById('btnManageSubDepts');
         if(btn) btn.classList.remove('hidden');
