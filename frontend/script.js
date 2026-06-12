@@ -3152,12 +3152,19 @@ window.updateMoveItemSubcategories = function(defaultSub = null) {
 
 document.getElementById('moveItemForm').onsubmit = async (e) => {
     e.preventDefault();
-    if (!currentMovingItemId) return;
+    showToast('جار معالجة النقل...', 'bg-blue-500', 'ℹ');
+    if (!currentMovingItemId) {
+        showToast('خطأ: لم يتم تحديد البند', 'bg-rose-500', '✖');
+        return;
+    }
     
     const newCategory = document.getElementById('moveItemCategory').value;
     const newSubcategory = document.getElementById('moveItemSubcategory').value;
     
-    if(!newCategory) return;
+    if(!newCategory) {
+        showToast('الرجاء اختيار القسم الجديد', 'bg-rose-500', '✖');
+        return;
+    }
     
     try {
         const response = await authFetch(`${API_URL}/${currentMovingItemId}/move`, {
