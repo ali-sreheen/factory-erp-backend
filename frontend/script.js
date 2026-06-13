@@ -923,7 +923,7 @@ function renderItemsGrid() {
         }
         
         const imageHTML = item.image_url 
-            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-contain p-2">`
+            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-contain p-1">`
             : ''; 
             
         const skuHTML = item.sku 
@@ -954,7 +954,7 @@ function renderItemsGrid() {
         card.innerHTML = `
             <div>
                 <!-- Item Image -->
-                <div class="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                <div class="h-44 w-full bg-slate-100 relative overflow-hidden border-b border-slate-100 flex items-center justify-center">
                     ${skuHTML}
                     ${dragHandleHTML}
                     ${imageHTML}
