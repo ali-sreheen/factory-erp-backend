@@ -2532,8 +2532,8 @@ function downloadEngineeringCSV() {
     };
 
     const headers = [
-        "الاسم", "العرض", "الارتفاع", "العمق", "الاتجاه", "المقطع", "الزرفيل", 
-        "القشاطة", "الكشفة", "الكشفة2", "تحت البلاط", "مقاومة الحريق"
+        "Name", "width", "Hight", "Depth", "Direction", "Profile", "Lock set", 
+        "Drop Seal", "Over Lap", "Over lap2", "Under flow", "FR"
     ];
     
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
@@ -2574,7 +2574,10 @@ window.deleteProjectWithConfirmation = async function(projectId) {
                 const response = await authFetch(`${PROJECTS_URL}/${projectId}`, {
                     method: 'DELETE'
                 });
-                if (!response.ok) throw new Error('فشل حذف المشروع');
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.detail || 'فشل حذف المشروع');
+                }
                 showToast('تم حذف المشروع بنجاح', 'bg-emerald-500', '✓');
                 showProjectsView(); // Go back to projects list
             } catch (e) {
