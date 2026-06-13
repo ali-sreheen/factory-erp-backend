@@ -334,10 +334,16 @@ def update_project(db: Session, project_id: int, project_update: schemas.Project
 def delete_project(db: Session, project_id: int):
     db_project = get_project_by_id(db, project_id)
     if db_project:
+        # Delete related reservations to release items/reservations
+        db.query(models.Reservation).filter(models.Reservation.project_id == project_id).delete()
+        # Set project_id to None in transactions to keep historical records of inventory movement
+        db.query(models.Transaction).filter(models.Transaction.project_id == project_id).update({models.Transaction.project_id: None})
+        
         db.delete(db_project)
         db.commit()
         return True
     return False
+
 
 # --- Project Details ---
 def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectDetailCreate):
