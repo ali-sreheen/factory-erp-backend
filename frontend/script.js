@@ -667,8 +667,17 @@ async function showAdminView() {
     const _prdView = document.getElementById('purchaseRequestDetailView');
     if(_prdView) _prdView.classList.add('hidden');
 
+    const pView = document.getElementById('projectsView');
+    if(pView) pView.classList.add('hidden');
+    const pwView = document.getElementById('projectWizardView');
+    if(pwView) pwView.classList.add('hidden');
+    const pdView = document.getElementById('projectDetailView');
+    if(pdView) pdView.classList.add('hidden');
+
     userMenuDropdown.classList.add('hidden'); // Close dropdown
     
+    const msView = document.getElementById('moduleSelectorView');
+    if(msView) msView.classList.add('hidden');
     departmentsView.classList.add('hidden');
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');
