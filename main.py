@@ -958,7 +958,24 @@ def reserve_check(
     if category not in ["sheets", "accessories"]:
         raise HTTPException(status_code=400, detail="Invalid category. Must be 'sheets' or 'accessories'")
         
-    return perform_reserve_check(db, project, category)
+    # Check if already reserved
+    category_map = {
+        "sheets": "ألواح صاج",
+        "accessories": "إكسسوارات"
+    }
+    db_category = category_map.get(category)
+    already_reserved = False
+    if db_category:
+        existing_res = db.query(models.Reservation).join(models.Item).filter(
+            models.Reservation.project_id == project_id,
+            models.Item.category == db_category
+        ).first()
+        if existing_res:
+            already_reserved = True
+            
+    res_data = perform_reserve_check(db, project, category)
+    res_data["already_reserved"] = already_reserved
+    return res_data
 
 @app.post("/api/projects/{project_id}/reserve-commit")
 def reserve_commit(
@@ -979,6 +996,20 @@ def reserve_commit(
     if category not in ["sheets", "accessories"]:
         raise HTTPException(status_code=400, detail="Invalid category")
         
+    # Check if already reserved
+    category_map = {
+        "sheets": "ألواح صاج",
+        "accessories": "إكسسوارات"
+    }
+    db_category = category_map.get(category)
+    if db_category:
+        existing_res = db.query(models.Reservation).join(models.Item).filter(
+            models.Reservation.project_id == project_id,
+            models.Item.category == db_category
+        ).first()
+        if existing_res:
+            raise HTTPException(status_code=400, detail=f"لقد تم حجز {db_category} لهذا المشروع بالفعل")
+            
     check_res = perform_reserve_check(db, project, category)
     
     reserved_items = []

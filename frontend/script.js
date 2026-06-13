@@ -3824,6 +3824,10 @@ window.currentReservationCheckedData = null;
 
 window.closeReservationWarningModal = function() {
     document.getElementById('reservationWarningModal').classList.add('hidden');
+    const cancelBtn = document.querySelector('#reservationWarningModal button[onclick="closeReservationWarningModal()"]');
+    if (cancelBtn) {
+        cancelBtn.textContent = 'إلغاء';
+    }
 };
 
 window.reserveProjectSheets = function() {
@@ -3847,6 +3851,11 @@ async function startReservation(category) {
         const data = await response.json();
         window.currentReservationCheckedData = data;
         
+        if (data.already_reserved) {
+            showAlreadyReservedWarning(category);
+            return;
+        }
+        
         if (data.has_issues) {
             // Display warning modal
             showReservationWarning(data.items);
@@ -3862,9 +3871,58 @@ async function startReservation(category) {
     }
 }
 
+function showAlreadyReservedWarning(category) {
+    const tbody = document.getElementById('resWarningTableBody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="py-8 text-center text-rose-600 font-bold text-base">
+                لقد تم حجز ${category === 'sheets' ? 'ألواح الصاج' : 'الأكسسوارات'} المطلوبة لهذا المشروع مسبقاً!
+                <br>
+                <span class="text-sm text-slate-500 font-normal mt-2 block">
+                    لتجنب تكرار الحجز وتضارب الكميات في المخازن، لا يمكن إجراء الحجز أكثر من مرة لنفس المشروع.
+                </span>
+            </td>
+        </tr>
+    `;
+    
+    // Hide standard description paragraph
+    const warningDesc = document.querySelector('#reservationWarningModal p');
+    if (warningDesc) {
+        warningDesc.classList.add('hidden');
+    }
+    
+    // Hide reservation actions
+    document.getElementById('btnResCreatePurchase').classList.add('hidden');
+    document.getElementById('btnResSkip').classList.add('hidden');
+    
+    // Change cancel button text to 'موافق' (OK)
+    const cancelBtn = document.querySelector('#reservationWarningModal button[onclick="closeReservationWarningModal()"]');
+    if (cancelBtn) {
+        cancelBtn.textContent = 'موافق';
+    }
+    
+    document.getElementById('reservationWarningModal').classList.remove('hidden');
+}
+
 function showReservationWarning(items) {
     const tbody = document.getElementById('resWarningTableBody');
     tbody.innerHTML = '';
+    
+    // Make sure warning text description is restored
+    const warningDesc = document.querySelector('#reservationWarningModal p');
+    if (warningDesc) {
+        warningDesc.classList.remove('hidden');
+    }
+    
+    // Restore buttons
+    document.getElementById('btnResCreatePurchase').classList.remove('hidden');
+    document.getElementById('btnResSkip').classList.remove('hidden');
+    
+    // Restore cancel button text
+    const cancelBtn = document.querySelector('#reservationWarningModal button[onclick="closeReservationWarningModal()"]');
+    if (cancelBtn) {
+        cancelBtn.textContent = 'إلغاء';
+    }
     
     items.forEach(item => {
         let statusText = '';
