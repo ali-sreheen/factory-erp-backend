@@ -923,7 +923,7 @@ function renderItemsGrid() {
         }
         
         const imageHTML = item.image_url 
-            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-cover">`
+            ? `<img src="${API_HOST}${item.image_url}" alt="${item.name}" class="w-full h-full object-contain p-2">`
             : ''; 
             
         const skuHTML = item.sku 
