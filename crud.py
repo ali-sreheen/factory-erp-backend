@@ -478,3 +478,50 @@ def seed_default_project_options(db: Session):
         for hinge in hinges:
             db.add(models.ProjectOption(option_type="hinge", name=hinge))
         db.commit()
+
+def get_sheet_sizes(db: Session, thickness: float = None):
+    query = db.query(models.SheetSize)
+    if thickness is not None:
+        query = query.filter(models.SheetSize.thickness == thickness)
+    return query.order_by(models.SheetSize.thickness.asc(), models.SheetSize.width.asc()).all()
+
+def create_sheet_size(db: Session, sheet_size: schemas.SheetSizeCreate):
+    db_size = models.SheetSize(**sheet_size.model_dump())
+    db.add(db_size)
+    db.commit()
+    db.refresh(db_size)
+    return db_size
+
+def update_sheet_size(db: Session, sheet_size_id: int, thickness: float, width: float, height: float, sku: str = None):
+    db_size = db.query(models.SheetSize).filter(models.SheetSize.id == sheet_size_id).first()
+    if db_size:
+        db_size.thickness = thickness
+        db_size.width = width
+        db_size.height = height
+        db_size.sku = sku if sku else None
+        db.commit()
+        db.refresh(db_size)
+        return db_size
+    return None
+
+def delete_sheet_size(db: Session, sheet_size_id: int):
+    db_size = db.query(models.SheetSize).filter(models.SheetSize.id == sheet_size_id).first()
+    if db_size:
+        db.delete(db_size)
+        db.commit()
+        return True
+    return False
+
+def seed_default_sheet_sizes(db: Session):
+    if not db.query(models.SheetSize).first():
+        defaults = [
+            (1.5, 100.0, 230.0),
+            (1.5, 125.0, 230.0),
+            (1.5, 125.0, 250.0),
+            (1.2, 100.0, 230.0),
+            (1.2, 125.0, 230.0),
+            (1.2, 125.0, 250.0),
+        ]
+        for thickness, width, height in defaults:
+            db.add(models.SheetSize(thickness=thickness, width=width, height=height))
+        db.commit()

@@ -357,3 +357,18 @@ class ProjectOptionResponse(ProjectOptionBase):
 
     class Config:
         from_attributes = True
+
+class SheetSizeBase(BaseModel):
+    thickness: float
+    width: float
+    height: float
+    sku: Optional[str] = None
+
+class SheetSizeCreate(SheetSizeBase):
+    pass
+
+class SheetSizeResponse(SheetSizeBase):
+    id: int
+
+    class Config:
+        from_attributes = True

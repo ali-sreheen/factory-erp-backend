@@ -1,5 +1,6 @@
 import re
 from rectpack import newPacker, PackingMode, PackingBin, SORT_AREA
+import models
 
 def parse_dimension(dim_str):
     if not dim_str:
@@ -10,7 +11,7 @@ def parse_dimension(dim_str):
         return float(match.group())
     return 0.0
 
-def calculate_sheets(project_details):
+def calculate_sheets(db, project_details):
     """
     Calculate the sheet metal requirements based on project details (doors).
     """
@@ -27,6 +28,11 @@ def calculate_sheets(project_details):
         if architrave == 0.0:
             architrave = 4.0
 
+        arch2_raw = detail.get('architrave_2')
+        architrave_2 = parse_dimension(arch2_raw)
+        if architrave_2 == 0.0:
+            architrave_2 = architrave + 2.2
+
         if height == 0 or width == 0:
             continue
 
@@ -40,7 +46,8 @@ def calculate_sheets(project_details):
 
         for _ in range(qty):
             # Rec 1, 2 (vertical posts) and Rec 3 (horizontal head) (1.5mm)
-            w_halaq = depth + 12.1 + architrave
+            # w_halaq is now depth + architrave + architrave_2 + 5.9
+            w_halaq = depth + architrave + architrave_2 + 5.9
             if w_halaq > 0:
                 if height > 0:
                     rects_1_5.extend([(w_halaq, height), (w_halaq, height)])
@@ -57,7 +64,21 @@ def calculate_sheets(project_details):
                 if w5 > 0:
                     rects_1_2.append((w5, l4_5))
 
-    def pack_rectangles(rectangles):
+    # Load sizes from DB
+    db_sizes_1_5 = db.query(models.SheetSize).filter(models.SheetSize.thickness == 1.5).all()
+    db_sizes_1_2 = db.query(models.SheetSize).filter(models.SheetSize.thickness == 1.2).all()
+    
+    # Convert to list of tuples (width, height)
+    sizes_1_5 = [(s.width, s.height) for s in db_sizes_1_5]
+    sizes_1_2 = [(s.width, s.height) for s in db_sizes_1_2]
+    
+    # Fallback to default if empty
+    if not sizes_1_5:
+        sizes_1_5 = [(100.0, 230.0), (125.0, 230.0), (125.0, 250.0)]
+    if not sizes_1_2:
+        sizes_1_2 = [(100.0, 230.0), (125.0, 230.0), (125.0, 250.0)]
+
+    def pack_rectangles(rectangles, bin_sizes):
         if not rectangles:
             return {}
 
@@ -66,8 +87,6 @@ def calculate_sheets(project_details):
         for w, h in rectangles:
             packer_base.add_rect(w, h)
         
-        # Available bin sizes: 100*230 (2.3m²), 125*230 (2.875m²), 125*250 (3.125m²)
-        bin_sizes = [(100, 230), (125, 230), (125, 250)]
         for bin_w, bin_h in bin_sizes:
             for _ in range(500):
                 packer_base.add_bin(bin_w, bin_h)
@@ -78,38 +97,47 @@ def calculate_sheets(project_details):
         if K == 0:
             return {}
             
-        # 2. Generate combinations of (c1, c2, c3) where c1 + c2 + c3 <= K
-        # Cap K to 40 to prevent any performance hit
+        # 2. Generate combinations of count list
+        # Cap max_k to keep combinations below 15,000
         max_k = min(K, 40)
+        import math
+        n_vars = len(bin_sizes)
+        while max_k > 1:
+            num_combos = math.comb(max_k + n_vars, n_vars) - 1
+            if num_combos <= 15000:
+                break
+            max_k -= 1
+
+        def get_combinations(n, target_sum):
+            if n == 1:
+                yield (target_sum,)
+                return
+            for i in range(target_sum + 1):
+                for sub in get_combinations(n - 1, target_sum - i):
+                    yield (i,) + sub
+
         combos = []
-        for c1 in range(max_k + 1):
-            for c2 in range(max_k + 1 - c1):
-                for c3 in range(max_k + 1 - c1 - c2):
-                    if c1 + c2 + c3 == 0:
-                        continue
-                    # Calculate total sheet area in cm²
-                    area = c1 * 23000 + c2 * 28750 + c3 * 31250
-                    combos.append((area, c1, c2, c3))
+        for s in range(1, max_k + 1):
+            for c in get_combinations(n_vars, s):
+                total_area = sum(count * bin_sizes[i][0] * bin_sizes[i][1] for i, count in enumerate(c))
+                combos.append((total_area, c))
                     
-        # Sort combinations by total area ascending
         combos.sort(key=lambda x: x[0])
         
         # 3. Find the first mixture that successfully packs all rectangles
         optimal_mix = None
-        for area, c1, c2, c3 in combos:
+        for area, c in combos:
             packer = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
             for w, h in rectangles:
                 packer.add_rect(w, h)
-            for _ in range(c1):
-                packer.add_bin(100, 230)
-            for _ in range(c2):
-                packer.add_bin(125, 230)
-            for _ in range(c3):
-                packer.add_bin(125, 250)
+            for i, count in enumerate(c):
+                bin_w, bin_h = bin_sizes[i]
+                for _ in range(count):
+                    packer.add_bin(bin_w, bin_h)
             packer.pack()
             
             if sum(len(b) for b in packer) == len(rectangles):
-                optimal_mix = {"100*230": c1, "125*230": c2, "125*250": c3}
+                optimal_mix = {f"{int(bin_sizes[i][0])}*{int(bin_sizes[i][1])}": count for i, count in enumerate(c) if count > 0}
                 break
                 
         # Fallback to baseline if optimal search failed
@@ -120,10 +148,10 @@ def calculate_sheets(project_details):
                 used_bins[size_str] = used_bins.get(size_str, 0) + 1
             return used_bins
             
-        return {k: v for k, v in optimal_mix.items() if v > 0}
+        return optimal_mix
 
-    bins_1_5 = pack_rectangles(rects_1_5)
-    bins_1_2 = pack_rectangles(rects_1_2)
+    bins_1_5 = pack_rectangles(rects_1_5, sizes_1_5)
+    bins_1_2 = pack_rectangles(rects_1_2, sizes_1_2)
 
     return {
         "thickness_1_5": [{"size": k, "count": v} for k, v in bins_1_5.items()],

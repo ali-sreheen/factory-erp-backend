@@ -11,6 +11,7 @@ let allItems = [];
 let isReorderMode = false;
 let dbLockOptions = [];
 let dbHingeOptions = [];
+let dbSheetSizes = [];
 let activeLogItemId = null; // Track current item open in log modal
 
 // DOM Views
@@ -130,6 +131,17 @@ async function loadProjectOptions() {
     }
 }
 
+async function loadSheetSizes() {
+    try {
+        const response = await authFetch(`${API_HOST}/api/sheet-sizes/`);
+        if (response.ok) {
+            dbSheetSizes = await response.json();
+        }
+    } catch (e) {
+        console.error('Failed to load sheet sizes', e);
+    }
+}
+
 function showAppView(username) {
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
@@ -148,6 +160,7 @@ function showAppView(username) {
     }
     
     loadProjectOptions();
+    loadSheetSizes();
     showModuleSelectorView();
 }
 
@@ -664,6 +677,8 @@ async function showAdminView() {
     await loadUsers();
     await loadProjectOptions();
     renderProjectOptionsAdmin();
+    await loadSheetSizes();
+    renderSheetSizesAdmin();
 }
 
 async function loadUsers() {
@@ -2058,7 +2073,7 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
@@ -2640,8 +2655,8 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.architrave || ''}"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.architrave_2 || ''}"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this)"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
@@ -3606,5 +3621,147 @@ window.renderProjectOptionsAdmin = function() {
             </td>
         `;
         hingeTbody.appendChild(tr);
+    });
+};
+
+// ------------- AUTOMATIC ARCHITRAVE 2 CALCULATION -------------
+
+window.autoCalculateArchitrave2 = function(input) {
+    const tr = input.closest('tr');
+    if (!tr) return;
+    const architrave2Input = tr.querySelector('input[placeholder="الكشفة 2"]') || tr.querySelectorAll('input')[7];
+    if (!architrave2Input) return;
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) {
+        architrave2Input.value = (val + 2.2).toFixed(1);
+    } else {
+        architrave2Input.value = '';
+    }
+};
+
+// ------------- SHEET SIZES MANAGEMENT -------------
+
+window.openAddSheetSizeModal = function() {
+    document.getElementById('sheetSizeModalTitle').textContent = 'إضافة قياس لوح صاج جديد';
+    document.getElementById('sheetSizeFormId').value = '';
+    document.getElementById('sheetSizeFormThickness').value = '1.5';
+    document.getElementById('sheetSizeFormWidth').value = '';
+    document.getElementById('sheetSizeFormHeight').value = '';
+    document.getElementById('sheetSizeFormSku').value = '';
+    document.getElementById('sheetSizeModal').classList.remove('hidden');
+};
+
+window.openEditSheetSizeModal = function(id) {
+    const opt = dbSheetSizes.find(o => o.id === id);
+    if (!opt) return;
+
+    document.getElementById('sheetSizeModalTitle').textContent = 'تعديل قياس لوح صاج';
+    document.getElementById('sheetSizeFormId').value = id;
+    document.getElementById('sheetSizeFormThickness').value = opt.thickness;
+    document.getElementById('sheetSizeFormWidth').value = opt.width;
+    document.getElementById('sheetSizeFormHeight').value = opt.height;
+    document.getElementById('sheetSizeFormSku').value = opt.sku || '';
+    document.getElementById('sheetSizeModal').classList.remove('hidden');
+};
+
+window.closeSheetSizeModal = function() {
+    document.getElementById('sheetSizeModal').classList.add('hidden');
+};
+
+window.handleSheetSizeFormSubmit = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('sheetSizeFormId').value;
+    const thickness = parseFloat(document.getElementById('sheetSizeFormThickness').value);
+    const width = parseFloat(document.getElementById('sheetSizeFormWidth').value);
+    const height = parseFloat(document.getElementById('sheetSizeFormHeight').value);
+    const sku = document.getElementById('sheetSizeFormSku').value.trim();
+
+    if (isNaN(thickness) || isNaN(width) || isNaN(height)) {
+        showToast('الرجاء إدخال قيم صالحة', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const payload = {
+        thickness: thickness,
+        width: width,
+        height: height,
+        sku: sku || null
+    };
+
+    let url = `${API_HOST}/api/sheet-sizes/`;
+    let method = 'POST';
+
+    if (id) {
+        url = `${API_HOST}/api/sheet-sizes/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        showToast('جار الحفظ...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            showToast('تم حفظ القياس بنجاح', 'bg-emerald-500', '✓');
+            closeSheetSizeModal();
+            await loadSheetSizes();
+            renderSheetSizesAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحفظ', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء حفظ القياس', 'bg-rose-500', '✗');
+    }
+};
+
+window.deleteSheetSize = async function(id) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا القياس؟')) return;
+
+    try {
+        showToast('جار الحذف...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(`${API_HOST}/api/sheet-sizes/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('تم حذف القياس بنجاح', 'bg-emerald-500', '✓');
+            await loadSheetSizes();
+            renderSheetSizesAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+    }
+};
+
+window.renderSheetSizesAdmin = function() {
+    const tbody = document.getElementById('sheetSizesTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    dbSheetSizes.forEach(opt => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-slate-50 transition';
+        tr.innerHTML = `
+            <td class="p-4 font-semibold text-slate-800">${opt.thickness} مم</td>
+            <td class="p-4 text-slate-800">${opt.width} سم</td>
+            <td class="p-4 text-slate-800">${opt.height} سم</td>
+            <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+            <td class="p-4 text-center">
+                <div class="flex justify-center gap-2">
+                    <button onclick="openEditSheetSizeModal(${opt.id})" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                    <button onclick="deleteSheetSize(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
 };

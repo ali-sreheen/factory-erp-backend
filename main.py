@@ -156,11 +156,12 @@ def seed_default_departments(db: Session):
                 db.add(db_sub)
             db.commit()
 
-# Seed default departments and project options when starting up
+# Seed default departments, project options, and sheet sizes when starting up
 db_session = SessionLocal()
 try:
     seed_default_departments(db_session)
     crud.seed_default_project_options(db_session)
+    crud.seed_default_sheet_sizes(db_session)
 finally:
     db_session.close()
 
@@ -742,10 +743,11 @@ def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), curre
             "width": detail.width,
             "depth": detail.depth,
             "architrave": detail.architrave,
+            "architrave_2": detail.architrave_2,
             "quantity": detail.quantity
         })
         
-    return calculate_sheets(details_dicts)
+    return calculate_sheets(db, details_dicts)
 
 @app.post("/api/projects/{project_id}/details/", response_model=schemas.ProjectDetailResponse)
 def create_project_detail(project_id: int, detail: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
@@ -866,6 +868,60 @@ def delete_project_option(
     success = crud.delete_project_option(db, option_id)
     if not success:
         raise HTTPException(status_code=404, detail="Option not found")
+    return {"message": "Deleted successfully"}
+
+# --- SHEET SIZES ENDPOINTS ---
+
+@app.get("/api/sheet-sizes/", response_model=List[schemas.SheetSizeResponse])
+def read_sheet_sizes(
+    thickness: Optional[float] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.get_sheet_sizes(db, thickness)
+
+@app.post("/api/sheet-sizes/", response_model=schemas.SheetSizeResponse)
+def create_sheet_size(
+    sheet_size: schemas.SheetSizeCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بإضافة قياسات ألواح")
+    return crud.create_sheet_size(db, sheet_size)
+
+@app.put("/api/sheet-sizes/{sheet_size_id}", response_model=schemas.SheetSizeResponse)
+def update_sheet_size(
+    sheet_size_id: int,
+    sheet_size_update: schemas.SheetSizeCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل قياسات ألواح")
+    db_size = crud.update_sheet_size(
+        db,
+        sheet_size_id,
+        sheet_size_update.thickness,
+        sheet_size_update.width,
+        sheet_size_update.height,
+        sheet_size_update.sku
+    )
+    if not db_size:
+        raise HTTPException(status_code=404, detail="Sheet size not found")
+    return db_size
+
+@app.delete("/api/sheet-sizes/{sheet_size_id}")
+def delete_sheet_size(
+    sheet_size_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بحذف قياسات ألواح")
+    success = crud.delete_sheet_size(db, sheet_size_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Sheet size not found")
     return {"message": "Deleted successfully"}
 
 # ==========================================

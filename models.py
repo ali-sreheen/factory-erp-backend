@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -207,4 +207,13 @@ class ProjectOption(Base):
     id = Column(Integer, primary_key=True, index=True)
     option_type = Column(String, index=True, nullable=False) # "lock" or "hinge"
     name = Column(String, index=True, nullable=False)
+    sku = Column(String(7), nullable=True)
+
+class SheetSize(Base):
+    __tablename__ = "sheet_sizes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    thickness = Column(Float, index=True, nullable=False) # 1.5 or 1.2
+    width = Column(Float, nullable=False)
+    height = Column(Float, nullable=False)
     sku = Column(String(7), nullable=True)
