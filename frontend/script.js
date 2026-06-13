@@ -96,12 +96,28 @@ function toggleUserMenu() {
 
 // ----------------- AUTHENTICATION FLOW -----------------
 
-function checkAuthStatus() {
+window.currentUser = null;
+
+async function fetchCurrentUser() {
+    try {
+        const response = await authFetch(`${API_HOST}/api/users/me`);
+        if (response.ok) {
+            window.currentUser = await response.json();
+        } else {
+            window.currentUser = null;
+        }
+    } catch (e) {
+        console.error('Failed to fetch current user', e);
+        window.currentUser = null;
+    }
+}
+
+async function checkAuthStatus() {
     const token = localStorage.getItem('token');
     const username = localStorage.getItem('username');
     
     if (token && username) {
-        showAppView(username);
+        await showAppView(username);
     } else {
         showAuthView();
     }
@@ -142,7 +158,7 @@ async function loadSheetSizes() {
     }
 }
 
-function showAppView(username) {
+async function showAppView(username) {
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -159,6 +175,7 @@ function showAppView(username) {
         adminPanelLink.classList.add('hidden');
     }
     
+    await fetchCurrentUser();
     loadProjectOptions();
     loadSheetSizes();
     showModuleSelectorView();
@@ -2347,6 +2364,8 @@ async function viewProjectDetails(id) {
         document.getElementById('sheetLoading').classList.add('hidden');
         document.getElementById('sheetResults').classList.add('hidden');
         document.getElementById('sheetEmpty').classList.add('hidden');
+        const resActions = document.getElementById('projectReservationActions');
+        if (resActions) resActions.classList.add('hidden');
         
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
@@ -3379,6 +3398,8 @@ async function calculateSheetRequirements() {
         
         if (t1_5.length === 0 && t1_2.length === 0) {
             document.getElementById('sheetEmpty').classList.remove('hidden');
+            const resActions = document.getElementById('projectReservationActions');
+            if (resActions) resActions.classList.add('hidden');
         } else {
             t1_5.forEach(item => {
                 tbody1_5.innerHTML += `<tr><td class="py-2 px-3">${item.size}</td><td class="py-2 px-3 font-bold text-indigo-700">${item.count} ألواح</td></tr>`;
@@ -3391,6 +3412,20 @@ async function calculateSheetRequirements() {
             if (t1_2.length === 0) tbody1_2.innerHTML = '<tr><td colspan="2" class="py-2 text-slate-400">لا يوجد بيانات</td></tr>';
             
             document.getElementById('sheetResults').classList.remove('hidden');
+            
+            // Show reservation actions if authorized
+            const resActions = document.getElementById('projectReservationActions');
+            if (resActions) {
+                const isManager = window.currentUser && (
+                    window.currentUser.username === 'admin' ||
+                    window.currentUser.id === window.currentProjectData.executive_manager_id
+                );
+                if (isManager) {
+                    resActions.classList.remove('hidden');
+                } else {
+                    resActions.classList.add('hidden');
+                }
+            }
         }
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
@@ -3782,3 +3817,169 @@ window.renderSheetSizesAdmin = function() {
         tbody.appendChild(tr);
     });
 };
+
+// ------------- RESERVATION SYSTEM -------------
+window.currentReservationCategory = null;
+window.currentReservationCheckedData = null;
+
+window.closeReservationWarningModal = function() {
+    document.getElementById('reservationWarningModal').classList.add('hidden');
+};
+
+window.reserveProjectSheets = function() {
+    startReservation('sheets');
+};
+
+window.reserveProjectAccessories = function() {
+    startReservation('accessories');
+};
+
+async function startReservation(category) {
+    if (!window.currentProjectData) return;
+    window.currentReservationCategory = category;
+    
+    showToast('جاري التحقق من المخزون...', 'bg-indigo-500', 'ℹ');
+    
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/reserve-check?category=${category}`);
+        if (!response.ok) throw new Error('فشل التحقق من المواد');
+        
+        const data = await response.json();
+        window.currentReservationCheckedData = data;
+        
+        if (data.has_issues) {
+            // Display warning modal
+            showReservationWarning(data.items);
+        } else {
+            // Confirm direct reservation
+            const text = category === 'sheets' ? 'حجز الصاج' : 'حجز الاكسسوارات';
+            if (confirm(`هل أنت متأكد من حجز كامل كميات ${text} المطلوبة للمشروع من المستودع؟`)) {
+                await commitReservation();
+            }
+        }
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+}
+
+function showReservationWarning(items) {
+    const tbody = document.getElementById('resWarningTableBody');
+    tbody.innerHTML = '';
+    
+    items.forEach(item => {
+        let statusText = '';
+        let statusClass = '';
+        
+        if (item.status === 'OK') {
+            statusText = 'متوفر بالكامل';
+            statusClass = 'text-emerald-600 font-semibold';
+        } else if (item.status === 'NO_SKU') {
+            statusText = 'رمز SKU غير مربوط بالبند';
+            statusClass = 'text-rose-600 font-semibold';
+        } else if (item.status === 'NO_ITEM') {
+            statusText = 'البند غير موجود بالمخزن';
+            statusClass = 'text-rose-600 font-semibold';
+        } else if (item.status === 'INSUFFICIENT_STOCK') {
+            statusText = 'عجز في الكمية';
+            statusClass = 'text-amber-600 font-semibold';
+        }
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="py-2 px-3">${item.name}</td>
+            <td class="py-2 px-3">${item.sku || '-'}</td>
+            <td class="py-2 px-3 font-bold">${item.required}</td>
+            <td class="py-2 px-3">${item.available}</td>
+            <td class="py-2 px-3 text-rose-600 font-bold">${item.missing}</td>
+            <td class="py-2 px-3 ${statusClass}">${statusText}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    // Wire up buttons
+    document.getElementById('btnResSkip').onclick = async () => {
+        await commitReservation();
+        closeReservationWarningModal();
+    };
+    
+    document.getElementById('btnResCreatePurchase').onclick = async () => {
+        // 1. Commit available reservations first
+        await commitReservation(true);
+        closeReservationWarningModal();
+        
+        // 2. Open prefilled Purchase Request Modal
+        openPrefilledPurchaseRequest();
+    };
+    
+    document.getElementById('reservationWarningModal').classList.remove('hidden');
+}
+
+async function commitReservation(silent = false) {
+    if (!window.currentProjectData || !window.currentReservationCategory) return;
+    
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/reserve-commit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: window.currentReservationCategory })
+        });
+        
+        if (!response.ok) throw new Error('فشل تسجيل الحجز');
+        
+        const result = await response.json();
+        
+        if (!silent) {
+            let msg = `تم الحجز بنجاح: تم حجز ${result.reserved.length} بند.`;
+            if (result.skipped.length > 0) {
+                msg += ` وتخطي ${result.skipped.length} بند ناقص.`;
+            }
+            showToast(msg, 'bg-emerald-500', '✓');
+        }
+    } catch (e) {
+        if (!silent) {
+            showToast(e.message, 'bg-rose-500', '✗');
+        }
+    }
+}
+
+function openPrefilledPurchaseRequest() {
+    if (!window.currentProjectData || !window.currentReservationCheckedData) return;
+    
+    const project = window.currentProjectData;
+    const checked = window.currentReservationCheckedData;
+    
+    // Find missing items
+    const missingItems = checked.items.filter(i => i.status !== 'OK');
+    if (missingItems.length === 0) return;
+    
+    // Prepare title
+    const title = `طلب شراء مواد ناقصة لمشروع ${project.name} - ${project.project_number}`;
+    
+    // Prepare description
+    let description = `المواد الناقصة للمشروع:\n`;
+    description += `اسم المشروع: ${project.name}\n`;
+    description += `رقم المشروع: ${project.project_number}\n\n`;
+    description += `البنود المطلوب تأمينها:\n`;
+    
+    missingItems.forEach((item, idx) => {
+        description += `${idx + 1}. ${item.name} (SKU: ${item.sku || 'غير معرف'}) - الكمية الناقصة: ${item.missing}\n`;
+    });
+    
+    // Prefill quantity
+    let quantity = '';
+    if (missingItems.length === 1) {
+        quantity = missingItems[0].missing;
+    }
+    
+    // Open modal with prefilled data
+    document.getElementById('purchaseRequestForm').reset();
+    currentEditingPurchaseRequestId = null;
+    document.getElementById('prCustomIdContainer').classList.remove('hidden');
+    document.getElementById('purchaseRequestModalTitle').innerText = 'إنشاء طلب شراء جديد (من حجز المواد)';
+    
+    document.getElementById('prTitle').value = title;
+    document.getElementById('prQuantity').value = quantity;
+    document.getElementById('prDescription').value = description;
+    
+    document.getElementById('purchaseRequestModal').classList.remove('hidden');
+}

@@ -691,6 +691,20 @@
                                     </table>
                                 </div>
                             </div>
+                            <div id="projectReservationActions" class="hidden mt-6 pt-4 border-t border-slate-100 flex gap-4">
+                                <button onclick="reserveProjectSheets()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    <span>حجز الصاج</span>
+                                </button>
+                                <button onclick="reserveProjectAccessories()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
+                                    <span>حجز الاكسسوارات</span>
+                                </button>
+                            </div>
                             <div id="sheetEmpty" class="hidden py-4 text-center text-slate-500">
                                 لا توجد حسابات متاحة.
                             </div>
@@ -1383,6 +1397,57 @@
         </div>
     </div>
 
+    <!-- Reservation Warning Modal -->
+    <div id="reservationWarningModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl transform transition-all">
+            <div class="bg-amber-600 text-white p-5 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-xl font-bold">تنبيه: نواقص في المستودع أو بنود غير معرفة</h3>
+                <button onclick="closeReservationWarningModal()" class="text-amber-100 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-right">
+                <p class="text-slate-600 text-sm">
+                    توجد بعض البنود المطلوبة للمشروع والتي لا يمكن حجزها بالكامل من المستودع بسبب نقص الكمية أو لعدم ربط رمز SKU بالبند. يرجى اختيار الإجراء المناسب:
+                </p>
+                <div class="border rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                    <table class="w-full text-sm text-center">
+                        <thead class="bg-slate-50 text-slate-600 border-b">
+                            <tr>
+                                <th class="py-2 px-3 font-bold">البند المطلوب</th>
+                                <th class="py-2 px-3 font-bold">رمز SKU</th>
+                                <th class="py-2 px-3 font-bold">المطلوب</th>
+                                <th class="py-2 px-3 font-bold">المتوفر</th>
+                                <th class="py-2 px-3 font-bold">النقص</th>
+                                <th class="py-2 px-3 font-bold">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resWarningTableBody" class="divide-y divide-slate-100">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex gap-4 pt-4 border-t border-slate-100">
+                    <button id="btnResCreatePurchase" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>إنشاء طلب شراء بالنواقص</span>
+                    </button>
+                    <button id="btnResSkip" class="flex-1 bg-slate-600 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                        <span>تخطي البنود الناقصة</span>
+                    </button>
+                    <button type="button" onclick="closeReservationWarningModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Purchase Request Modal -->
     <div id="purchaseRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg transform transition-all">
@@ -1467,7 +1532,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=58"></script>
+    <script src="script.js?v=59"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

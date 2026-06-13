@@ -657,7 +657,12 @@ def delete_subdepartment(subdepartment_id: int, db: Session = Depends(get_db), c
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/users/me", response_model=schemas.UserResponse)
+def get_current_user_profile(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
 @app.get("/api/users/me/permissions", response_model=List[schemas.UserPermissionResponse])
+
 def get_my_permissions(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.username == "admin":
         # Admin has permission to everything. We can just return a wildcard or the frontend knows admin is admin
@@ -748,6 +753,278 @@ def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), curre
         })
         
     return calculate_sheets(db, details_dicts)
+
+def perform_reserve_check(db: Session, project: models.Project, category: str):
+    items_list = []
+    
+    if category == "sheets":
+        # 1. Calculate sheet requirements using calculate_sheets
+        details_dicts = []
+        for detail in project.details:
+            details_dicts.append({
+                "height": detail.height,
+                "width": detail.width,
+                "depth": detail.depth,
+                "architrave": detail.architrave,
+                "architrave_2": detail.architrave_2,
+                "quantity": detail.quantity
+            })
+        calc_res = calculate_sheets(db, details_dicts)
+        
+        # 2. Map calculated sheets to items in the database by SKU
+        for thickness_key, thickness_val in [("thickness_1_5", 1.5), ("thickness_1_2", 1.2)]:
+            for req in calc_res.get(thickness_key, []):
+                size_str = req["size"]
+                count = req["count"]
+                
+                # Parse size
+                try:
+                    parts = size_str.split("*")
+                    w_val = float(parts[0])
+                    h_val = float(parts[1])
+                except (ValueError, IndexError):
+                    w_val = 0.0
+                    h_val = 0.0
+                
+                # Match to SheetSize
+                sheet_size = db.query(models.SheetSize).filter(
+                    models.SheetSize.thickness == thickness_val,
+                    func.abs(models.SheetSize.width - w_val) < 0.1,
+                    func.abs(models.SheetSize.height - h_val) < 0.1
+                ).first()
+                
+                sku = sheet_size.sku if sheet_size else None
+                item = None
+                if sku:
+                    item = db.query(models.Item).filter(models.Item.sku == sku).first()
+                
+                # Determine status
+                name = f"لوح صاج {thickness_val} ملم ({size_str})"
+                if not sku:
+                    status = "NO_SKU"
+                elif not item:
+                    status = "NO_ITEM"
+                else:
+                    # Calculate available quantity: total physical stock minus all reservations
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available = max(0, item.quantity - reserved_sum)
+                    if available >= count:
+                        status = "OK"
+                    else:
+                        status = "INSUFFICIENT_STOCK"
+                
+                available_qty = 0
+                if item:
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available_qty = max(0, item.quantity - reserved_sum)
+                
+                missing = max(0, count - available_qty)
+                
+                items_list.append({
+                    "name": name,
+                    "sku": sku,
+                    "required": count,
+                    "available": available_qty,
+                    "status": status,
+                    "missing": missing,
+                    "item_id": item.id if item else None,
+                    "category": "sheets",
+                    "thickness": thickness_val,
+                    "size": size_str
+                })
+                
+    elif category == "accessories":
+        # 1. Aggregate locks and hinges required across all details
+        lock_reqs = {}
+        hinge_reqs = {}
+        for detail in project.details:
+            qty = detail.quantity if detail.quantity is not None else 1
+            if detail.lock_type:
+                lock_reqs[detail.lock_type] = lock_reqs.get(detail.lock_type, 0) + qty
+            if detail.hinges:
+                hinge_reqs[detail.hinges] = hinge_reqs.get(detail.hinges, 0) + qty
+                
+        # 2. Map and check locks
+        for lock_name, count in lock_reqs.items():
+            option = db.query(models.ProjectOption).filter(
+                models.ProjectOption.option_type == "lock",
+                models.ProjectOption.name == lock_name
+            ).first()
+            
+            sku = option.sku if option else None
+            item = None
+            if sku:
+                item = db.query(models.Item).filter(models.Item.sku == sku).first()
+                
+            # Determine status
+            name = f"قفل: {lock_name}"
+            if not sku:
+                status = "NO_SKU"
+            elif not item:
+                status = "NO_ITEM"
+            else:
+                reserved_sum = sum(res.quantity for res in item.reservations)
+                available = max(0, item.quantity - reserved_sum)
+                if available >= count:
+                    status = "OK"
+                else:
+                    status = "INSUFFICIENT_STOCK"
+                    
+            available_qty = 0
+            if item:
+                reserved_sum = sum(res.quantity for res in item.reservations)
+                available_qty = max(0, item.quantity - reserved_sum)
+                
+            missing = max(0, count - available_qty)
+            
+            items_list.append({
+                "name": name,
+                "sku": sku,
+                "required": count,
+                "available": available_qty,
+                "status": status,
+                "missing": missing,
+                "item_id": item.id if item else None,
+                "category": "accessories",
+                "option_type": "lock"
+            })
+            
+        # 3. Map and check hinges
+        for hinge_name, count in hinge_reqs.items():
+            option = db.query(models.ProjectOption).filter(
+                models.ProjectOption.option_type == "hinge",
+                models.ProjectOption.name == hinge_name
+            ).first()
+            
+            sku = option.sku if option else None
+            item = None
+            if sku:
+                item = db.query(models.Item).filter(models.Item.sku == sku).first()
+                
+            # Determine status
+            name = f"فصالة: {hinge_name}"
+            if not sku:
+                status = "NO_SKU"
+            elif not item:
+                status = "NO_ITEM"
+            else:
+                reserved_sum = sum(res.quantity for res in item.reservations)
+                available = max(0, item.quantity - reserved_sum)
+                if available >= count:
+                    status = "OK"
+                else:
+                    status = "INSUFFICIENT_STOCK"
+                    
+            available_qty = 0
+            if item:
+                reserved_sum = sum(res.quantity for res in item.reservations)
+                available_qty = max(0, item.quantity - reserved_sum)
+                
+            missing = max(0, count - available_qty)
+            
+            items_list.append({
+                "name": name,
+                "sku": sku,
+                "required": count,
+                "available": available_qty,
+                "status": status,
+                "missing": missing,
+                "item_id": item.id if item else None,
+                "category": "accessories",
+                "option_type": "hinge"
+            })
+            
+    has_issues = any(i["status"] in ["NO_SKU", "NO_ITEM", "INSUFFICIENT_STOCK"] for i in items_list)
+    return {
+        "items": items_list,
+        "has_issues": has_issues
+    }
+
+@app.get("/api/projects/{project_id}/reserve-check")
+def reserve_check(
+    project_id: int,
+    category: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    project = crud.get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check permission (Only admin or executive manager can perform this)
+    if current_user.username != "admin" and current_user.id != project.executive_manager_id:
+        raise HTTPException(status_code=403, detail="Not authorized to perform reservations for this project")
+        
+    if category not in ["sheets", "accessories"]:
+        raise HTTPException(status_code=400, detail="Invalid category. Must be 'sheets' or 'accessories'")
+        
+    return perform_reserve_check(db, project, category)
+
+@app.post("/api/projects/{project_id}/reserve-commit")
+def reserve_commit(
+    project_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    project = crud.get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    # Check permission
+    if current_user.username != "admin" and current_user.id != project.executive_manager_id:
+        raise HTTPException(status_code=403, detail="Not authorized to commit reservations for this project")
+        
+    category = payload.get("category")
+    if category not in ["sheets", "accessories"]:
+        raise HTTPException(status_code=400, detail="Invalid category")
+        
+    check_res = perform_reserve_check(db, project, category)
+    
+    reserved_items = []
+    skipped_items = []
+    
+    for req in check_res["items"]:
+        status = req["status"]
+        sku = req["sku"]
+        required = req["required"]
+        available = req["available"]
+        item_id = req["item_id"]
+        name = req["name"]
+        
+        if status == "OK" and item_id:
+            # Reserve full required qty
+            crud.create_reservation(
+                db=db,
+                item_id=item_id,
+                quantity=required,
+                project_name=f"{project.name} - {project.project_number}",
+                user_id=current_user.id,
+                project_id=project.id
+            )
+            reserved_items.append({"name": name, "sku": sku, "quantity": required})
+        elif status == "INSUFFICIENT_STOCK" and item_id and available > 0:
+            # Reserve whatever is available
+            crud.create_reservation(
+                db=db,
+                item_id=item_id,
+                quantity=available,
+                project_name=f"{project.name} - {project.project_number}",
+                user_id=current_user.id,
+                project_id=project.id
+            )
+            reserved_items.append({"name": name, "sku": sku, "quantity": available})
+            skipped_items.append({"name": name, "sku": sku, "quantity": required - available, "reason": "INSUFFICIENT_STOCK"})
+        else:
+            # Cannot reserve anything
+            reason = status
+            skipped_items.append({"name": name, "sku": sku, "quantity": required, "reason": reason})
+            
+    return {
+        "reserved": reserved_items,
+        "skipped": skipped_items
+    }
+
 
 @app.post("/api/projects/{project_id}/details/", response_model=schemas.ProjectDetailResponse)
 def create_project_detail(project_id: int, detail: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
