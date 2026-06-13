@@ -93,7 +93,7 @@ def check_and_update_db_schema(db_engine):
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
-        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction"]:
+        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:

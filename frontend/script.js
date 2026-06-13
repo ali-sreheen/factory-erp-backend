@@ -1995,6 +1995,17 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                <option value="" disabled selected>فصالات</option>
+                <option value="Devon">Devon</option>
+                <option value="vantage">vantage</option>
+                <option value="euroart">euroart</option>
+                <option value="consort">consort</option>
+                <option value="conseld">conseld</option>
+                <option value="spical">spical</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
                 <option value="" disabled selected>المقطع</option>
                 <option value="single rabbit with rubber">single rabbit with rubber</option>
                 <option value="double rabbit with rubber">double rabbit with rubber</option>
@@ -2107,7 +2118,7 @@ async function viewProjectDetails(id) {
     if (projectDetailView) projectDetailView.classList.remove('hidden');
     
     document.getElementById('pdSubtitle').textContent = "جاري التحميل...";
-    document.getElementById('pdEngineeringTableBody').innerHTML = '<tr><td colspan="14" class="p-4 text-center">جاري التحميل...</td></tr>';
+    document.getElementById('pdEngineeringTableBody').innerHTML = '<tr><td colspan="16" class="p-4 text-center">جاري التحميل...</td></tr>';
     
     try {
         const response = await authFetch(`${PROJECTS_URL}/${id}`);
@@ -2228,6 +2239,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.depth || '-'}</td>
                     <td class="p-3">${d.direction || '-'}</td>
                     <td class="p-3">${d.lock_type || '-'}</td>
+                    <td class="p-3">${d.hinges || '-'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
                     <td class="p-3 text-center">${d.fire_resistance || '-'}</td>
@@ -2240,7 +2252,7 @@ async function viewProjectDetails(id) {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="15" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -2338,14 +2350,15 @@ if (projectWizardForm) {
                     depth: inputs[4].value || null,
                     direction: inputs[5].value || null,
                     lock_type: inputs[6].value || null,
-                    profile_type: inputs[7].value || null,
-                    door_type: inputs[8].value || null,
-                    fire_resistance: inputs[9].checked ? 'نعم' : 'لا',
-                    architrave: inputs[10].value || null,
-                    architrave_2: inputs[11].value || null,
-                    under_tile: inputs[12].value || null,
-                    window_details: inputs[13].value || null,
-                    notes: inputs[14].value || null
+                    hinges: inputs[7].value || null,
+                    profile_type: inputs[8].value || null,
+                    door_type: inputs[9].value || null,
+                    fire_resistance: inputs[10].checked ? 'نعم' : 'لا',
+                    architrave: inputs[11].value || null,
+                    architrave_2: inputs[12].value || null,
+                    under_tile: inputs[13].value || null,
+                    window_details: inputs[14].value || null,
+                    notes: inputs[15].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2405,7 +2418,7 @@ function downloadEngineeringCSV() {
     
     const headers = [
         "رقم الباب", "العدد", "العرض", "الطول", "العمق", "الاتجاه", "الزرفيل", 
-        "المقطع", "نوع الباب", "حريق", "الكشفة", "الكشفة 2", 
+        "فصالات", "المقطع", "نوع الباب", "حريق", "الكشفة", "الكشفة 2", 
         "تحت البلاط", "تفصيل الشباك", "ملاحظات"
     ];
     
@@ -2421,6 +2434,7 @@ function downloadEngineeringCSV() {
             d.depth || '',
             d.direction || '',
             d.lock_type || '',
+            d.hinges || '',
             d.profile_type || '',
             d.door_type || '',
             d.fire_resistance || '',
@@ -2541,6 +2555,17 @@ window.editProject = async function(projectId) {
                             <option value="euroart roller" ${d.lock_type === 'euroart roller' ? 'selected' : ''}>euroart roller</option>
                             <option value="consort mortice lock" ${d.lock_type === 'consort mortice lock' ? 'selected' : ''}>consort mortice lock</option>
                             <option value="special" ${d.lock_type === 'special' ? 'selected' : ''}>special</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.hinges ? 'selected' : ''}>فصالات</option>
+                            <option value="Devon" ${d.hinges === 'Devon' ? 'selected' : ''}>Devon</option>
+                            <option value="vantage" ${d.hinges === 'vantage' ? 'selected' : ''}>vantage</option>
+                            <option value="euroart" ${d.hinges === 'euroart' ? 'selected' : ''}>euroart</option>
+                            <option value="consort" ${d.hinges === 'consort' ? 'selected' : ''}>consort</option>
+                            <option value="conseld" ${d.hinges === 'conseld' ? 'selected' : ''}>conseld</option>
+                            <option value="spical" ${d.hinges === 'spical' ? 'selected' : ''}>spical</option>
                         </select>
                     </td>
                     <td class="p-2">

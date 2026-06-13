@@ -210,6 +210,7 @@ class ProjectDetailBase(BaseModel):
     depth: Optional[str] = None
     direction: Optional[str] = None
     lock_type: Optional[str] = None
+    hinges: Optional[str] = None
     profile_type: Optional[str] = None
     door_type: Optional[str] = None
     fire_resistance: Optional[str] = None

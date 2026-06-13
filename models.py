@@ -136,6 +136,7 @@ class ProjectDetail(Base):
     depth = Column(String, nullable=True)
     direction = Column(String, nullable=True)
     lock_type = Column(String, nullable=True)
+    hinges = Column(String, nullable=True)
     profile_type = Column(String, nullable=True)
     door_type = Column(String, nullable=True)
     fire_resistance = Column(String, nullable=True)
