@@ -156,10 +156,11 @@ def seed_default_departments(db: Session):
                 db.add(db_sub)
             db.commit()
 
-# Seed default departments when starting up
+# Seed default departments and project options when starting up
 db_session = SessionLocal()
 try:
     seed_default_departments(db_session)
+    crud.seed_default_project_options(db_session)
 finally:
     db_session.close()
 
@@ -818,6 +819,53 @@ def delete_project_task(task_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=403, detail="Not authorized to delete tasks")
         
     success = crud.delete_project_task(db, task_id)
+    return {"message": "Deleted successfully"}
+
+# --- PROJECT OPTIONS ENDPOINTS ---
+
+@app.get("/api/project-options/", response_model=List[schemas.ProjectOptionResponse])
+def read_project_options(
+    option_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.get_project_options(db, option_type)
+
+@app.post("/api/project-options/", response_model=schemas.ProjectOptionResponse)
+def create_project_option(
+    option: schemas.ProjectOptionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بإضافة خيارات")
+    return crud.create_project_option(db, option)
+
+@app.put("/api/project-options/{option_id}", response_model=schemas.ProjectOptionResponse)
+def update_project_option(
+    option_id: int,
+    option_update: schemas.ProjectOptionCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل خيارات")
+    db_opt = crud.update_project_option(db, option_id, option_update.name, option_update.sku)
+    if not db_opt:
+        raise HTTPException(status_code=404, detail="Option not found")
+    return db_opt
+
+@app.delete("/api/project-options/{option_id}")
+def delete_project_option(
+    option_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بحذف خيارات")
+    success = crud.delete_project_option(db, option_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Option not found")
     return {"message": "Deleted successfully"}
 
 # ==========================================

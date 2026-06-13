@@ -200,3 +200,11 @@ class Supplier(Base):
     supply_type = Column(String, nullable=True)
     location = Column(String, nullable=True)
     maps_url = Column(String, nullable=True)
+
+class ProjectOption(Base):
+    __tablename__ = "project_options"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    option_type = Column(String, index=True, nullable=False) # "lock" or "hinge"
+    name = Column(String, index=True, nullable=False)
+    sku = Column(String(7), nullable=True)

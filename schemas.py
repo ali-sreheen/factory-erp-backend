@@ -343,3 +343,17 @@ class PurchaseRequestResponse(PurchaseRequestBase):
 
     class Config:
         from_attributes = True
+
+class ProjectOptionBase(BaseModel):
+    option_type: Literal["lock", "hinge"]
+    name: str
+    sku: Optional[str] = None
+
+class ProjectOptionCreate(ProjectOptionBase):
+    pass
+
+class ProjectOptionResponse(ProjectOptionBase):
+    id: int
+
+    class Config:
+        from_attributes = True

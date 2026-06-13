@@ -435,3 +435,46 @@ def move_item(db: Session, item_id: int, new_category: str, new_subcategory: str
     db.commit()
     db.refresh(item)
     return item
+
+def get_project_options(db: Session, option_type: str = None):
+    query = db.query(models.ProjectOption)
+    if option_type:
+        query = query.filter(models.ProjectOption.option_type == option_type)
+    return query.order_by(models.ProjectOption.name.asc()).all()
+
+def create_project_option(db: Session, option: schemas.ProjectOptionCreate):
+    db_opt = models.ProjectOption(**option.model_dump())
+    db.add(db_opt)
+    db.commit()
+    db.refresh(db_opt)
+    return db_opt
+
+def update_project_option(db: Session, option_id: int, name: str, sku: str = None):
+    db_opt = db.query(models.ProjectOption).filter(models.ProjectOption.id == option_id).first()
+    if db_opt:
+        db_opt.name = name
+        db_opt.sku = sku if sku else None
+        db.commit()
+        db.refresh(db_opt)
+        return db_opt
+    return None
+
+def delete_project_option(db: Session, option_id: int):
+    db_opt = db.query(models.ProjectOption).filter(models.ProjectOption.id == option_id).first()
+    if db_opt:
+        db.delete(db_opt)
+        db.commit()
+        return True
+    return False
+
+def seed_default_project_options(db: Session):
+    if not db.query(models.ProjectOption).first():
+        # Seed locks
+        locks = ["devon mortice lock", "euroart mortice lock", "euroart roller", "consort mortice lock", "special"]
+        for lock in locks:
+            db.add(models.ProjectOption(option_type="lock", name=lock))
+        # Seed hinges
+        hinges = ["Devon", "vantage", "euroart", "consort", "conseld", "spical"]
+        for hinge in hinges:
+            db.add(models.ProjectOption(option_type="hinge", name=hinge))
+        db.commit()

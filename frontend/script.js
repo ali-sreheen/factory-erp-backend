@@ -9,6 +9,8 @@ let currentDepartment = '';
 let currentSubcategory = '';
 let allItems = [];
 let isReorderMode = false;
+let dbLockOptions = [];
+let dbHingeOptions = [];
 let activeLogItemId = null; // Track current item open in log modal
 
 // DOM Views
@@ -115,6 +117,19 @@ function showAuthView() {
     toggleAuthMode('login');
 }
 
+async function loadProjectOptions() {
+    try {
+        const response = await authFetch(`${API_HOST}/api/project-options/`);
+        if (response.ok) {
+            const allOpts = await response.json();
+            dbLockOptions = allOpts.filter(o => o.option_type === 'lock');
+            dbHingeOptions = allOpts.filter(o => o.option_type === 'hinge');
+        }
+    } catch (e) {
+        console.error('Failed to load project options', e);
+    }
+}
+
 function showAppView(username) {
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
@@ -132,6 +147,7 @@ function showAppView(username) {
         adminPanelLink.classList.add('hidden');
     }
     
+    loadProjectOptions();
     showModuleSelectorView();
 }
 
@@ -646,6 +662,8 @@ async function showAdminView() {
     adminView.classList.remove('hidden');
     
     await loadUsers();
+    await loadProjectOptions();
+    renderProjectOptionsAdmin();
 }
 
 async function loadUsers() {
@@ -1970,6 +1988,36 @@ function addProjectDetailRow() {
     const tbody = document.getElementById('projectDetailsTableBody');
     const tr = document.createElement('tr');
     tr.className = 'border-b hover:bg-slate-50';
+    
+    let lockSelectOpts = `<option value="" disabled selected>الزرفيل</option>`;
+    dbLockOptions.forEach(opt => {
+        lockSelectOpts += `<option value="${opt.name}">${opt.name}</option>`;
+    });
+    if (dbLockOptions.length === 0) {
+        lockSelectOpts += `
+            <option value="devon mortice lock">devon mortice lock</option>
+            <option value="euroart mortice lock">euroart mortice lock</option>
+            <option value="euroart roller">euroart roller</option>
+            <option value="consort mortice lock">consort mortice lock</option>
+            <option value="special">special</option>
+        `;
+    }
+
+    let hingeSelectOpts = `<option value="" disabled selected>فصالات</option>`;
+    dbHingeOptions.forEach(opt => {
+        hingeSelectOpts += `<option value="${opt.name}">${opt.name}</option>`;
+    });
+    if (dbHingeOptions.length === 0) {
+        hingeSelectOpts += `
+            <option value="Devon">Devon</option>
+            <option value="vantage">vantage</option>
+            <option value="euroart">euroart</option>
+            <option value="consort">consort</option>
+            <option value="conseld">conseld</option>
+            <option value="spical">spical</option>
+        `;
+    }
+
     tr.innerHTML = `
         <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم"></td>
         <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
@@ -1985,23 +2033,12 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="" disabled selected>الزرفيل</option>
-                <option value="devon mortice lock">devon mortice lock</option>
-                <option value="euroart mortice lock">euroart mortice lock</option>
-                <option value="euroart roller">euroart roller</option>
-                <option value="consort mortice lock">consort mortice lock</option>
-                <option value="special">special</option>
+                ${lockSelectOpts}
             </select>
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="" disabled selected>فصالات</option>
-                <option value="Devon">Devon</option>
-                <option value="vantage">vantage</option>
-                <option value="euroart">euroart</option>
-                <option value="consort">consort</option>
-                <option value="conseld">conseld</option>
-                <option value="spical">spical</option>
+                ${hingeSelectOpts}
             </select>
         </td>
         <td class="p-2">
@@ -2532,6 +2569,35 @@ window.editProject = async function(projectId) {
         tbody.innerHTML = '';
         if (p.details && p.details.length > 0) {
             p.details.forEach(d => {
+                let lockSelectOpts = `<option value="" disabled ${!d.lock_type ? 'selected' : ''}>الزرفيل</option>`;
+                dbLockOptions.forEach(opt => {
+                    lockSelectOpts += `<option value="${opt.name}" ${d.lock_type === opt.name ? 'selected' : ''}>${opt.name}</option>`;
+                });
+                if (dbLockOptions.length === 0) {
+                    lockSelectOpts += `
+                        <option value="devon mortice lock" ${d.lock_type === 'devon mortice lock' ? 'selected' : ''}>devon mortice lock</option>
+                        <option value="euroart mortice lock" ${d.lock_type === 'euroart mortice lock' ? 'selected' : ''}>euroart mortice lock</option>
+                        <option value="euroart roller" ${d.lock_type === 'euroart roller' ? 'selected' : ''}>euroart roller</option>
+                        <option value="consort mortice lock" ${d.lock_type === 'consort mortice lock' ? 'selected' : ''}>consort mortice lock</option>
+                        <option value="special" ${d.lock_type === 'special' ? 'selected' : ''}>special</option>
+                    `;
+                }
+
+                let hingeSelectOpts = `<option value="" disabled ${!d.hinges ? 'selected' : ''}>فصالات</option>`;
+                dbHingeOptions.forEach(opt => {
+                    hingeSelectOpts += `<option value="${opt.name}" ${d.hinges === opt.name ? 'selected' : ''}>${opt.name}</option>`;
+                });
+                if (dbHingeOptions.length === 0) {
+                    hingeSelectOpts += `
+                        <option value="Devon" ${d.hinges === 'Devon' ? 'selected' : ''}>Devon</option>
+                        <option value="vantage" ${d.hinges === 'vantage' ? 'selected' : ''}>vantage</option>
+                        <option value="euroart" ${d.hinges === 'euroart' ? 'selected' : ''}>euroart</option>
+                        <option value="consort" ${d.hinges === 'consort' ? 'selected' : ''}>consort</option>
+                        <option value="conseld" ${d.hinges === 'conseld' ? 'selected' : ''}>conseld</option>
+                        <option value="spical" ${d.hinges === 'spical' ? 'selected' : ''}>spical</option>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition';
                 tr.innerHTML = `
@@ -2549,23 +2615,12 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="" disabled ${!d.lock_type ? 'selected' : ''}>الزرفيل</option>
-                            <option value="devon mortice lock" ${d.lock_type === 'devon mortice lock' ? 'selected' : ''}>devon mortice lock</option>
-                            <option value="euroart mortice lock" ${d.lock_type === 'euroart mortice lock' ? 'selected' : ''}>euroart mortice lock</option>
-                            <option value="euroart roller" ${d.lock_type === 'euroart roller' ? 'selected' : ''}>euroart roller</option>
-                            <option value="consort mortice lock" ${d.lock_type === 'consort mortice lock' ? 'selected' : ''}>consort mortice lock</option>
-                            <option value="special" ${d.lock_type === 'special' ? 'selected' : ''}>special</option>
+                            ${lockSelectOpts}
                         </select>
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="" disabled ${!d.hinges ? 'selected' : ''}>فصالات</option>
-                            <option value="Devon" ${d.hinges === 'Devon' ? 'selected' : ''}>Devon</option>
-                            <option value="vantage" ${d.hinges === 'vantage' ? 'selected' : ''}>vantage</option>
-                            <option value="euroart" ${d.hinges === 'euroart' ? 'selected' : ''}>euroart</option>
-                            <option value="consort" ${d.hinges === 'consort' ? 'selected' : ''}>consort</option>
-                            <option value="conseld" ${d.hinges === 'conseld' ? 'selected' : ''}>conseld</option>
-                            <option value="spical" ${d.hinges === 'spical' ? 'selected' : ''}>spical</option>
+                            ${hingeSelectOpts}
                         </select>
                     </td>
                     <td class="p-2">
@@ -3412,4 +3467,144 @@ window.submitMoveItemForm = async (e) => {
     } catch (e) {
         showToast('حدث خطأ أثناء نقل البند', 'bg-rose-500', '✗');
     }
+};
+
+// ------------- PROJECT OPTIONS MANAGEMENT -------------
+
+window.openAddOptionModal = function(type) {
+    document.getElementById('optionModalTitle').textContent = type === 'lock' ? 'إضافة خيار زرفيل جديد' : 'إضافة خيار فصالة جديد';
+    document.getElementById('optFormId').value = '';
+    document.getElementById('optFormType').value = type;
+    document.getElementById('optFormName').value = '';
+    document.getElementById('optFormSku').value = '';
+    document.getElementById('projectOptionModal').classList.remove('hidden');
+};
+
+window.openEditOptionModal = function(id, type) {
+    const list = type === 'lock' ? dbLockOptions : dbHingeOptions;
+    const opt = list.find(o => o.id === id);
+    if (!opt) return;
+
+    document.getElementById('optionModalTitle').textContent = type === 'lock' ? 'تعديل خيار الزرفيل' : 'تعديل خيار الفصالة';
+    document.getElementById('optFormId').value = id;
+    document.getElementById('optFormType').value = type;
+    document.getElementById('optFormName').value = opt.name;
+    document.getElementById('optFormSku').value = opt.sku || '';
+    document.getElementById('projectOptionModal').classList.remove('hidden');
+};
+
+window.closeProjectOptionModal = function() {
+    document.getElementById('projectOptionModal').classList.add('hidden');
+};
+
+window.handleOptionFormSubmit = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('optFormId').value;
+    const type = document.getElementById('optFormType').value;
+    const name = document.getElementById('optFormName').value.trim();
+    const sku = document.getElementById('optFormSku').value.trim();
+
+    if (!name) {
+        showToast('الرجاء إدخال الاسم', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const payload = {
+        option_type: type,
+        name: name,
+        sku: sku || null
+    };
+
+    let url = `${API_HOST}/api/project-options/`;
+    let method = 'POST';
+
+    if (id) {
+        url = `${API_HOST}/api/project-options/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        showToast('جار الحفظ...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            showToast('تم حفظ الخيار بنجاح', 'bg-emerald-500', '✓');
+            closeProjectOptionModal();
+            await loadProjectOptions();
+            renderProjectOptionsAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحفظ', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء حفظ الخيار', 'bg-rose-500', '✗');
+    }
+};
+
+window.deleteProjectOption = async function(id) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الخيار؟')) return;
+
+    try {
+        showToast('جار الحذف...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(`${API_HOST}/api/project-options/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('تم حذف الخيار بنجاح', 'bg-emerald-500', '✓');
+            await loadProjectOptions();
+            renderProjectOptionsAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+    }
+};
+
+window.renderProjectOptionsAdmin = function() {
+    const lockTbody = document.getElementById('lockOptionsTableBody');
+    const hingeTbody = document.getElementById('hingeOptionsTableBody');
+    if (!lockTbody || !hingeTbody) return;
+
+    lockTbody.innerHTML = '';
+    dbLockOptions.forEach(opt => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-slate-50 transition';
+        tr.innerHTML = `
+            <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+            <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+            <td class="p-4 text-center">
+                <div class="flex justify-center gap-2">
+                    <button onclick="openEditOptionModal(${opt.id}, 'lock')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                    <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                </div>
+            </td>
+        `;
+        lockTbody.appendChild(tr);
+    });
+
+    hingeTbody.innerHTML = '';
+    dbHingeOptions.forEach(opt => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-slate-50 transition';
+        tr.innerHTML = `
+            <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+            <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+            <td class="p-4 text-center">
+                <div class="flex justify-center gap-2">
+                    <button onclick="openEditOptionModal(${opt.id}, 'hinge')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                    <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                </div>
+            </td>
+        `;
+        hingeTbody.appendChild(tr);
+    });
 };
