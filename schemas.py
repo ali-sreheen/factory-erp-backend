@@ -213,6 +213,7 @@ class ProjectDetailBase(BaseModel):
     hinges: Optional[str] = None
     profile_type: Optional[str] = None
     door_type: Optional[str] = None
+    qashatah: Optional[str] = "NO"
     fire_resistance: Optional[str] = None
     window_details: Optional[str] = None
     architrave: Optional[str] = None

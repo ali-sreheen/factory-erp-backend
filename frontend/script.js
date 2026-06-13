@@ -2107,6 +2107,7 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
+        <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
@@ -2328,6 +2329,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.hinges || '-'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
+                    <td class="p-3 text-center">${d.qashatah === 'YES' ? 'نعم' : 'لا'}</td>
                     <td class="p-3 text-center">${d.fire_resistance || '-'}</td>
                     <td class="p-3">${d.architrave || '-'}</td>
                     <td class="p-3">${d.architrave_2 || '-'}</td>
@@ -2338,7 +2340,7 @@ async function viewProjectDetails(id) {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="16" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="17" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -2441,12 +2443,13 @@ if (projectWizardForm) {
                     hinges: inputs[7].value || null,
                     profile_type: inputs[8].value || null,
                     door_type: inputs[9].value || null,
-                    fire_resistance: inputs[10].checked ? 'نعم' : 'لا',
-                    architrave: inputs[11].value || null,
-                    architrave_2: inputs[12].value || null,
-                    under_tile: inputs[13].value || null,
-                    window_details: inputs[14].value || null,
-                    notes: inputs[15].value || null
+                    qashatah: inputs[10].checked ? 'YES' : 'NO',
+                    fire_resistance: inputs[11].checked ? 'نعم' : 'لا',
+                    architrave: inputs[12].value || null,
+                    architrave_2: inputs[13].value || null,
+                    under_tile: inputs[14].value || null,
+                    window_details: inputs[15].value || null,
+                    notes: inputs[16].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2505,9 +2508,8 @@ function downloadEngineeringCSV() {
     }
     
     const headers = [
-        "رقم الباب", "العدد", "العرض", "الطول", "العمق", "الاتجاه", "الزرفيل", 
-        "فصالات", "المقطع", "نوع الباب", "حريق", "الكشفة", "الكشفة 2", 
-        "تحت البلاط", "تفصيل الشباك", "ملاحظات"
+        "الاسم", "العرض", "الارتفاع", "العمق", "الاتجاه", "المقطع", "الزرفيل", 
+        "القشاطة", "الكشفة", "الكشفة2", "تحت البلاط", "مقاومة الحريق"
     ];
     
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
@@ -2516,21 +2518,17 @@ function downloadEngineeringCSV() {
     window.currentProjectData.details.forEach(d => {
         const row = [
             d.door_number || '',
-            d.quantity !== null && d.quantity !== undefined ? d.quantity : 1,
             d.width || '',
             d.height || '',
             d.depth || '',
             d.direction || '',
-            d.lock_type || '',
-            d.hinges || '',
             d.profile_type || '',
-            d.door_type || '',
-            d.fire_resistance || '',
+            d.lock_type || '',
+            d.qashatah || 'NO',
             d.architrave || '',
             d.architrave_2 || '',
             d.under_tile || '',
-            d.window_details || '',
-            (d.notes || '').replace(/,/g, "،").replace(/\n/g, " ")
+            d.fire_resistance || ''
         ];
         csvContent += row.join(",") + "\r\n";
     });
@@ -2690,6 +2688,7 @@ window.editProject = async function(projectId) {
                             <option value="double leaf" ${d.door_type === 'double leaf' ? 'selected' : ''}>double leaf</option>
                         </select>
                     </td>
+                    <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this)"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>

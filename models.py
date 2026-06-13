@@ -139,6 +139,7 @@ class ProjectDetail(Base):
     hinges = Column(String, nullable=True)
     profile_type = Column(String, nullable=True)
     door_type = Column(String, nullable=True)
+    qashatah = Column(String, default="NO", nullable=True)
     fire_resistance = Column(String, nullable=True)
     window_details = Column(String, nullable=True)
     architrave = Column(String, nullable=True)
