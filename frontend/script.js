@@ -2035,6 +2035,24 @@ let projectDetailsCount = 0;
 function addProjectDetailRow() {
     projectDetailsCount++;
     const tbody = document.getElementById('projectDetailsTableBody');
+    
+    let nextDoorNumber = 'A1';
+    const lastRow = tbody.querySelector('tr:last-child');
+    if (lastRow) {
+        const lastInput = lastRow.querySelector('td:first-child input');
+        if (lastInput && lastInput.value) {
+            const prevVal = lastInput.value.trim();
+            const match = prevVal.match(/^(.*?)(\d+)$/);
+            if (match) {
+                const prefix = match[1];
+                const num = parseInt(match[2], 10) + 1;
+                nextDoorNumber = prefix + num;
+            } else {
+                nextDoorNumber = prevVal + '1';
+            }
+        }
+    }
+
     const tr = document.createElement('tr');
     tr.className = 'border-b hover:bg-slate-50';
     
@@ -2068,7 +2086,7 @@ function addProjectDetailRow() {
     }
 
     tr.innerHTML = `
-        <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم"></td>
+        <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم" value="${nextDoorNumber}"></td>
         <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
@@ -2444,7 +2462,7 @@ if (projectWizardForm) {
                     profile_type: inputs[8].value || null,
                     door_type: inputs[9].value || null,
                     qashatah: inputs[10].checked ? 'YES' : 'NO',
-                    fire_resistance: inputs[11].checked ? 'نعم' : 'لا',
+                    fire_resistance: inputs[11].checked ? 'Yes' : 'No',
                     architrave: inputs[12].value || null,
                     architrave_2: inputs[13].value || null,
                     under_tile: inputs[14].value || null,
@@ -2517,7 +2535,7 @@ function downloadEngineeringCSV() {
     
     window.currentProjectData.details.forEach(d => {
         const row = [
-            d.door_number || '',
+            `${window.currentProjectData.project_number || ''} - ${d.door_number || ''}`,
             d.width || '',
             d.height || '',
             d.depth || '',
@@ -2689,7 +2707,7 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
-                    <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
+                    <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'Yes' || d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this)"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
