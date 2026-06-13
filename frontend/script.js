@@ -915,6 +915,7 @@ function renderItemsGrid() {
             card.className = 'bg-white rounded-2xl shadow-md border-2 border-amber-400/60 overflow-hidden flex flex-col justify-between hover:shadow-lg transition duration-200 cursor-move bg-amber-50/10 relative';
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragover', handleDragOver);
+            card.addEventListener('dragenter', handleDragEnter);
             card.addEventListener('drop', handleDrop);
             card.addEventListener('dragend', handleDragEnd);
         } else {
@@ -1046,6 +1047,12 @@ function handleDragOver(e) {
     }
     e.dataTransfer.dropEffect = 'move';
     return false;
+}
+
+function handleDragEnter(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
 }
 
 function handleDrop(e) {
@@ -1665,7 +1672,7 @@ async function cancelReservation(reservationId) {
 
 setInterval(() => {
     const token = localStorage.getItem('token');
-    // Poll only if logged in, in app view, not in admin panel, and no active dialog modals are open
+    // Poll only if logged in, in app view, not in admin panel, no active dialog modals are open, and not in reorder mode
     if (token && 
         !appContainer.classList.contains('hidden') && 
         adminView.classList.contains('hidden') &&
@@ -1674,6 +1681,7 @@ setInterval(() => {
         logModal.classList.contains('hidden') &&
         reservationModal.classList.contains('hidden') &&
         editUserModal.classList.contains('hidden') &&
+        !isReorderMode &&
         currentDepartment) {
         
         fetchDepartmentCounts();
