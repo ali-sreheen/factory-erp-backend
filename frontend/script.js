@@ -3830,6 +3830,10 @@ window.closeReservationWarningModal = function() {
     }
 };
 
+window.closeReservationConfirmModal = function() {
+    document.getElementById('reservationConfirmModal').classList.add('hidden');
+};
+
 window.reserveProjectSheets = function() {
     startReservation('sheets');
 };
@@ -3860,15 +3864,48 @@ async function startReservation(category) {
             // Display warning modal
             showReservationWarning(data.items);
         } else {
-            // Confirm direct reservation
-            const text = category === 'sheets' ? 'حجز الصاج' : 'حجز الاكسسوارات';
-            if (confirm(`هل أنت متأكد من حجز كامل كميات ${text} المطلوبة للمشروع من المستودع؟`)) {
-                await commitReservation();
-            }
+            // Confirm direct reservation via custom confirm modal
+            showReservationConfirm(category);
         }
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
     }
+}
+
+function showReservationConfirm(category) {
+    const text = category === 'sheets' ? 'حجز ألواح الصاج' : 'حجز الأكسسوارات';
+    
+    // Set text dynamically
+    document.getElementById('resConfirmTitle').textContent = `تأكيد ${text}`;
+    document.getElementById('resConfirmMessage').textContent = `هل أنت متأكد من حجز كامل كميات ${text} المطلوبة للمشروع من المستودع؟`;
+    
+    // Get header and confirm button elements to color them dynamically
+    const header = document.querySelector('#reservationConfirmModal .bg-emerald-600') || 
+                   document.querySelector('#reservationConfirmModal .bg-indigo-600');
+    const btn = document.getElementById('btnResConfirmYes');
+    
+    if (category === 'sheets') {
+        if (header) {
+            header.className = 'bg-emerald-600 text-white p-5 flex justify-between items-center rounded-t-2xl';
+        }
+        if (btn) {
+            btn.className = 'flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2';
+        }
+    } else {
+        if (header) {
+            header.className = 'bg-indigo-600 text-white p-5 flex justify-between items-center rounded-t-2xl';
+        }
+        if (btn) {
+            btn.className = 'flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2';
+        }
+    }
+    
+    btn.onclick = async () => {
+        closeReservationConfirmModal();
+        await commitReservation();
+    };
+    
+    document.getElementById('reservationConfirmModal').classList.remove('hidden');
 }
 
 function showAlreadyReservedWarning(category) {

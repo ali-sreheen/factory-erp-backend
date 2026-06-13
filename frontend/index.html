@@ -1448,6 +1448,37 @@
         </div>
     </div>
 
+    <!-- Reservation Confirm Modal -->
+    <div id="reservationConfirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all overflow-hidden">
+            <div class="bg-emerald-600 text-white p-5 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-xl font-bold" id="resConfirmTitle">تأكيد حجز المواد</h3>
+                <button onclick="closeReservationConfirmModal()" class="text-emerald-100 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-right">
+                <div class="flex items-center gap-3 text-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="font-bold text-slate-800 text-base" id="resConfirmMessage">هل أنت متأكد من إتمام عملية الحجز للمشروع؟</p>
+                </div>
+                <p class="text-slate-500 text-sm">
+                    سيقوم النظام بتسجيل هذا الحجز في المخزن وتقليل رصيد البند المتاح للمشاريع الأخرى. يرجى التأكيد للمتابعة.
+                </p>
+                <div class="flex gap-3 pt-2">
+                    <button id="btnResConfirmYes" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2">
+                        <span>تأكيد الحجز</span>
+                    </button>
+                    <button type="button" onclick="closeReservationConfirmModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Purchase Request Modal -->
     <div id="purchaseRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg transform transition-all">
@@ -1532,7 +1563,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=59"></script>
+    <script src="script.js?v=60"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
