@@ -2525,6 +2525,12 @@ function downloadEngineeringCSV() {
         return;
     }
     
+    const multiplyBy10 = (val) => {
+        if (val === null || val === undefined || val === '') return '';
+        const num = parseFloat(val);
+        return isNaN(num) ? val : num * 10;
+    };
+
     const headers = [
         "الاسم", "العرض", "الارتفاع", "العمق", "الاتجاه", "المقطع", "الزرفيل", 
         "القشاطة", "الكشفة", "الكشفة2", "تحت البلاط", "مقاومة الحريق"
@@ -2536,16 +2542,16 @@ function downloadEngineeringCSV() {
     window.currentProjectData.details.forEach(d => {
         const row = [
             `${window.currentProjectData.project_number || ''} - ${d.door_number || ''}`,
-            d.width || '',
-            d.height || '',
-            d.depth || '',
+            multiplyBy10(d.width),
+            multiplyBy10(d.height),
+            multiplyBy10(d.depth),
             d.direction || '',
             d.profile_type || '',
             d.lock_type || '',
             d.qashatah || 'NO',
-            d.architrave || '',
-            d.architrave_2 || '',
-            d.under_tile || '',
+            multiplyBy10(d.architrave),
+            multiplyBy10(d.architrave_2),
+            multiplyBy10(d.under_tile),
             d.fire_resistance || ''
         ];
         csvContent += row.join(",") + "\r\n";
