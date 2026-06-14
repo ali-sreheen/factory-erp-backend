@@ -11,7 +11,7 @@ def parse_dimension(dim_str):
         return float(match.group())
     return 0.0
 
-def calculate_sheets(db, project_details):
+def calculate_sheets(db, project_details, manufacturing_type: str = ""):
     """
     Calculate the sheet metal requirements based on project details (doors).
     """
@@ -22,6 +22,7 @@ def calculate_sheets(db, project_details):
         height = parse_dimension(detail.get('height', 0))
         width = parse_dimension(detail.get('width', 0))
         depth = parse_dimension(detail.get('depth', 0))
+        under_tile = parse_dimension(detail.get('under_tile', 0))
         
         arch_raw = detail.get('architrave')
         architrave = parse_dimension(arch_raw)
@@ -50,19 +51,20 @@ def calculate_sheets(db, project_details):
             w_halaq = depth + architrave + architrave_2 + 5.9
             if w_halaq > 0:
                 if height > 0:
-                    rects_1_5.extend([(w_halaq, height), (w_halaq, height)])
+                    rects_1_5.extend([(w_halaq, height + under_tile), (w_halaq, height + under_tile)])
                 if width > 0:
                     rects_1_5.append((w_halaq, width))
 
-            # Rec 4, 5 (1.2mm)
-            l4_5 = height - architrave - 1
-            w4 = width + 5.2
-            w5 = width - 6.1
-            if l4_5 > 0:
-                if w4 > 0:
-                    rects_1_2.append((w4, l4_5))
-                if w5 > 0:
-                    rects_1_2.append((w5, l4_5))
+            if manufacturing_type != "حلوق فقط":
+                # Rec 4, 5 (1.2mm)
+                l4_5 = height - architrave - 1
+                w4 = width + 5.2
+                w5 = width - 6.1
+                if l4_5 > 0:
+                    if w4 > 0:
+                        rects_1_2.append((w4, l4_5))
+                    if w5 > 0:
+                        rects_1_2.append((w5, l4_5))
 
     # Load sizes from DB
     db_sizes_1_5 = db.query(models.SheetSize).filter(models.SheetSize.thickness == 1.5).all()

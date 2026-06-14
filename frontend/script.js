@@ -3878,7 +3878,25 @@ window.reserveProjectSheets = function() {
 };
 
 window.reserveProjectAccessories = function() {
-    startReservation('accessories');
+    openAccessoryChoiceModal();
+};
+
+window.openAccessoryChoiceModal = function() {
+    document.getElementById('accessoryChoiceModal').classList.remove('hidden');
+};
+
+window.closeAccessoryChoiceModal = function() {
+    document.getElementById('accessoryChoiceModal').classList.add('hidden');
+};
+
+window.reserveProjectLocks = function() {
+    closeAccessoryChoiceModal();
+    startReservation('locks');
+};
+
+window.reserveProjectHinges = function() {
+    closeAccessoryChoiceModal();
+    startReservation('hinges');
 };
 
 async function startReservation(category) {
@@ -3912,7 +3930,10 @@ async function startReservation(category) {
 }
 
 function showReservationConfirm(category) {
-    const text = category === 'sheets' ? 'حجز ألواح الصاج' : 'حجز الأكسسوارات';
+    let text = 'حجز الأكسسوارات';
+    if (category === 'sheets') text = 'حجز ألواح الصاج';
+    else if (category === 'locks') text = 'حجز الزرافيل';
+    else if (category === 'hinges') text = 'حجز الفصالات';
     
     // Set text dynamically
     document.getElementById('resConfirmTitle').textContent = `تأكيد ${text}`;
@@ -3949,10 +3970,15 @@ function showReservationConfirm(category) {
 
 function showAlreadyReservedWarning(category) {
     const tbody = document.getElementById('resWarningTableBody');
+    let catText = 'الأكسسوارات';
+    if (category === 'sheets') catText = 'ألواح الصاج';
+    else if (category === 'locks') catText = 'الزرافيل';
+    else if (category === 'hinges') catText = 'الفصالات';
+    
     tbody.innerHTML = `
         <tr>
             <td colspan="6" class="py-8 text-center text-rose-600 font-bold text-base">
-                لقد تم حجز ${category === 'sheets' ? 'ألواح الصاج' : 'الأكسسوارات'} المطلوبة لهذا المشروع مسبقاً!
+                لقد تم حجز ${catText} المطلوبة لهذا المشروع مسبقاً!
                 <br>
                 <span class="text-sm text-slate-500 font-normal mt-2 block">
                     لتجنب تكرار الحجز وتضارب الكميات في المخازن، لا يمكن إجراء الحجز أكثر من مرة لنفس المشروع.

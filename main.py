@@ -755,10 +755,11 @@ def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), curre
             "depth": detail.depth,
             "architrave": detail.architrave,
             "architrave_2": detail.architrave_2,
+            "under_tile": detail.under_tile,
             "quantity": detail.quantity
         })
         
-    return calculate_sheets(db, details_dicts)
+    return calculate_sheets(db, details_dicts, project.manufacturing_type or "")
 
 def perform_reserve_check(db: Session, project: models.Project, category: str):
     items_list = []
@@ -773,9 +774,10 @@ def perform_reserve_check(db: Session, project: models.Project, category: str):
                 "depth": detail.depth,
                 "architrave": detail.architrave,
                 "architrave_2": detail.architrave_2,
+                "under_tile": detail.under_tile,
                 "quantity": detail.quantity
             })
-        calc_res = calculate_sheets(db, details_dicts)
+        calc_res = calculate_sheets(db, details_dicts, project.manufacturing_type or "")
         
         # 2. Map calculated sheets to items in the database by SKU
         for thickness_key, thickness_val in [("thickness_1_5", 1.5), ("thickness_1_2", 1.2)]:
@@ -839,7 +841,7 @@ def perform_reserve_check(db: Session, project: models.Project, category: str):
                     "size": size_str
                 })
                 
-    elif category == "accessories":
+    elif category in ["accessories", "locks", "hinges"]:
         # 1. Aggregate locks and hinges required across all details
         lock_reqs = {}
         hinge_reqs = {}
@@ -851,94 +853,96 @@ def perform_reserve_check(db: Session, project: models.Project, category: str):
                 hinge_reqs[detail.hinges] = hinge_reqs.get(detail.hinges, 0) + qty
                 
         # 2. Map and check locks
-        for lock_name, count in lock_reqs.items():
-            option = db.query(models.ProjectOption).filter(
-                models.ProjectOption.option_type == "lock",
-                models.ProjectOption.name == lock_name
-            ).first()
-            
-            sku = option.sku if option else None
-            item = None
-            if sku:
-                item = db.query(models.Item).filter(models.Item.sku == sku).first()
+        if category in ["accessories", "locks"]:
+            for lock_name, count in lock_reqs.items():
+                option = db.query(models.ProjectOption).filter(
+                    models.ProjectOption.option_type == "lock",
+                    models.ProjectOption.name == lock_name
+                ).first()
                 
-            # Determine status
-            name = f"قفل: {lock_name}"
-            if not sku:
-                status = "NO_SKU"
-            elif not item:
-                status = "NO_ITEM"
-            else:
-                reserved_sum = sum(res.quantity for res in item.reservations)
-                available = max(0, item.quantity - reserved_sum)
-                if available >= count:
-                    status = "OK"
-                else:
-                    status = "INSUFFICIENT_STOCK"
+                sku = option.sku if option else None
+                item = None
+                if sku:
+                    item = db.query(models.Item).filter(models.Item.sku == sku).first()
                     
-            available_qty = 0
-            if item:
-                reserved_sum = sum(res.quantity for res in item.reservations)
-                available_qty = max(0, item.quantity - reserved_sum)
+                # Determine status
+                name = f"قفل: {lock_name}"
+                if not sku:
+                    status = "NO_SKU"
+                elif not item:
+                    status = "NO_ITEM"
+                else:
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available = max(0, item.quantity - reserved_sum)
+                    if available >= count:
+                        status = "OK"
+                    else:
+                        status = "INSUFFICIENT_STOCK"
+                        
+                available_qty = 0
+                if item:
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available_qty = max(0, item.quantity - reserved_sum)
+                    
+                missing = max(0, count - available_qty)
                 
-            missing = max(0, count - available_qty)
-            
-            items_list.append({
-                "name": name,
-                "sku": sku,
-                "required": count,
-                "available": available_qty,
-                "status": status,
-                "missing": missing,
-                "item_id": item.id if item else None,
-                "category": "accessories",
-                "option_type": "lock"
-            })
-            
+                items_list.append({
+                    "name": name,
+                    "sku": sku,
+                    "required": count,
+                    "available": available_qty,
+                    "status": status,
+                    "missing": missing,
+                    "item_id": item.id if item else None,
+                    "category": "locks",
+                    "option_type": "lock"
+                })
+                
         # 3. Map and check hinges
-        for hinge_name, count in hinge_reqs.items():
-            option = db.query(models.ProjectOption).filter(
-                models.ProjectOption.option_type == "hinge",
-                models.ProjectOption.name == hinge_name
-            ).first()
-            
-            sku = option.sku if option else None
-            item = None
-            if sku:
-                item = db.query(models.Item).filter(models.Item.sku == sku).first()
+        if category in ["accessories", "hinges"]:
+            for hinge_name, count in hinge_reqs.items():
+                option = db.query(models.ProjectOption).filter(
+                    models.ProjectOption.option_type == "hinge",
+                    models.ProjectOption.name == hinge_name
+                ).first()
                 
-            # Determine status
-            name = f"فصالة: {hinge_name}"
-            if not sku:
-                status = "NO_SKU"
-            elif not item:
-                status = "NO_ITEM"
-            else:
-                reserved_sum = sum(res.quantity for res in item.reservations)
-                available = max(0, item.quantity - reserved_sum)
-                if available >= count:
-                    status = "OK"
-                else:
-                    status = "INSUFFICIENT_STOCK"
+                sku = option.sku if option else None
+                item = None
+                if sku:
+                    item = db.query(models.Item).filter(models.Item.sku == sku).first()
                     
-            available_qty = 0
-            if item:
-                reserved_sum = sum(res.quantity for res in item.reservations)
-                available_qty = max(0, item.quantity - reserved_sum)
+                # Determine status
+                name = f"فصالة: {hinge_name}"
+                if not sku:
+                    status = "NO_SKU"
+                elif not item:
+                    status = "NO_ITEM"
+                else:
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available = max(0, item.quantity - reserved_sum)
+                    if available >= count:
+                        status = "OK"
+                    else:
+                        status = "INSUFFICIENT_STOCK"
+                        
+                available_qty = 0
+                if item:
+                    reserved_sum = sum(res.quantity for res in item.reservations)
+                    available_qty = max(0, item.quantity - reserved_sum)
+                    
+                missing = max(0, count - available_qty)
                 
-            missing = max(0, count - available_qty)
-            
-            items_list.append({
-                "name": name,
-                "sku": sku,
-                "required": count,
-                "available": available_qty,
-                "status": status,
-                "missing": missing,
-                "item_id": item.id if item else None,
-                "category": "accessories",
-                "option_type": "hinge"
-            })
+                items_list.append({
+                    "name": name,
+                    "sku": sku,
+                    "required": count,
+                    "available": available_qty,
+                    "status": status,
+                    "missing": missing,
+                    "item_id": item.id if item else None,
+                    "category": "hinges",
+                    "option_type": "hinge"
+                })
             
     has_issues = any(i["status"] in ["NO_SKU", "NO_ITEM", "INSUFFICIENT_STOCK"] for i in items_list)
     return {
@@ -961,20 +965,40 @@ def reserve_check(
     if current_user.username != "admin" and current_user.id != project.executive_manager_id:
         raise HTTPException(status_code=403, detail="Not authorized to perform reservations for this project")
         
-    if category not in ["sheets", "accessories"]:
-        raise HTTPException(status_code=400, detail="Invalid category. Must be 'sheets' or 'accessories'")
+    if category not in ["sheets", "accessories", "locks", "hinges"]:
+        raise HTTPException(status_code=400, detail="Invalid category. Must be 'sheets', 'accessories', 'locks' or 'hinges'")
         
     # Check if already reserved
-    category_map = {
-        "sheets": "ألواح صاج",
-        "accessories": "إكسسوارات"
-    }
-    db_category = category_map.get(category)
     already_reserved = False
-    if db_category:
+    if category == "sheets":
         existing_res = db.query(models.Reservation).join(models.Item).filter(
             models.Reservation.project_id == project_id,
-            models.Item.category == db_category
+            models.Item.category == "ألواح صاج"
+        ).first()
+        if existing_res:
+            already_reserved = True
+    elif category == "locks":
+        lock_skus = [opt.sku for opt in db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "lock") if opt.sku]
+        if lock_skus:
+            existing_res = db.query(models.Reservation).join(models.Item).filter(
+                models.Reservation.project_id == project_id,
+                models.Item.sku.in_(lock_skus)
+            ).first()
+            if existing_res:
+                already_reserved = True
+    elif category == "hinges":
+        hinge_skus = [opt.sku for opt in db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "hinge") if opt.sku]
+        if hinge_skus:
+            existing_res = db.query(models.Reservation).join(models.Item).filter(
+                models.Reservation.project_id == project_id,
+                models.Item.sku.in_(hinge_skus)
+            ).first()
+            if existing_res:
+                already_reserved = True
+    elif category == "accessories":
+        existing_res = db.query(models.Reservation).join(models.Item).filter(
+            models.Reservation.project_id == project_id,
+            models.Item.category == "إكسسوارات"
         ).first()
         if existing_res:
             already_reserved = True
@@ -999,22 +1023,51 @@ def reserve_commit(
         raise HTTPException(status_code=403, detail="Not authorized to commit reservations for this project")
         
     category = payload.get("category")
-    if category not in ["sheets", "accessories"]:
+    if category not in ["sheets", "accessories", "locks", "hinges"]:
         raise HTTPException(status_code=400, detail="Invalid category")
         
     # Check if already reserved
-    category_map = {
-        "sheets": "ألواح صاج",
-        "accessories": "إكسسوارات"
-    }
-    db_category = category_map.get(category)
-    if db_category:
+    already_reserved = False
+    error_msg = ""
+    if category == "sheets":
         existing_res = db.query(models.Reservation).join(models.Item).filter(
             models.Reservation.project_id == project_id,
-            models.Item.category == db_category
+            models.Item.category == "ألواح صاج"
         ).first()
         if existing_res:
-            raise HTTPException(status_code=400, detail=f"لقد تم حجز {db_category} لهذا المشروع بالفعل")
+            already_reserved = True
+            error_msg = "لقد تم حجز ألواح صاج لهذا المشروع بالفعل"
+    elif category == "locks":
+        lock_skus = [opt.sku for opt in db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "lock") if opt.sku]
+        if lock_skus:
+            existing_res = db.query(models.Reservation).join(models.Item).filter(
+                models.Reservation.project_id == project_id,
+                models.Item.sku.in_(lock_skus)
+            ).first()
+            if existing_res:
+                already_reserved = True
+                error_msg = "لقد تم حجز الزرافيل لهذا المشروع بالفعل"
+    elif category == "hinges":
+        hinge_skus = [opt.sku for opt in db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "hinge") if opt.sku]
+        if hinge_skus:
+            existing_res = db.query(models.Reservation).join(models.Item).filter(
+                models.Reservation.project_id == project_id,
+                models.Item.sku.in_(hinge_skus)
+            ).first()
+            if existing_res:
+                already_reserved = True
+                error_msg = "لقد تم حجز الفصالات لهذا المشروع بالفعل"
+    elif category == "accessories":
+        existing_res = db.query(models.Reservation).join(models.Item).filter(
+            models.Reservation.project_id == project_id,
+            models.Item.category == "إكسسوارات"
+        ).first()
+        if existing_res:
+            already_reserved = True
+            error_msg = "لقد تم حجز الإكسسوارات لهذا المشروع بالفعل"
+
+    if already_reserved:
+        raise HTTPException(status_code=400, detail=error_msg)
             
     check_res = perform_reserve_check(db, project, category)
     
