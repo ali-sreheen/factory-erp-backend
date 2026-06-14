@@ -604,6 +604,44 @@ def read_item_reservations(
 ):
     return crud.get_item_reservations(db, item_id=item_id)
 
+@app.post("/api/reservations/{reservation_id}/consume")
+def consume_item_reservation(
+    reservation_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_res = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+    if not db_res:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+        
+    item = db.query(models.Item).filter(models.Item.id == db_res.item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    # Check permissions
+    check_permission(db, current_user, item.category)
+    
+    # Check if stock is sufficient. In inventory, the reservation is ALREADY subtracted from "available"
+    # but actual item.quantity has NOT yet been decremented (it is decremented only on transaction).
+    # Since reservation was just reserving it, the actual count in stock item.quantity must be >= db_res.quantity
+    if item.quantity < db_res.quantity:
+        raise HTTPException(status_code=400, detail="الكمية المتوافرة في المخزن غير كافية لإتمام عملية السحب")
+        
+    # Create transaction to subtract quantity (change = -db_res.quantity)
+    crud.create_transaction(
+        db=db,
+        item_id=item.id,
+        change=-db_res.quantity,
+        project_name=db_res.project_name,
+        project_id=db_res.project_id,
+        notes=f"سحب من كمية محجوزة بواسطة: {current_user.username}",
+        user_id=current_user.id
+    )
+    
+    # Delete reservation
+    crud.delete_reservation(db, reservation_id=reservation_id)
+    return {"message": "تم سحب الكمية وحذف الحجز بنجاح"}
+
 @app.delete("/api/reservations/{reservation_id}")
 def delete_item_reservation(
     reservation_id: int,

@@ -1491,9 +1491,15 @@ async function openLogModal(itemId, itemName) {
                     <span class="font-black text-indigo-700">${res.project_name}</span>
                     <span class="text-slate-400"> (بواسطة: ${res.username || 'النظام'})</span>
                 </div>
-                <button onclick="cancelReservation(${res.id})" class="text-rose-600 hover:text-rose-800 font-bold hover:underline transition">
-                    ❌ إلغاء الحجز
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="consumeReservation(${res.id})" class="text-emerald-600 hover:text-emerald-800 font-bold hover:underline transition">
+                        📥 سحب
+                    </button>
+                    <span class="text-slate-300">|</span>
+                    <button onclick="cancelReservation(${res.id})" class="text-rose-600 hover:text-rose-800 font-bold hover:underline transition">
+                        ❌ إلغاء الحجز
+                    </button>
+                </div>
             `;
             reservationsList.appendChild(row);
         });
@@ -1643,7 +1649,10 @@ reservationForm.onsubmit = async (e) => {
     
     const itemId = resItemId.value;
     const qty = parseInt(document.getElementById('resQuantity').value);
-    const project = document.getElementById('resProject').value;
+    const projectName = document.getElementById('resProject').value.trim();
+    const projectNumber = document.getElementById('resProjectNumber').value.trim();
+    
+    const project = `${projectName} - ${projectNumber}`;
     
     const payload = {
         quantity: qty,
@@ -1691,6 +1700,29 @@ async function cancelReservation(reservationId) {
     } catch (error) {
         console.error('Error cancelling reservation:', error);
         showToast(error.message || 'خطأ أثناء إلغاء الحجز', 'bg-rose-500', '✗');
+    }
+}
+
+async function consumeReservation(reservationId) {
+    if (!confirm('هل أنت متأكد من رغبتك في سحب الكمية المحجوزة من المخزن؟ سيتم خصم الكمية نهائياً وحذف الحجز.')) return;
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/reservations/${reservationId}/consume`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail || 'Failed to consume reservation');
+        }
+        
+        showToast('تم سحب الكمية بنجاح وتحديث رصيد المخزن', 'bg-emerald-500', '✓');
+        closeLogModal();
+        await loadItems();
+        
+    } catch (error) {
+        console.error('Error consuming reservation:', error);
+        showToast(error.message || 'خطأ أثناء سحب الكمية', 'bg-rose-500', '✗');
     }
 }
 
