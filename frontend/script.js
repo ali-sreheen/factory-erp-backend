@@ -1993,6 +1993,28 @@ function openProjectWizard() {
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
     loadAssignees();
+
+    // Auto-calculate next project number
+    (async () => {
+        try {
+            const response = await authFetch(PROJECTS_URL + '/');
+            if (response.ok) {
+                const projects = await response.json();
+                let maxNum = 0;
+                projects.forEach(p => {
+                    if (p.project_number) {
+                        const num = parseInt(p.project_number.trim(), 10);
+                        if (!isNaN(num) && num > maxNum) {
+                            maxNum = num;
+                        }
+                    }
+                });
+                document.getElementById('pwProjectNumber').value = maxNum + 1;
+            }
+        } catch (err) {
+            console.error("Failed to auto-detect next project number:", err);
+        }
+    })();
 }
 
 function goToWizardStep(stepNumber) {
