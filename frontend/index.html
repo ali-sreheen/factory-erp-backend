@@ -314,10 +314,16 @@
                             <p class="text-slate-500 text-sm mt-0.5">قائمة بجميع المشاريع المسجلة في النظام.</p>
                         </div>
                     </div>
-                    <button onclick="openProjectWizard()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                        إضافة مشروع جديد
-                    </button>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button onclick="openAllProjectsTrackingModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
+                            متابعة خطوات التصنيع
+                        </button>
+                        <button onclick="openProjectWizard()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            إضافة مشروع جديد
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
@@ -1564,7 +1570,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=67"></script>
+    <script src="script.js?v=68"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
@@ -1652,6 +1658,47 @@
                     <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition shadow-md hover:shadow-lg">حفظ</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- All Projects Tracking Modal -->
+    <div id="allProjectsTrackingModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 max-w-full lg:max-w-6xl w-full mx-4 shadow-xl border border-slate-100 flex flex-col max-h-[90vh] animate-scale-up">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-950">متابعة خطوات تصنيع المشاريع النشطة</h3>
+                    <p class="text-sm text-slate-500 mt-1">تحديث حالة خطوات التصنيع للمشاريع الفعالة حالياً.</p>
+                </div>
+                <button onclick="closeAllProjectsTrackingModal()" class="text-slate-400 hover:text-slate-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 pr-1">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse text-xs min-w-max">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 border-b">
+                                <th class="p-3 font-bold sticky right-0 bg-slate-50 z-10">المشروع</th>
+                                <th class="p-3 font-bold text-center">التصميم</th>
+                                <th class="p-3 font-bold text-center">القص</th>
+                                <th class="p-3 font-bold text-center">التشكيل</th>
+                                <th class="p-3 font-bold text-center">التجميع</th>
+                                <th class="p-3 font-bold text-center">الدهان</th>
+                                <th class="p-3 font-bold text-center">الإكسسوارات</th>
+                                <th class="p-3 font-bold text-center">التركيب / التسليم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allProjectsTrackingTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-6 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeAllProjectsTrackingModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 transition">إغلاق</button>
+            </div>
         </div>
     </div>
 

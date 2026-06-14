@@ -2843,17 +2843,18 @@ function getStepColorClasses(val) {
     return 'bg-slate-50 border-slate-200 text-slate-600 focus:ring-slate-500'; // لم يتم البدء
 }
 
-async function updateTrackingStep(field, selectEl) {
+async function updateTrackingStep(field, selectEl, explicitProjectId = null) {
     const newVal = selectEl.value;
     selectEl.className = `w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(newVal)}`;
     
-    if (!currentTrackingProjectId) return;
+    const targetProjectId = explicitProjectId || currentTrackingProjectId;
+    if (!targetProjectId) return;
     
     try {
         const payload = {};
         payload[field] = newVal;
         
-        const response = await authFetch(`${PROJECTS_URL}/${currentTrackingProjectId}`, {
+        const response = await authFetch(`${PROJECTS_URL}/${targetProjectId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4116,3 +4117,70 @@ function openPrefilledPurchaseRequest() {
     
     document.getElementById('purchaseRequestModal').classList.remove('hidden');
 }
+
+// ================= ALL PROJECTS TRACKING DASHBOARD =================
+window.openAllProjectsTrackingModal = async function() {
+    const modal = document.getElementById('allProjectsTrackingModal');
+    const tbody = document.getElementById('allProjectsTrackingTableBody');
+    
+    tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500">جاري تحميل المشاريع النشطة...</td></tr>';
+    modal.classList.remove('hidden');
+    
+    try {
+        const response = await authFetch(PROJECTS_URL + '/');
+        if (!response.ok) throw new Error('فشل تحميل المشاريع');
+        
+        const projects = await response.json();
+        const activeProjects = projects.filter(p => p.status === 'active');
+        
+        tbody.innerHTML = '';
+        if (activeProjects.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-500">لا يوجد مشاريع نشطة حالياً.</td></tr>';
+            return;
+        }
+        
+        const steps = [
+            'step_design',
+            'step_cutting',
+            'step_forming',
+            'step_assembly',
+            'step_painting',
+            'step_accessories',
+            'step_installation'
+        ];
+        
+        activeProjects.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            
+            // Build the name cell with sticky right for scrollability
+            let nameCell = `<td class="p-3 font-bold sticky right-0 bg-white shadow-sm border-l border-slate-100 z-10 text-slate-800">${p.name || '-'} <span class="text-slate-400 text-xs font-normal">(${p.project_number})</span></td>`;
+            
+            // Build the step select cells
+            let stepsCells = '';
+            steps.forEach(stepKey => {
+                const currentValue = p[stepKey] || 'لم يتم البدء';
+                stepsCells += `
+                    <td class="p-3 text-center min-w-[140px]">
+                        <select onchange="updateTrackingStep('${stepKey}', this, ${p.id})" class="w-full border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(currentValue)}">
+                            <option value="لم يتم البدء" ${currentValue === 'لم يتم البدء' ? 'selected' : ''}>لم يتم البدء</option>
+                            <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
+                            <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
+                        </select>
+                    </td>
+                `;
+            });
+            
+            tr.innerHTML = nameCell + stepsCells;
+            tbody.appendChild(tr);
+        });
+        
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-rose-500">حدث خطأ أثناء تحميل البيانات.</td></tr>';
+    }
+};
+
+window.closeAllProjectsTrackingModal = function() {
+    document.getElementById('allProjectsTrackingModal').classList.add('hidden');
+};
