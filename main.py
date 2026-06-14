@@ -724,7 +724,7 @@ def update_project(project_id: int, project_update: schemas.ProjectUpdate, db: S
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    project = crud.get_project(db, project_id)
+    project = crud.get_project_by_id(db, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
         
