@@ -3455,11 +3455,28 @@ async function calculateSheetRequirements() {
             // Show reservation actions if authorized
             const resActions = document.getElementById('projectReservationActions');
             if (resActions) {
-                const isManager = window.currentUser && (
+                const currentUsername = localStorage.getItem('username');
+                const isManager = (window.currentUser && (
                     window.currentUser.username === 'admin' ||
                     window.currentUser.id === window.currentProjectData.executive_manager_id
-                );
-                if (isManager) {
+                )) || currentUsername === 'admin' || (window.currentProjectData && window.currentProjectData.executive_manager_username === currentUsername);
+                
+                // Also load details from users if not matching but check fallback or check if the local user is indeed authorized
+                // Let's do a reliable fallback check:
+                let authorized = false;
+                if (currentUsername === 'admin') {
+                    authorized = true;
+                } else if (window.currentUser && window.currentProjectData && window.currentUser.id === window.currentProjectData.executive_manager_id) {
+                    authorized = true;
+                } else if (window.currentProjectData && window.currentProjectData.executive_manager_id) {
+                    // if current user is not loaded yet or async fetch did not finish, we can compare local username with the executive manager's name
+                    const pdAssigneeEl = document.getElementById('pdAssignee');
+                    if (pdAssigneeEl && pdAssigneeEl.textContent.trim() === currentUsername) {
+                        authorized = true;
+                    }
+                }
+                
+                if (authorized) {
                     resActions.classList.remove('hidden');
                 } else {
                     resActions.classList.add('hidden');
