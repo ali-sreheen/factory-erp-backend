@@ -731,10 +731,13 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
     if current_user.username != "admin" and current_user.id != project.executive_manager_id:
         raise HTTPException(status_code=403, detail="Not authorized")
         
-    success = crud.delete_project(db, project_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return {"message": "Deleted successfully"}
+    try:
+        success = crud.delete_project(db, project_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"message": "Deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Database error: {str(e)}")
 
 from sheet_calculator import calculate_sheets
 

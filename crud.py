@@ -334,14 +334,21 @@ def update_project(db: Session, project_id: int, project_update: schemas.Project
 def delete_project(db: Session, project_id: int):
     db_project = get_project_by_id(db, project_id)
     if db_project:
-        # Delete related reservations to release items/reservations
-        db.query(models.Reservation).filter(models.Reservation.project_id == project_id).delete()
-        # Set project_id to None in transactions to keep historical records of inventory movement
-        db.query(models.Transaction).filter(models.Transaction.project_id == project_id).update({models.Transaction.project_id: None})
-        
-        db.delete(db_project)
-        db.commit()
-        return True
+        try:
+            # Delete related reservations to release items/reservations
+            db.query(models.Reservation).filter(models.Reservation.project_id == project_id).delete()
+            # Set project_id to None in transactions to keep historical records of inventory movement
+            db.query(models.Transaction).filter(models.Transaction.project_id == project_id).update({models.Transaction.project_id: None})
+            
+            db.delete(db_project)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            import traceback
+            print("ERROR IN delete_project:")
+            traceback.print_exc()
+            raise e
     return False
 
 
