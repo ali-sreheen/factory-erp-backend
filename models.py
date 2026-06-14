@@ -141,6 +141,8 @@ class ProjectDetail(Base):
     door_type = Column(String, nullable=True)
     qashatah = Column(String, default="NO", nullable=True)
     fire_resistance = Column(String, nullable=True)
+    raddad = Column(String, default="NO", nullable=True)
+    hinges_count = Column(Integer, default=4, nullable=True)
     window_details = Column(String, nullable=True)
     architrave = Column(String, nullable=True)
     architrave_2 = Column(String, nullable=True)

@@ -215,6 +215,8 @@ class ProjectDetailBase(BaseModel):
     door_type: Optional[str] = None
     qashatah: Optional[str] = "NO"
     fire_resistance: Optional[str] = None
+    raddad: Optional[str] = "NO"
+    hinges_count: Optional[int] = 4
     window_details: Optional[str] = None
     architrave: Optional[str] = None
     architrave_2: Optional[str] = None

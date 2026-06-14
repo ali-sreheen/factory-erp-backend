@@ -93,12 +93,14 @@ def check_and_update_db_schema(db_engine):
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
-        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah"]:
+        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:
-                        if col == "qashatah":
+                        if col == "qashatah" or col == "raddad":
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR DEFAULT 'NO'"))
+                        elif col == "hinges_count":
+                            conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} INTEGER DEFAULT 4"))
                         else:
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR"))
                 except Exception as e:
@@ -850,7 +852,8 @@ def perform_reserve_check(db: Session, project: models.Project, category: str):
             if detail.lock_type:
                 lock_reqs[detail.lock_type] = lock_reqs.get(detail.lock_type, 0) + qty
             if detail.hinges:
-                hinge_reqs[detail.hinges] = hinge_reqs.get(detail.hinges, 0) + qty
+                h_cnt = detail.hinges_count if (detail.hinges_count is not None) else 4
+                hinge_reqs[detail.hinges] = hinge_reqs.get(detail.hinges, 0) + (qty * h_cnt)
                 
         # 2. Map and check locks
         if category in ["accessories", "locks"]:

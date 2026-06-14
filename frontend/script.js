@@ -2109,6 +2109,15 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm font-bold text-center">
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+            </select>
+        </td>
+        <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
                 <option value="" disabled selected>المقطع</option>
                 <option value="single rabbit with rubber">single rabbit with rubber</option>
@@ -2130,6 +2139,7 @@ function addProjectDetailRow() {
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
+        <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
     `;
@@ -2357,6 +2367,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.direction || '-'}</td>
                     <td class="p-3">${d.lock_type || '-'}</td>
                     <td class="p-3">${d.hinges || '-'}</td>
+                    <td class="p-3 font-bold text-slate-700">${d.hinges_count || '4'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
                     <td class="p-3 text-center">${d.qashatah === 'YES' ? 'نعم' : 'لا'}</td>
@@ -2365,12 +2376,13 @@ async function viewProjectDetails(id) {
                     <td class="p-3">${d.architrave_2 || '-'}</td>
                     <td class="p-3">${d.under_tile || '-'}</td>
                     <td class="p-3">${d.window_details || '-'}</td>
+                    <td class="p-3 text-center">${d.raddad === 'YES' ? 'نعم' : 'لا'}</td>
                     <td class="p-3">${d.notes || '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="17" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="19" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -2462,6 +2474,7 @@ if (projectWizardForm) {
             for (let tr of rows) {
                 const inputs = tr.querySelectorAll('input, select');
                 const qtyVal = parseInt(inputs[1].value);
+                const hingesCountVal = parseInt(inputs[8].value);
                 const detailPayload = {
                     door_number: inputs[0].value || null,
                     quantity: isNaN(qtyVal) ? 1 : qtyVal,
@@ -2471,15 +2484,17 @@ if (projectWizardForm) {
                     direction: inputs[5].value || null,
                     lock_type: inputs[6].value || null,
                     hinges: inputs[7].value || null,
-                    profile_type: inputs[8].value || null,
-                    door_type: inputs[9].value || null,
-                    qashatah: inputs[10].checked ? 'YES' : 'NO',
-                    fire_resistance: inputs[11].checked ? 'Yes' : 'No',
-                    architrave: inputs[12].value || null,
-                    architrave_2: inputs[13].value || null,
-                    under_tile: inputs[14].value || null,
-                    window_details: inputs[15].value || null,
-                    notes: inputs[16].value || null
+                    hinges_count: isNaN(hingesCountVal) ? 4 : hingesCountVal,
+                    profile_type: inputs[9].value || null,
+                    door_type: inputs[10].value || null,
+                    qashatah: inputs[11].checked ? 'YES' : 'NO',
+                    fire_resistance: inputs[12].checked ? 'Yes' : 'No',
+                    architrave: inputs[13].value || null,
+                    architrave_2: inputs[14].value || null,
+                    under_tile: inputs[15].value || null,
+                    window_details: inputs[16].value || null,
+                    raddad: inputs[17].checked ? 'YES' : 'NO',
+                    notes: inputs[18].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2722,6 +2737,29 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            ${hingeSelectOpts}
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white font-bold text-center">
+                            <option value="3" ${d.hinges_count === 3 ? 'selected' : ''}>3</option>
+                            <option value="4" ${d.hinges_count === 4 || !d.hinges_count ? 'selected' : ''}>4</option>
+                            <option value="5" ${d.hinges_count === 5 ? 'selected' : ''}>5</option>
+                            <option value="6" ${d.hinges_count === 6 ? 'selected' : ''}>6</option>
+                            <option value="7" ${d.hinges_count === 7 ? 'selected' : ''}>7</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>
+                            <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
+                            <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
+                            <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
+                            <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
                             <option value="" disabled ${!d.door_type ? 'selected' : ''}>نوع الباب</option>
                             <option value="single leaf" ${d.door_type === 'single leaf' ? 'selected' : ''}>single leaf</option>
                             <option value="double leaf" ${d.door_type === 'double leaf' ? 'selected' : ''}>double leaf</option>
@@ -2733,6 +2771,7 @@ window.editProject = async function(projectId) {
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
+                    <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.raddad === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
                     <td class="p-2 text-center">
                         <button type="button" onclick="this.closest('tr').remove()" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="حذف السطر">
