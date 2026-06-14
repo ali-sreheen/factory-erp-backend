@@ -93,7 +93,7 @@ def check_and_update_db_schema(db_engine):
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
-        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count", "leaf_thickness"]:
+        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count", "leaf_thickness", "sticker_number"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:
@@ -1190,6 +1190,49 @@ def delete_project_detail(detail_id: int, db: Session = Depends(get_db), current
     if not success:
         raise HTTPException(status_code=404, detail="Detail not found")
     return {"message": "Deleted successfully"}
+
+@app.get("/api/fire-doors/")
+def get_fire_doors(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin" and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="غير مصرح بالوصول لأبواب الحريق")
+        
+    from sqlalchemy import or_
+    details = db.query(models.ProjectDetail).filter(
+        or_(
+            models.ProjectDetail.fire_resistance.like("Yes%"),
+            models.ProjectDetail.fire_resistance.like("نعم%"),
+            models.ProjectDetail.fire_resistance.like("YES%")
+        )
+    ).all()
+    
+    result = []
+    for d in details:
+        result.append({
+            "id": d.id,
+            "project_name": d.project.name if d.project else "-",
+            "project_number": d.project.project_number if d.project else "-",
+            "door_number": d.door_number or "-",
+            "sticker_number": d.sticker_number or ""
+        })
+    return result
+
+@app.put("/api/projects/details/{detail_id}", response_model=schemas.ProjectDetailResponse)
+def update_project_detail(detail_id: int, detail_update: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
+    if not db_detail:
+        raise HTTPException(status_code=404, detail="Detail not found")
+    
+    project = db_detail.project
+    if current_user.username != "admin" and (not project or current_user.id != project.executive_manager_id) and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    update_data = detail_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_detail, key, value)
+        
+    db.commit()
+    db.refresh(db_detail)
+    return db_detail
 
 @app.delete("/api/projects/{project_id}/details")
 def delete_project_details(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

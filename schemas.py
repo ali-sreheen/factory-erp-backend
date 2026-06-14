@@ -204,6 +204,7 @@ class ProjectAttachmentResponse(ProjectAttachmentBase):
 # Project Detail schemas
 class ProjectDetailBase(BaseModel):
     door_number: Optional[str] = None
+    sticker_number: Optional[str] = None
     quantity: Optional[int] = 1
     width: Optional[str] = None
     height: Optional[str] = None

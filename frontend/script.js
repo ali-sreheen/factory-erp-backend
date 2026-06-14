@@ -824,6 +824,7 @@ function applyPermissionsToUI() {
     const username = localStorage.getItem('username');
     const isCreatePRAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_create' && (p.can_edit == 1 || p.can_edit === true));
     const isSupplierEditAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_suppliers' && (p.can_edit == 1 || p.can_edit === true));
+    const hasProjectMgmt = username === 'admin' || userPermissionsList.some(p => p.department_name === 'project_management' && (p.can_edit == 1 || p.can_edit === true));
 
     const btnCreatePR = document.getElementById('btnCreatePurchaseRequest');
     if (btnCreatePR) {
@@ -840,6 +841,15 @@ function applyPermissionsToUI() {
             btnCreateSupplier.classList.remove('hidden');
         } else {
             btnCreateSupplier.classList.add('hidden');
+        }
+    }
+
+    const btnFireDoors = document.getElementById('btnFireDoors');
+    if (btnFireDoors) {
+        if (hasProjectMgmt) {
+            btnFireDoors.classList.remove('hidden');
+        } else {
+            btnFireDoors.classList.add('hidden');
         }
     }
 }
@@ -4478,4 +4488,132 @@ window.openAllProjectsTrackingModal = async function() {
 
 window.closeAllProjectsTrackingModal = function() {
     document.getElementById('allProjectsTrackingModal').classList.add('hidden');
+};
+
+// ================= FIRE DOORS MODAL LOGIC =================
+let globalFireDoors = [];
+
+window.openFireDoorsModal = async function() {
+    const modal = document.getElementById('fireDoorsModal');
+    const tbody = document.getElementById('fireDoorsTableBody');
+    const emptyEl = document.getElementById('fireDoorsEmpty');
+    const loadingEl = document.getElementById('fireDoorsLoading');
+    
+    tbody.innerHTML = '';
+    emptyEl.classList.add('hidden');
+    loadingEl.classList.remove('hidden');
+    
+    modal.classList.remove('hidden');
+    void modal.offsetWidth;
+    modal.classList.remove('opacity-0');
+    modal.querySelector('.transform').classList.remove('scale-95');
+    
+    try {
+        const response = await authFetch(`${API_HOST}/api/fire-doors/`);
+        if (!response.ok) throw new Error('فشل تحميل أبواب الحريق');
+        
+        globalFireDoors = await response.json();
+        loadingEl.classList.add('hidden');
+        
+        if (globalFireDoors.length === 0) {
+            emptyEl.classList.remove('hidden');
+            return;
+        }
+        
+        globalFireDoors.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+            tr.innerHTML = `
+                <td class="p-3 text-slate-800 font-bold">${d.project_name}</td>
+                <td class="p-3 text-slate-500 font-bold">${d.project_number}</td>
+                <td class="p-3 text-slate-700">${d.door_number}</td>
+                <td class="p-3">
+                    <input type="text" value="${d.sticker_number || ''}" onchange="updateStickerNumber(${d.id}, this)" class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition" placeholder="أدخل رقم الملصق..." />
+                </td>
+                <td class="p-3 text-center">
+                    <button onclick="saveSingleStickerNumber(${d.id}, this)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1 mx-auto">
+                        💾 حفظ
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+        loadingEl.classList.add('hidden');
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-rose-500 font-bold">${e.message}</td></tr>`;
+    }
+};
+
+window.closeFireDoorsModal = function() {
+    const modal = document.getElementById('fireDoorsModal');
+    modal.classList.add('opacity-0');
+    modal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+};
+
+window.updateStickerNumber = async function(detailId, inputEl) {
+    const val = inputEl.value;
+    try {
+        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sticker_number: val })
+        });
+        if (!response.ok) throw new Error('فشل تحديث رقم الملصق');
+        showToast('تم تحديث رقم الملصق تلقائياً', 'bg-emerald-500', '✓');
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+window.saveSingleStickerNumber = async function(detailId, btnEl) {
+    const inputEl = btnEl.closest('tr').querySelector('input');
+    const val = inputEl.value;
+    try {
+        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sticker_number: val })
+        });
+        if (!response.ok) throw new Error('فشل حفظ رقم الملصق');
+        showToast('تم حفظ رقم الملصق بنجاح', 'bg-emerald-500', '✓');
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+window.exportFireDoorsToExcel = function() {
+    if (globalFireDoors.length === 0) {
+        showToast('لا يوجد بيانات لتصديرها', 'bg-amber-500', '⚠');
+        return;
+    }
+    
+    // Create CSV content representing Excel sheet
+    let csvContent = "\ufeff"; // BOM for UTF-8 compatibility in Excel
+    csvContent += "اسم المشروع,رقم المشروع,رقم الباب,رقم الملصق\n";
+    
+    globalFireDoors.forEach(d => {
+        const row = [
+            `"${d.project_name.replace(/"/g, '""')}"`,
+            `"${String(d.project_number).replace(/"/g, '""')}"`,
+            `"${d.door_number.replace(/"/g, '""')}"`,
+            `"${(d.sticker_number || '').replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+    
+    // Create download link and trigger click
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `أبواب_الحريق_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('تم تصدير ملف أبواب الحريق بنجاح', 'bg-emerald-500', '✓');
 };

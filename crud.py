@@ -355,6 +355,29 @@ def delete_project(db: Session, project_id: int):
 # --- Project Details ---
 def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectDetailCreate):
     db_detail = models.ProjectDetail(**detail.model_dump(), project_id=project_id)
+    
+    # Auto-increment sticker_number for new fire resistant doors if sticker_number is empty/null
+    if db_detail.fire_resistance in ["Yes", "نعم", "YES"]:
+        if not db_detail.sticker_number:
+            # Query all sticker numbers
+            all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
+                models.ProjectDetail.sticker_number != None,
+                models.ProjectDetail.sticker_number != ""
+            ).all()
+            
+            max_num = 0
+            import re
+            for (s_num,) in all_stickers:
+                try:
+                    digits = re.findall(r'\d+', s_num)
+                    if digits:
+                        val = int(digits[-1])
+                        if val > max_num:
+                            max_num = val
+                except Exception:
+                    pass
+            db_detail.sticker_number = str(max_num + 1)
+
     db.add(db_detail)
     db.commit()
     db.refresh(db_detail)

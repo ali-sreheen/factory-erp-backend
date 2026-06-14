@@ -315,6 +315,10 @@
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button id="btnFireDoors" onclick="openFireDoorsModal()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm hidden">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            أبواب الحريق
+                        </button>
                         <button onclick="openAllProjectsTrackingModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
                             متابعة خطوات التصنيع
@@ -1292,6 +1296,55 @@
         </div>
     </div>
 
+    <!-- ================= FIRE DOORS MODAL ================= -->
+    <div id="fireDoorsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]">
+            <div class="bg-rose-700 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    أبواب الحريق ومتابعة الملصقات
+                </h3>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportFireDoorsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-4 rounded-xl transition text-xs shadow flex items-center gap-1">
+                        📥 تصدير Excel
+                    </button>
+                    <button onclick="closeFireDoorsModal()" class="text-white/70 hover:text-white transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto flex-grow">
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-right border-collapse text-sm">
+                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 font-bold border-b">اسم المشروع</th>
+                                <th class="p-3 font-bold border-b">رقم المشروع</th>
+                                <th class="p-3 font-bold border-b">رقم الباب</th>
+                                <th class="p-3 font-bold border-b">رقم الملصق</th>
+                                <th class="p-3 font-bold border-b text-center">العمليات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fireDoorsTableBody" class="divide-y divide-slate-100">
+                            <!-- Dynamic rows loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="fireDoorsEmpty" class="text-center py-10 text-slate-500 font-bold hidden">
+                    لا يوجد أبواب مقاومة للحريق مسجلة في النظام حالياً.
+                </div>
+                <div id="fireDoorsLoading" class="text-center py-10 text-slate-500">
+                    جاري تحميل الأبواب...
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t text-center shrink-0">
+                <button type="button" onclick="closeFireDoorsModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-6 rounded-xl transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Item Info Modal -->
     <div id="editItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300 mx-4">
@@ -1582,7 +1635,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=75"></script>
+    <script src="script.js?v=76"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
