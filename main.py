@@ -337,6 +337,27 @@ def check_permission(db: Session, current_user: models.User, category: str):
         raise HTTPException(status_code=403, detail="لا تملك صلاحية التعديل أو الإضافة في هذا القسم")
     return True
 
+def user_has_project_management(user: models.User, db: Session) -> bool:
+    if user.username == "admin":
+        return True
+    perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user.id,
+        models.UserPermission.department_name == "project_management"
+    ).first()
+    return perm is not None and perm.can_edit == 1
+
+def check_purchasing_permission(user: models.User, action: str, db: Session):
+    if user.username == "admin":
+        return True
+    perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user.id,
+        models.UserPermission.department_name == action
+    ).first()
+    if not perm or not perm.can_edit:
+        raise HTTPException(status_code=403, detail="لا تملك هذه الصلاحية في نظام المشتريات")
+    return True
+
+
 @app.post("/api/items/", response_model=schemas.Item)
 def create_item(
     name: str = Form(...),
@@ -758,7 +779,7 @@ def update_project(project_id: int, project_update: schemas.ProjectUpdate, db: S
     if not existing:
         raise HTTPException(status_code=404, detail="Project not found")
         
-    if current_user.username != "admin" and current_user.id != existing.executive_manager_id:
+    if current_user.username != "admin" and current_user.id != existing.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized")
         
     project = crud.update_project(db, project_id, project_update)
@@ -770,7 +791,7 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
         
-    if current_user.username != "admin" and current_user.id != project.executive_manager_id:
+    if current_user.username != "admin" and current_user.id != project.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized")
         
     try:
@@ -1005,7 +1026,7 @@ def reserve_check(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Check permission (Only admin or executive manager can perform this)
-    if current_user.username != "admin" and current_user.id != project.executive_manager_id:
+    if current_user.username != "admin" and current_user.id != project.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized to perform reservations for this project")
         
     if category not in ["sheets", "accessories", "locks", "hinges"]:
@@ -1062,7 +1083,7 @@ def reserve_commit(
         raise HTTPException(status_code=404, detail="Project not found")
         
     # Check permission
-    if current_user.username != "admin" and current_user.id != project.executive_manager_id:
+    if current_user.username != "admin" and current_user.id != project.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized to commit reservations for this project")
         
     category = payload.get("category")
@@ -1173,7 +1194,7 @@ def delete_project_detail(detail_id: int, db: Session = Depends(get_db), current
 @app.delete("/api/projects/{project_id}/details")
 def delete_project_details(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     project = crud.get_project_by_id(db, project_id)
-    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin"):
+    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin" and not user_has_project_management(current_user, db)):
         raise HTTPException(status_code=403, detail="Not authorized")
     crud.delete_project_details(db, project_id)
     return {"message": "All details deleted successfully"}
@@ -1200,7 +1221,7 @@ def delete_project_attachment(attachment_id: int, db: Session = Depends(get_db),
 @app.post("/api/projects/{project_id}/tasks/", response_model=schemas.ProjectTaskResponse)
 def create_project_task(project_id: int, task: schemas.ProjectTaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     project = crud.get_project_by_id(db, project_id)
-    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin"):
+    if not project or (project.executive_manager_id != current_user.id and current_user.username != "admin" and not user_has_project_management(current_user, db)):
         raise HTTPException(status_code=403, detail="Not authorized to add tasks for this project")
     return crud.create_project_task(db, task, project_id, current_user.id)
 
@@ -1212,7 +1233,7 @@ def update_project_task(task_id: int, task_update: schemas.ProjectTaskUpdate, db
     
     # allow executive manager, admin, or the assignee to update
     project = crud.get_project_by_id(db, task.project_id)
-    is_exec_manager = project and project.executive_manager_id == current_user.id
+    is_exec_manager = project and (project.executive_manager_id == current_user.id or user_has_project_management(current_user, db))
     is_assignee = task.assigned_to == current_user.id
     
     if not (is_exec_manager or is_assignee or current_user.username == "admin"):
@@ -1227,7 +1248,7 @@ def delete_project_task(task_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=404, detail="Task not found")
         
     project = crud.get_project_by_id(db, task.project_id)
-    if project and project.executive_manager_id != current_user.id and current_user.username != "admin":
+    if project and project.executive_manager_id != current_user.id and current_user.username != "admin" and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized to delete tasks")
         
     success = crud.delete_project_task(db, task_id)
@@ -1344,6 +1365,7 @@ def get_suppliers(db: Session = Depends(get_db), current_user: models.User = Dep
 
 @app.post("/api/suppliers/", response_model=schemas.SupplierResponse)
 def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    check_purchasing_permission(current_user, "purchasing_suppliers", db)
     db_supplier = models.Supplier(**supplier.model_dump())
     db.add(db_supplier)
     db.commit()
@@ -1352,6 +1374,7 @@ def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_
 
 @app.put("/api/suppliers/{supplier_id}", response_model=schemas.SupplierResponse)
 def update_supplier(supplier_id: int, supplier_update: schemas.SupplierUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    check_purchasing_permission(current_user, "purchasing_suppliers", db)
     db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
@@ -1366,6 +1389,7 @@ def update_supplier(supplier_id: int, supplier_update: schemas.SupplierUpdate, d
 
 @app.delete("/api/suppliers/{supplier_id}")
 def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    check_purchasing_permission(current_user, "purchasing_suppliers", db)
     db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
@@ -1388,6 +1412,7 @@ def create_purchase_request(
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    check_purchasing_permission(current_user, "purchasing_create", db)
     attached_image_url = None
     if attached_image and attached_image.filename:
         ext = os.path.splitext(attached_image.filename)[1]
@@ -1439,9 +1464,9 @@ def update_purchase_request(req_id: int, req_update: schemas.PurchaseRequestUpda
     
     update_data = req_update.model_dump(exclude_unset=True)
     
-    # Check admin approval for "Active" status
-    if "status" in update_data and update_data["status"] == "Active" and current_user.username != "admin":
-        raise HTTPException(status_code=403, detail="Only admin can approve purchase requests")
+    # Check permission for status change
+    if "status" in update_data:
+        check_purchasing_permission(current_user, "purchasing_status", db)
 
     for key, value in update_data.items():
         setattr(db_req, key, value)
@@ -1461,6 +1486,7 @@ def update_purchase_request_details(
     db: Session = Depends(get_db), 
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    check_purchasing_permission(current_user, "purchasing_create", db)
     db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
     if not db_req:
         raise HTTPException(status_code=404, detail="Purchase request not found")
@@ -1485,6 +1511,7 @@ def update_purchase_request_details(
 
 @app.post("/api/purchase-requests/{req_id}/upload-images", response_model=schemas.PurchaseRequestResponse)
 def upload_purchase_images(req_id: int, invoice_image: UploadFile = File(None), items_image: UploadFile = File(None), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    check_purchasing_permission(current_user, "purchasing_status", db)
     db_req = db.query(models.PurchaseRequest).filter(models.PurchaseRequest.id == req_id).first()
     if not db_req:
         raise HTTPException(status_code=404, detail="Purchase request not found")

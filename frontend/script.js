@@ -615,6 +615,7 @@ async function fetchDepartmentCounts() {
             if (permsResponse.ok) {
                 userPermissionsList = await permsResponse.json();
                 console.log('[DEBUG] userPermissionsList loaded:', JSON.stringify(userPermissionsList));
+                applyPermissionsToUI();
             } else {
                 const errText = await permsResponse.text();
                 console.error('[DEBUG] Permissions fetch failed:', errText);
@@ -819,6 +820,30 @@ function normalizeArabic(str) {
         .replace(/ى/g, 'ي');
 }
 
+function applyPermissionsToUI() {
+    const username = localStorage.getItem('username');
+    const isCreatePRAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_create' && (p.can_edit == 1 || p.can_edit === true));
+    const isSupplierEditAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_suppliers' && (p.can_edit == 1 || p.can_edit === true));
+
+    const btnCreatePR = document.getElementById('btnCreatePurchaseRequest');
+    if (btnCreatePR) {
+        if (isCreatePRAuthorized) {
+            btnCreatePR.classList.remove('hidden');
+        } else {
+            btnCreatePR.classList.add('hidden');
+        }
+    }
+
+    const btnCreateSupplier = document.getElementById('btnCreateSupplier');
+    if (btnCreateSupplier) {
+        if (isSupplierEditAuthorized) {
+            btnCreateSupplier.classList.remove('hidden');
+        } else {
+            btnCreateSupplier.classList.add('hidden');
+        }
+    }
+}
+
 async function loadItems() {
     isReorderMode = false;
     showDeptLoading();
@@ -833,6 +858,7 @@ async function loadItems() {
                 if (permsResponse.ok) {
                     userPermissionsList = await permsResponse.json();
                     console.log('[DEBUG] loadItems: userPermissionsList:', JSON.stringify(userPermissionsList));
+                    applyPermissionsToUI();
                 } else {
                     const errText = await permsResponse.text();
                     console.error('[DEBUG] loadItems: Permissions fetch failed:', errText);
@@ -1907,14 +1933,22 @@ async function openPermissionsModal(userId, username) {
         
         permissionsList.innerHTML = '';
         
+        // Section 1: Store/Inventory Management (نظام إدارة المخازن)
+        let inventoryHtml = `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                    نظام إدارة المخازن
+                </h4>
+                <div class="space-y-3">
+        `;
         globalDepartments.forEach(dept => {
             const perm = user.permissions.find(p => normalizeArabic(p.department_name) === normalizeArabic(dept.name));
             const canEdit = perm && (perm.can_edit == 1 || perm.can_edit === true);
-            
-            permissionsList.innerHTML += `
-                <div class="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+            inventoryHtml += `
+                <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
                     <div>
-                        <p class="font-bold text-slate-800">${dept.name}</p>
+                        <p class="font-bold text-slate-800 text-sm">${dept.name}</p>
                         <p class="text-xs text-slate-500">منح صلاحية الإضافة والتعديل</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -1924,6 +1958,84 @@ async function openPermissionsModal(userId, username) {
                 </div>
             `;
         });
+        inventoryHtml += `</div></div>`;
+
+        // Section 2: Project Management (نظام إدارة المشاريع)
+        const pmPerm = user.permissions.find(p => p.department_name === 'project_management');
+        const pmCanEdit = pmPerm && (pmPerm.can_edit == 1 || pmPerm.can_edit === true);
+        let projectHtml = `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    نظام إدارة المشاريع
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">صلاحية إدارة المشاريع</p>
+                            <p class="text-xs text-slate-500">منح صلاحيات المسؤول التنفيذي لجميع المشاريع</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${pmCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'project_management', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Section 3: Purchasing Management (نظام إدارة المشتريات)
+        const pCreatePerm = user.permissions.find(p => p.department_name === 'purchasing_create');
+        const pCreateCanEdit = pCreatePerm && (pCreatePerm.can_edit == 1 || pCreatePerm.can_edit === true);
+
+        const pStatusPerm = user.permissions.find(p => p.department_name === 'purchasing_status');
+        const pStatusCanEdit = pStatusPerm && (pStatusPerm.can_edit == 1 || pStatusPerm.can_edit === true);
+
+        const pSuppliersPerm = user.permissions.find(p => p.department_name === 'purchasing_suppliers');
+        const pSuppliersCanEdit = pSuppliersPerm && (pSuppliersPerm.can_edit == 1 || pSuppliersPerm.can_edit === true);
+
+        let purchasingHtml = `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    نظام إدارة المشتريات
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">إنشاء طلب شراء</p>
+                            <p class="text-xs text-slate-500">منح صلاحية إضافة وتعديل طلبات الشراء</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${pCreateCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'purchasing_create', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">تحويل حالة طلب الشراء</p>
+                            <p class="text-xs text-slate-500">منح صلاحية اعتماد الطلبات وإتمام عملية الشراء</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${pStatusCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'purchasing_status', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">تعديل قائمة الموردين</p>
+                            <p class="text-xs text-slate-500">منح صلاحية إضافة وتعديل وحذف الموردين</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${pSuppliersCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'purchasing_suppliers', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        permissionsList.innerHTML = inventoryHtml + projectHtml + purchasingHtml;
         
     } catch (err) {
         permissionsList.innerHTML = `<p class="text-rose-500 text-sm">${err.message}</p>`;
@@ -2338,7 +2450,7 @@ async function viewProjectDetails(id) {
 
         // Make interactive if current user is the assignee or admin
         const currentUser = localStorage.getItem('username');
-        let isAuthorized = (currentUser === 'admin');
+        let isAuthorized = (currentUser === 'admin') || userPermissionsList.some(perm => perm.department_name === 'project_management' && (perm.can_edit == 1 || perm.can_edit === true));
         
         if (p.executive_manager_id) {
             authFetch(USERS_BASIC_URL).then(res => res.json()).then(users => {
@@ -3023,6 +3135,7 @@ function showPurchasingView() {
 
     document.getElementById('purchasingView').classList.remove('hidden');
     switchPurchasingTab('requests'); // Default tab
+    applyPermissionsToUI();
 }
 
 function switchPurchasingTab(tab) {
@@ -3065,8 +3178,22 @@ async function loadSuppliers() {
             tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">لا يوجد موردين مضافين بعد</td></tr>`;
             return;
         }
+        
+        const isSupplierEditAuthorized = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_suppliers' && (p.can_edit == 1 || p.can_edit === true));
+
         suppliers.forEach(s => {
             const mapsLink = s.maps_url ? `<a href="${s.maps_url}" target="_blank" class="text-blue-500 hover:underline">عرض الخريطة</a>` : '-';
+            
+            let actionsHtml = '';
+            if (isSupplierEditAuthorized) {
+                actionsHtml = `
+                    <button onclick="editSupplier(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                    <button onclick="deleteSupplier(${s.id})" class="text-rose-600 hover:text-rose-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                `;
+            } else {
+                actionsHtml = '-';
+            }
+
             tbody.innerHTML += `
                 <tr class="border-b hover:bg-slate-50 transition">
                     <td class="p-4 font-bold text-slate-800">${s.name}</td>
@@ -3074,8 +3201,7 @@ async function loadSuppliers() {
                     <td class="p-4 text-slate-600">${s.supply_type || '-'}</td>
                     <td class="p-4">${s.location || '-'} <br> ${mapsLink}</td>
                     <td class="p-4 text-center">
-                        <button onclick="editSupplier(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
-                        <button onclick="deleteSupplier(${s.id})" class="text-rose-600 hover:text-rose-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        ${actionsHtml}
                     </td>
                 </tr>
             `;
@@ -3180,14 +3306,19 @@ async function loadPurchaseRequests() {
             let statusBadge = '';
             let actionButtons = '';
             
+            const hasStatusPermission = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_status' && (p.can_edit == 1 || p.can_edit === true));
+            const hasCreatePermission = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_create' && (p.can_edit == 1 || p.can_edit === true));
+
             if (r.status === 'Pending') {
                 statusBadge = '<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-bold border border-amber-200">قيد الانتظار</span>';
-                if (localStorage.getItem('username') === 'admin') {
+                if (hasStatusPermission) {
                     actionButtons += `<button onclick="approvePurchaseRequest(${r.id})" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-2 py-1 rounded font-bold mx-1">موافقة</button>`;
                 }
             } else if (r.status === 'Active') {
                 statusBadge = '<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-bold border border-blue-200">مُعتمد</span>';
-                actionButtons += `<button onclick="openMarkPurchasedModal(${r.id})" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded font-bold mx-1 border border-indigo-200">إتمام الشراء</button>`;
+                if (hasStatusPermission) {
+                    actionButtons += `<button onclick="openMarkPurchasedModal(${r.id})" class="text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-2 py-1 rounded font-bold mx-1 border border-indigo-200">إتمام الشراء</button>`;
+                }
             } else if (r.status === 'Purchased') {
                 statusBadge = '<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-md text-xs font-bold border border-emerald-200">تم الشراء</span>';
                 if(r.invoice_image_url) actionButtons += `<a href="${API_HOST}${r.invoice_image_url}" target="_blank" class="text-xs text-blue-600 hover:underline mx-1">الفاتورة</a>`;
@@ -3196,6 +3327,11 @@ async function loadPurchaseRequests() {
 
             const dateStr = new Date(r.created_at).toLocaleDateString('ar-SA');
             const ownerName = r.requested_by ? r.requested_by.username : 'غير معروف';
+
+            let deleteBtn = '';
+            if (hasCreatePermission || r.requested_by_id === (window.currentUser ? window.currentUser.id : null)) {
+                deleteBtn = `<button onclick="deletePurchaseRequest(${r.id})" class="text-rose-600 hover:text-rose-800 p-1 align-middle"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+            }
 
             tbody.innerHTML += `
                 <tr class="border-b hover:bg-slate-50 transition cursor-pointer" onclick="openPurchaseRequestDetails(${r.id})">
@@ -3208,7 +3344,7 @@ async function loadPurchaseRequests() {
                     <td class="p-4">${statusBadge}</td>
                     <td class="p-4 text-center" onclick="event.stopPropagation()">
                         ${actionButtons}
-                        <button onclick="deletePurchaseRequest(${r.id})" class="text-rose-600 hover:text-rose-800 p-1 align-middle"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        ${deleteBtn}
                     </td>
                 </tr>
             `;
@@ -3404,13 +3540,19 @@ function renderPurchaseRequestDetails(r) {
     const actionsContainer = document.getElementById('prdActionsContainer');
     actionsContainer.innerHTML = '';
     
-    if (r.status === 'Pending' && localStorage.getItem('username') === 'admin') {
+    const hasStatusPermission = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_status' && (p.can_edit == 1 || p.can_edit === true));
+    const hasCreatePermission = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_create' && (p.can_edit == 1 || p.can_edit === true));
+
+    if (r.status === 'Pending' && hasStatusPermission) {
         actionsContainer.innerHTML += `<button onclick="approvePurchaseRequestDetails(${r.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>موافقة على الطلب</button>`;
-    } else if (r.status === 'Active') {
+    } else if (r.status === 'Active' && hasStatusPermission) {
         actionsContainer.innerHTML += `<button onclick="openMarkPurchasedModal(${r.id})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">إتمام عملية الشراء</button>`;
     }
-    actionsContainer.innerHTML += `<button onclick="openPurchaseRequestModal(${r.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">تعديل</button>`;
-    actionsContainer.innerHTML += `<button onclick="deletePurchaseRequestDetails(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">حذف</button>`;
+    
+    if (hasCreatePermission || r.requested_by_id === (window.currentUser ? window.currentUser.id : null)) {
+        actionsContainer.innerHTML += `<button onclick="openPurchaseRequestModal(${r.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">تعديل</button>`;
+        actionsContainer.innerHTML += `<button onclick="deletePurchaseRequestDetails(${r.id})" class="bg-rose-100 hover:bg-rose-200 text-rose-700 px-4 py-2 rounded-lg font-bold shadow transition text-sm">حذف</button>`;
+    }
 
     const imagesContainer = document.getElementById('prdImagesContainer');
     imagesContainer.innerHTML = '';
@@ -3573,7 +3715,8 @@ async function calculateSheetRequirements() {
                 // Also load details from users if not matching but check fallback or check if the local user is indeed authorized
                 // Let's do a reliable fallback check:
                 let authorized = false;
-                if (currentUsername === 'admin') {
+                const hasProjMgmt = userPermissionsList.some(perm => perm.department_name === 'project_management' && (perm.can_edit == 1 || perm.can_edit === true));
+                if (currentUsername === 'admin' || hasProjMgmt) {
                     authorized = true;
                 } else if (window.currentUser && window.currentProjectData && window.currentUser.id === window.currentProjectData.executive_manager_id) {
                     authorized = true;
