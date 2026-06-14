@@ -9,6 +9,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    is_approved = Column(Integer, default=0, nullable=False)
 
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
     managed_projects = relationship("Project", foreign_keys="[Project.executive_manager_id]", back_populates="executive_manager")

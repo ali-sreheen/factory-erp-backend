@@ -62,4 +62,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     user = crud.get_user_by_username(db, username=username)
     if user is None:
         raise credentials_exception
+    if user.is_approved != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="بانتظار موافقة مدير النظام",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user

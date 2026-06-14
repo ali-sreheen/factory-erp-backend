@@ -213,7 +213,17 @@ function setupAuthForms() {
                 body: formData
             });
             
-            if (!response.ok) throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+            if (!response.ok) {
+                if (response.status === 403) {
+                    try {
+                        const errData = await response.json();
+                        throw new Error(errData.detail || 'الحساب معلق وبانتظار موافقة الإدارة');
+                    } catch (e) {
+                        throw new Error(e.message || 'الحساب معلق وبانتظار موافقة الإدارة');
+                    }
+                }
+                throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+            }
             
             const data = await response.json();
             localStorage.setItem('token', data.access_token);
@@ -243,7 +253,7 @@ function setupAuthForms() {
             if (response.status === 400) throw new Error('اسم المستخدم مسجل بالفعل');
             if (!response.ok) throw new Error('خطأ في إعدادات التسجيل');
             
-            showToast('تم إنشاء الحساب بنجاح! يرجى تسجيل الدخول', 'bg-emerald-500', '✓');
+            showToast('تم إنشاء الحساب بنجاح! بانتظار موافقة مدير النظام لتتمكن من تسجيل الدخول', 'bg-emerald-500', '✓');
             toggleAuthMode('login');
             document.getElementById('loginUsername').value = username;
             document.getElementById('loginPassword').value = '';
@@ -723,9 +733,15 @@ async function loadUsers() {
             const row = document.createElement('tr');
             row.className = 'border-b hover:bg-slate-50 transition text-sm';
             
+            const isApproved = user.is_approved === 1;
+            const statusLabel = isApproved 
+                ? '<span class="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">مقبول</span>'
+                : '<span class="inline-block px-2.5 py-1 bg-rose-50 text-rose-700 rounded-full text-xs font-bold border border-rose-200">بانتظار الموافقة</span>';
+
             row.innerHTML = `
                 <td class="p-4 text-slate-500 font-semibold">#${user.id}</td>
                 <td class="p-4 font-bold text-slate-800">${user.username}</td>
+                <td class="p-4 text-center">${statusLabel}</td>
                 <td class="p-4">
                     <div class="flex justify-center gap-2">
                         <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200">
@@ -734,6 +750,9 @@ async function loadUsers() {
                         ${user.username !== 'admin' ? `
                         <button onclick="openPermissionsModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition text-xs font-bold border border-amber-200">
                             🛡️ الصلاحيات
+                        </button>
+                        <button onclick="toggleUserApproval(${user.id})" class="px-3.5 py-1.5 ${isApproved ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'} rounded-xl transition text-xs font-bold border">
+                            ${isApproved ? '🚫 تعطيل' : '✓ تفعيل'}
                         </button>
                         ` : ''}
                     </div>
@@ -746,6 +765,22 @@ async function loadUsers() {
         showToast('خطأ أثناء تحميل الحسابات: ' + error.message, 'bg-rose-500', '✗');
     } finally {
         adminLoading.classList.add('hidden');
+    }
+}
+
+async function toggleUserApproval(userId) {
+    try {
+        const response = await authFetch(`${USERS_URL}/${userId}/toggle-approval`, {
+            method: 'PUT'
+        });
+        if (!response.ok) {
+            throw await handleBadResponse(response, 'فشلت عملية تعديل حالة الحساب');
+        }
+        showToast('تم تحديث حالة الحساب بنجاح', 'bg-emerald-500', '✓');
+        await loadUsers();
+    } catch (error) {
+        console.error('Toggle approval error:', error);
+        showToast(error.message || 'حدث خطأ أثناء تعديل حالة الحساب', 'bg-rose-500', '✗');
     }
 }
 

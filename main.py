@@ -24,6 +24,16 @@ def check_and_update_db_schema(db_engine):
     from sqlalchemy import inspect, text
     inspector = inspect(db_engine)
     
+    # Check users table
+    if "users" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("users")]
+        if "is_approved" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_approved INTEGER DEFAULT 1"))
+            except Exception as e:
+                pass
+
     # Check transactions table
     if "transactions" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("transactions")]
@@ -277,6 +287,12 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if user.is_approved != 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="بانتظار موافقة مدير النظام",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -323,6 +339,27 @@ def update_user_credentials(
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+@app.put("/api/users/{user_id}/toggle-approval")
+def toggle_user_approval(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to manage user approvals")
+        
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if db_user.username == "admin":
+        raise HTTPException(status_code=400, detail="Cannot toggle approval for admin account")
+        
+    db_user.is_approved = 1 if db_user.is_approved == 0 else 0
+    db.commit()
+    db.refresh(db_user)
+    return {"status": "success", "is_approved": db_user.is_approved}
 
 # --- PROTECTED ITEMS ENDPOINTS ---
 

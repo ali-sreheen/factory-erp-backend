@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: int
     username: str
+    is_approved: int
 
     class Config:
         from_attributes = True

@@ -11,7 +11,7 @@ def get_all_users(db: Session):
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_pwd = auth.get_password_hash(user.password)
-    db_user = models.User(username=user.username, hashed_password=hashed_pwd)
+    db_user = models.User(username=user.username, hashed_password=hashed_pwd, is_approved=0)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -33,11 +33,17 @@ def seed_admin_user(db: Session):
     if not admin_user:
         # Create admin user with default password admin123
         hashed_pwd = auth.get_password_hash("admin123")
-        db_user = models.User(username="admin", hashed_password=hashed_pwd)
+        db_user = models.User(username="admin", hashed_password=hashed_pwd, is_approved=1)
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
         return db_user
+    else:
+        # Ensure existing admin is approved
+        if admin_user.is_approved != 1:
+            admin_user.is_approved = 1
+            db.commit()
+            db.refresh(admin_user)
     return admin_user
 
 def get_items(db: Session, category: str = None, subcategory: str = None):
