@@ -2128,9 +2128,16 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="" disabled selected>نوع الباب</option>
-                <option value="single leaf">single leaf</option>
-                <option value="double leaf">double leaf</option>
+                <option value="Single leaf metal" selected>Single leaf metal</option>
+                <option value="Double leaf metal">Double leaf metal</option>
+                <option value="single leaf wood">single leaf wood</option>
+                <option value="double leaf wood">double leaf wood</option>
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm font-bold text-center">
+                <option value="4.5" selected>4.5</option>
+                <option value="5.5">5.5</option>
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
@@ -2370,6 +2377,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3 font-bold text-slate-700">${d.hinges_count || '4'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
+                    <td class="p-3 font-semibold text-slate-700">${d.leaf_thickness || '4.5'}</td>
                     <td class="p-3 text-center">${d.qashatah === 'YES' ? 'نعم' : 'لا'}</td>
                     <td class="p-3 text-center">${d.fire_resistance || '-'}</td>
                     <td class="p-3">${d.architrave || '-'}</td>
@@ -2382,7 +2390,7 @@ async function viewProjectDetails(id) {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="19" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="20" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -2487,14 +2495,15 @@ if (projectWizardForm) {
                     hinges_count: isNaN(hingesCountVal) ? 4 : hingesCountVal,
                     profile_type: inputs[9].value || null,
                     door_type: inputs[10].value || null,
-                    qashatah: inputs[11].checked ? 'YES' : 'NO',
-                    fire_resistance: inputs[12].checked ? 'Yes' : 'No',
-                    architrave: inputs[13].value || null,
-                    architrave_2: inputs[14].value || null,
-                    under_tile: inputs[15].value || null,
-                    window_details: inputs[16].value || null,
-                    raddad: inputs[17].checked ? 'YES' : 'NO',
-                    notes: inputs[18].value || null
+                    leaf_thickness: inputs[11].value || "4.5",
+                    qashatah: inputs[12].checked ? 'YES' : 'NO',
+                    fire_resistance: inputs[13].checked ? 'Yes' : 'No',
+                    architrave: inputs[14].value || null,
+                    architrave_2: inputs[15].value || null,
+                    under_tile: inputs[16].value || null,
+                    window_details: inputs[17].value || null,
+                    raddad: inputs[18].checked ? 'YES' : 'NO',
+                    notes: inputs[19].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -2760,9 +2769,16 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="" disabled ${!d.door_type ? 'selected' : ''}>نوع الباب</option>
-                            <option value="single leaf" ${d.door_type === 'single leaf' ? 'selected' : ''}>single leaf</option>
-                            <option value="double leaf" ${d.door_type === 'double leaf' ? 'selected' : ''}>double leaf</option>
+                            <option value="Single leaf metal" ${d.door_type === 'Single leaf metal' || !d.door_type ? 'selected' : ''}>Single leaf metal</option>
+                            <option value="Double leaf metal" ${d.door_type === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
+                            <option value="single leaf wood" ${d.door_type === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
+                            <option value="double leaf wood" ${d.door_type === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white font-bold text-center">
+                            <option value="4.5" ${d.leaf_thickness === '4.5' || !d.leaf_thickness ? 'selected' : ''}>4.5</option>
+                            <option value="5.5" ${d.leaf_thickness === '5.5' ? 'selected' : ''}>5.5</option>
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>

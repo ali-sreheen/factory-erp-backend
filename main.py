@@ -93,7 +93,7 @@ def check_and_update_db_schema(db_engine):
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
-        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count"]:
+        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count", "leaf_thickness"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:
@@ -101,6 +101,8 @@ def check_and_update_db_schema(db_engine):
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR DEFAULT 'NO'"))
                         elif col == "hinges_count":
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} INTEGER DEFAULT 4"))
+                        elif col == "leaf_thickness":
+                            conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR DEFAULT '4.5'"))
                         else:
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR"))
                 except Exception as e:
