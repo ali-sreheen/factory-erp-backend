@@ -407,7 +407,8 @@ def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectD
             else:
                 new_sticker = str(start_sticker + i)
                 
-            db_detail = models.ProjectDetail(**detail_dict, project_id=project_id, sticker_number=new_sticker)
+            detail_dict['sticker_number'] = new_sticker
+            db_detail = models.ProjectDetail(**detail_dict, project_id=project_id)
             db.add(db_detail)
             db.commit()
             db.refresh(db_detail)
