@@ -2139,12 +2139,16 @@ let currentDefaultHinge = "Devon";
 let currentDefaultArchitrave = "4";
 let currentDefaultProfile = "single rabbit with rubber";
 let currentDefaultUnderTile = "0";
+let currentDefaultDoorType = "Single leaf metal";
+let currentDefaultLeafThickness = "4.5";
 
 let firstRowLockChangeCount = 0;
 let firstRowHingeChangeCount = 0;
 let firstRowArchitraveChangeCount = 0;
 let firstRowProfileChangeCount = 0;
 let firstRowUnderTileChangeCount = 0;
+let firstRowDoorTypeChangeCount = 0;
+let firstRowLeafThicknessChangeCount = 0;
 
 function showModuleSelectorView() {
     const _pView = document.getElementById('purchasingView');
@@ -2232,12 +2236,16 @@ function openProjectWizard() {
     currentDefaultArchitrave = "4";
     currentDefaultProfile = "single rabbit with rubber";
     currentDefaultUnderTile = "0";
+    currentDefaultDoorType = "Single leaf metal";
+    currentDefaultLeafThickness = "4.5";
     
     firstRowLockChangeCount = 0;
     firstRowHingeChangeCount = 0;
     firstRowArchitraveChangeCount = 0;
     firstRowProfileChangeCount = 0;
     firstRowUnderTileChangeCount = 0;
+    firstRowDoorTypeChangeCount = 0;
+    firstRowLeafThicknessChangeCount = 0;
 
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
@@ -2401,16 +2409,17 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="Single leaf metal" selected>Single leaf metal</option>
-                <option value="Double leaf metal">Double leaf metal</option>
-                <option value="single leaf wood">single leaf wood</option>
-                <option value="double leaf wood">double leaf wood</option>
+                <option value="Single leaf metal" ${currentDefaultDoorType === 'Single leaf metal' ? 'selected' : ''}>Single leaf metal</option>
+                <option value="Double leaf metal" ${currentDefaultDoorType === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
+                <option value="single leaf wood" ${currentDefaultDoorType === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
+                <option value="double leaf wood" ${currentDefaultDoorType === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
             </select>
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm font-bold text-center">
-                <option value="4.5" selected>4.5</option>
-                <option value="5.5">5.5</option>
+                <option value="4.5" ${currentDefaultLeafThickness === '4.5' ? 'selected' : ''}>4.5</option>
+                <option value="5.5" ${currentDefaultLeafThickness === '5.5' ? 'selected' : ''}>5.5</option>
+                <option value="6.5" ${currentDefaultLeafThickness === '6.5' ? 'selected' : ''}>6.5</option>
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
@@ -2522,6 +2531,46 @@ function addProjectDetailRow() {
                         const rowInputs = row.querySelectorAll('input');
                         if (rowInputs[9]) {
                             rowInputs[9].value = currentDefaultUnderTile;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Door Type select (selects[5])
+    selects[5].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowDoorTypeChangeCount++;
+            if (firstRowDoorTypeChangeCount === 1) {
+                currentDefaultDoorType = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[5]) {
+                            rowSelects[5].value = currentDefaultDoorType;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Leaf Thickness select (selects[6])
+    selects[6].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowLeafThicknessChangeCount++;
+            if (firstRowLeafThicknessChangeCount === 1) {
+                currentDefaultLeafThickness = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[6]) {
+                            rowSelects[6].value = currentDefaultLeafThickness;
                         }
                     }
                 });
