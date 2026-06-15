@@ -2134,6 +2134,14 @@ async function togglePermission(userId, deptName, canEdit) {
 
 const PROJECTS_URL = `${API_HOST}/api/projects`;
 
+let currentDefaultLock = "devon mortice lock";
+let currentDefaultHinge = "Devon";
+let currentDefaultArchitrave = "4";
+
+let firstRowLockChangeCount = 0;
+let firstRowHingeChangeCount = 0;
+let firstRowArchitraveChangeCount = 0;
+
 function showModuleSelectorView() {
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
@@ -2197,6 +2205,32 @@ function openProjectWizard() {
     
     document.getElementById('projectWizardForm').reset();
     document.getElementById('projectDetailsTableBody').innerHTML = '';
+    
+    // Reset defaults and first row change counters
+    currentDefaultLock = "devon mortice lock";
+    if (typeof dbLockOptions !== 'undefined') {
+        const hasDevonLock = dbLockOptions.some(opt => opt.name.toLowerCase() === "devon mortise lock" || opt.name.toLowerCase() === "devon mortice lock");
+        if (hasDevonLock) {
+            const found = dbLockOptions.find(opt => opt.name.toLowerCase() === "devon mortise lock" || opt.name.toLowerCase() === "devon mortice lock");
+            currentDefaultLock = found.name;
+        }
+    }
+    
+    currentDefaultHinge = "Devon";
+    if (typeof dbHingeOptions !== 'undefined') {
+        const hasDevonHinge = dbHingeOptions.some(opt => opt.name.toLowerCase() === "devon");
+        if (hasDevonHinge) {
+            const found = dbHingeOptions.find(opt => opt.name.toLowerCase() === "devon");
+            currentDefaultHinge = found.name;
+        }
+    }
+    
+    currentDefaultArchitrave = "4";
+    
+    firstRowLockChangeCount = 0;
+    firstRowHingeChangeCount = 0;
+    firstRowArchitraveChangeCount = 0;
+
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
     loadAssignees();
@@ -2285,32 +2319,34 @@ function addProjectDetailRow() {
     const tr = document.createElement('tr');
     tr.className = 'border-b hover:bg-slate-50';
     
-    let lockSelectOpts = `<option value="" disabled selected>الزرفيل</option>`;
+    let lockSelectOpts = `<option value="" disabled ${!currentDefaultLock ? 'selected' : ''}>الزرفيل</option>`;
     dbLockOptions.forEach(opt => {
-        lockSelectOpts += `<option value="${opt.name}">${opt.name}</option>`;
+        const isSelected = opt.name === currentDefaultLock;
+        lockSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
     });
     if (dbLockOptions.length === 0) {
         lockSelectOpts += `
-            <option value="devon mortice lock">devon mortice lock</option>
-            <option value="euroart mortice lock">euroart mortice lock</option>
-            <option value="euroart roller">euroart roller</option>
-            <option value="consort mortice lock">consort mortice lock</option>
-            <option value="special">special</option>
+            <option value="devon mortice lock" ${currentDefaultLock === 'devon mortice lock' ? 'selected' : ''}>devon mortice lock</option>
+            <option value="euroart mortice lock" ${currentDefaultLock === 'euroart mortice lock' ? 'selected' : ''}>euroart mortice lock</option>
+            <option value="euroart roller" ${currentDefaultLock === 'euroart roller' ? 'selected' : ''}>euroart roller</option>
+            <option value="consort mortice lock" ${currentDefaultLock === 'consort mortice lock' ? 'selected' : ''}>consort mortice lock</option>
+            <option value="special" ${currentDefaultLock === 'special' ? 'selected' : ''}>special</option>
         `;
     }
 
-    let hingeSelectOpts = `<option value="" disabled selected>فصالات</option>`;
+    let hingeSelectOpts = `<option value="" disabled ${!currentDefaultHinge ? 'selected' : ''}>فصالات</option>`;
     dbHingeOptions.forEach(opt => {
-        hingeSelectOpts += `<option value="${opt.name}">${opt.name}</option>`;
+        const isSelected = opt.name === currentDefaultHinge;
+        hingeSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
     });
     if (dbHingeOptions.length === 0) {
         hingeSelectOpts += `
-            <option value="Devon">Devon</option>
-            <option value="vantage">vantage</option>
-            <option value="euroart">euroart</option>
-            <option value="consort">consort</option>
-            <option value="conseld">conseld</option>
-            <option value="spical">spical</option>
+            <option value="Devon" ${currentDefaultHinge === 'Devon' ? 'selected' : ''}>Devon</option>
+            <option value="vantage" ${currentDefaultHinge === 'vantage' ? 'selected' : ''}>vantage</option>
+            <option value="euroart" ${currentDefaultHinge === 'euroart' ? 'selected' : ''}>euroart</option>
+            <option value="consort" ${currentDefaultHinge === 'consort' ? 'selected' : ''}>consort</option>
+            <option value="conseld" ${currentDefaultHinge === 'conseld' ? 'selected' : ''}>conseld</option>
+            <option value="spical" ${currentDefaultHinge === 'spical' ? 'selected' : ''}>spical</option>
         `;
     }
 
@@ -2371,14 +2407,80 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)" value="${currentDefaultArchitrave || ''}"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
     `;
+    
+    // Set change listeners
+    const selects = tr.querySelectorAll('select');
+    const inputs = tr.querySelectorAll('input');
+    
+    // Lock Type select (selects[1])
+    selects[1].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowLockChangeCount++;
+            if (firstRowLockChangeCount === 1) {
+                currentDefaultLock = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[1]) {
+                            rowSelects[1].value = currentDefaultLock;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Hinges select (selects[2])
+    selects[2].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowHingeChangeCount++;
+            if (firstRowHingeChangeCount === 1) {
+                currentDefaultHinge = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[2]) {
+                            rowSelects[2].value = currentDefaultHinge;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Architrave input (inputs[7])
+    inputs[7].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowArchitraveChangeCount++;
+            if (firstRowArchitraveChangeCount === 1) {
+                currentDefaultArchitrave = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowInputs = row.querySelectorAll('input');
+                        if (rowInputs[7]) {
+                            rowInputs[7].value = currentDefaultArchitrave;
+                            window.autoCalculateArchitrave2(rowInputs[7]);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
     tbody.appendChild(tr);
 }
 
