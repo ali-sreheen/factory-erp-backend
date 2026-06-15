@@ -360,34 +360,87 @@ def delete_project(db: Session, project_id: int):
 
 # --- Project Details ---
 def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectDetailCreate):
-    db_detail = models.ProjectDetail(**detail.model_dump(), project_id=project_id)
-    
-    # Auto-increment sticker_number for new fire resistant doors if sticker_number is empty/null
-    if db_detail.fire_resistance in ["Yes", "نعم", "YES"]:
-        if not db_detail.sticker_number:
-            # Query all sticker numbers
-            all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
-                models.ProjectDetail.sticker_number != None,
-                models.ProjectDetail.sticker_number != ""
-            ).all()
+    is_fire = False
+    if detail.fire_resistance:
+        fr = str(detail.fire_resistance).strip().lower()
+        is_fire = fr.startswith("yes") or fr.startswith("نعم")
+        
+    if is_fire and detail.quantity and detail.quantity > 1:
+        qty = detail.quantity
+        first_detail = None
+        
+        # Query all sticker numbers to find max
+        all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
+            models.ProjectDetail.sticker_number != None,
+            models.ProjectDetail.sticker_number != ""
+        ).all()
+        
+        max_num = 0
+        import re
+        for (s_num,) in all_stickers:
+            try:
+                digits = re.findall(r'\d+', s_num)
+                if digits:
+                    val = int(digits[-1])
+                    if val > max_num:
+                        max_num = val
+            except Exception:
+                pass
+                
+        start_sticker = max_num + 1
+        
+        for i in range(qty):
+            detail_dict = detail.model_dump()
+            detail_dict['quantity'] = 1
             
-            max_num = 0
-            import re
-            for (s_num,) in all_stickers:
+            if detail.sticker_number:
                 try:
-                    digits = re.findall(r'\d+', s_num)
-                    if digits:
-                        val = int(digits[-1])
-                        if val > max_num:
-                            max_num = val
+                    base_digits = re.findall(r'\d+', detail.sticker_number)
+                    if base_digits:
+                        base_val = int(base_digits[-1])
+                        prefix = detail.sticker_number[:detail.sticker_number.rfind(base_digits[-1])]
+                        new_sticker = f"{prefix}{base_val + i}"
+                    else:
+                        new_sticker = f"{detail.sticker_number}_{i+1}"
                 except Exception:
-                    pass
-            db_detail.sticker_number = str(max_num + 1)
-
-    db.add(db_detail)
-    db.commit()
-    db.refresh(db_detail)
-    return db_detail
+                    new_sticker = f"{detail.sticker_number}_{i+1}"
+            else:
+                new_sticker = str(start_sticker + i)
+                
+            db_detail = models.ProjectDetail(**detail_dict, project_id=project_id, sticker_number=new_sticker)
+            db.add(db_detail)
+            db.commit()
+            db.refresh(db_detail)
+            if i == 0:
+                first_detail = db_detail
+        return first_detail
+    else:
+        db_detail = models.ProjectDetail(**detail.model_dump(), project_id=project_id)
+        
+        if is_fire:
+            if not db_detail.sticker_number:
+                all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
+                    models.ProjectDetail.sticker_number != None,
+                    models.ProjectDetail.sticker_number != ""
+                ).all()
+                
+                max_num = 0
+                import re
+                for (s_num,) in all_stickers:
+                    try:
+                        digits = re.findall(r'\d+', s_num)
+                        if digits:
+                            val = int(digits[-1])
+                            if val > max_num:
+                                max_num = val
+                    except Exception:
+                        pass
+                db_detail.sticker_number = str(max_num + 1)
+                
+        db.add(db_detail)
+        db.commit()
+        db.refresh(db_detail)
+        return db_detail
 
 def delete_project_detail(db: Session, detail_id: int):
     db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
