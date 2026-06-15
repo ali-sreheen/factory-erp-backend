@@ -176,6 +176,22 @@ async function showAppView(username) {
     }
     
     await fetchCurrentUser();
+    
+    // Fetch permissions if not admin
+    if (username !== 'admin') {
+        try {
+            const permUrl = `${API_HOST}/api/users/me/permissions`;
+            console.log('[DEBUG] showAppView: Fetching permissions from:', permUrl);
+            const permsResponse = await authFetch(permUrl);
+            if (permsResponse.ok) {
+                userPermissionsList = await permsResponse.json();
+                console.log('[DEBUG] showAppView: userPermissionsList loaded:', JSON.stringify(userPermissionsList));
+            }
+        } catch (e) {
+            console.error('[DEBUG] showAppView: Failed to fetch permissions', e);
+        }
+    }
+
     loadProjectOptions();
     loadSheetSizes();
     showModuleSelectorView();
