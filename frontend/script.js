@@ -616,6 +616,7 @@ async function fetchDepartmentCounts() {
         const username = localStorage.getItem('username');
         if (username === 'admin') {
             document.getElementById('adminDepartmentControls').classList.remove('hidden');
+            applyPermissionsToUI();
         } else {
             document.getElementById('adminDepartmentControls').classList.add('hidden');
             const permUrl = `${API_URL.replace('/items', '/users')}/me/permissions`;
@@ -2149,6 +2150,7 @@ function showProjectsView() {
     adminView.classList.add('hidden');
     const pdView = document.getElementById('projectDetailView');
     if(pdView) pdView.classList.add('hidden');
+    applyPermissionsToUI();
     loadProjects();
 }
 
