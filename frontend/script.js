@@ -2137,10 +2137,14 @@ const PROJECTS_URL = `${API_HOST}/api/projects`;
 let currentDefaultLock = "devon mortice lock";
 let currentDefaultHinge = "Devon";
 let currentDefaultArchitrave = "4";
+let currentDefaultProfile = "single rabbit with rubber";
+let currentDefaultUnderTile = "0";
 
 let firstRowLockChangeCount = 0;
 let firstRowHingeChangeCount = 0;
 let firstRowArchitraveChangeCount = 0;
+let firstRowProfileChangeCount = 0;
+let firstRowUnderTileChangeCount = 0;
 
 function showModuleSelectorView() {
     const _pView = document.getElementById('purchasingView');
@@ -2226,10 +2230,14 @@ function openProjectWizard() {
     }
     
     currentDefaultArchitrave = "4";
+    currentDefaultProfile = "single rabbit with rubber";
+    currentDefaultUnderTile = "0";
     
     firstRowLockChangeCount = 0;
     firstRowHingeChangeCount = 0;
     firstRowArchitraveChangeCount = 0;
+    firstRowProfileChangeCount = 0;
+    firstRowUnderTileChangeCount = 0;
 
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
@@ -2384,11 +2392,11 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="" disabled selected>المقطع</option>
-                <option value="single rabbit with rubber">single rabbit with rubber</option>
-                <option value="double rabbit with rubber">double rabbit with rubber</option>
-                <option value="single rabbit">single rabbit</option>
-                <option value="double rabbit">double rabbit</option>
+                <option value="" disabled ${!currentDefaultProfile ? 'selected' : ''}>المقطع</option>
+                <option value="single rabbit with rubber" ${currentDefaultProfile === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
+                <option value="double rabbit with rubber" ${currentDefaultProfile === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
+                <option value="single rabbit" ${currentDefaultProfile === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
+                <option value="double rabbit" ${currentDefaultProfile === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
             </select>
         </td>
         <td class="p-2">
@@ -2409,7 +2417,7 @@ function addProjectDetailRow() {
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)" value="${currentDefaultArchitrave || ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط" value="${currentDefaultUnderTile || ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
@@ -2474,6 +2482,46 @@ function addProjectDetailRow() {
                         if (rowInputs[7]) {
                             rowInputs[7].value = currentDefaultArchitrave;
                             window.autoCalculateArchitrave2(rowInputs[7]);
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Profile select (selects[4])
+    selects[4].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowProfileChangeCount++;
+            if (firstRowProfileChangeCount === 1) {
+                currentDefaultProfile = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[4]) {
+                            rowSelects[4].value = currentDefaultProfile;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Under Tile input (inputs[9])
+    inputs[9].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowUnderTileChangeCount++;
+            if (firstRowUnderTileChangeCount === 1) {
+                currentDefaultUnderTile = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowInputs = row.querySelectorAll('input');
+                        if (rowInputs[9]) {
+                            rowInputs[9].value = currentDefaultUnderTile;
                         }
                     }
                 });
