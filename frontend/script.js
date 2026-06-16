@@ -5093,14 +5093,14 @@ window.proceedFromStep2 = function() {
             // 3. Depth and Profile validation
             if (profile === "single rabbit with rubber") {
                 if (isNaN(depth) || depth !== 15) {
-                    doorErrors.push("العمق يجب أن يكون 15 سم لمقطع single rabbit with rubber");
+                    doorErrors.push("العمق يجب أن يكون 15 سم");
                 }
             } else if (profile === "double rabbit with rubber") {
                 if (isNaN(depth) || depth < 15 || depth > 33) {
-                    doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم لمقطع Double rabbit with rubber");
+                    doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم");
                 }
             } else {
-                doorErrors.push("المقطع المختار غير مطابق لمواصفات أبواب الحريق (يجب اختيار single rabbit with rubber أو Double rabbit with rubber)");
+                doorErrors.push("المقطع المختار غير مطابق (يجب اختيار single rabbit with rubber أو Double rabbit with rubber)");
             }
 
             if (doorErrors.length > 0) {
@@ -5110,11 +5110,29 @@ window.proceedFromStep2 = function() {
     });
 
     if (errors.length > 0) {
-        ignoreFireDoorValidation = true;
-        // Show validation errors to user using an alert
-        alert("تنبيه: بعض الأبواب المقاومة للحريق غير مطابقة للمواصفات:\n\n" + errors.join('\n') + "\n\nإذا كنت متأكداً وتريد التجاوز، اضغط على التالي مرة أخرى.");
+        const errorsContainer = document.getElementById('fireDoorValidationErrors');
+        if (errorsContainer) {
+            errorsContainer.innerHTML = errors.map(err => `<div class="p-2 bg-rose-50 text-rose-800 border-r-4 border-rose-500 rounded-l-md font-bold mb-1">${err}</div>`).join('');
+        }
+        const modal = document.getElementById('fireDoorValidationModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
         return;
     }
 
+    goToWizardStep(3);
+};
+
+window.closeFireDoorValidationModal = function() {
+    const modal = document.getElementById('fireDoorValidationModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+};
+
+window.bypassFireDoorValidation = function() {
+    ignoreFireDoorValidation = true;
+    closeFireDoorValidationModal();
     goToWizardStep(3);
 };
