@@ -2768,6 +2768,14 @@ async function viewProjectDetails(id) {
         document.getElementById('pdEngineer').textContent = p.engineer_name || '-';
         document.getElementById('pdEngineerPhone').textContent = p.engineer_phone || '-';
         document.getElementById('pdLocation').textContent = p.location || '-';
+        const mapUrlContainer = document.getElementById('pdMapUrlContainer');
+        if (mapUrlContainer) {
+            if (p.map_url) {
+                mapUrlContainer.innerHTML = `<a href="${p.map_url}" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-bold underline flex items-center gap-1">عرض على الخريطة <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>`;
+            } else {
+                mapUrlContainer.textContent = '-';
+            }
+        }
         document.getElementById('pdPaint').textContent = p.paint_color || '-';
         if(document.getElementById('pdManufacturingType')) document.getElementById('pdManufacturingType').textContent = p.manufacturing_type || '-';
         if(document.getElementById('pdInstallationType')) document.getElementById('pdInstallationType').textContent = p.installation_type || '-';
@@ -2955,6 +2963,7 @@ if (projectWizardForm) {
                 engineer_name: document.getElementById('pwEngineerName').value,
                 engineer_phone: document.getElementById('pwEngineerPhone').value,
                 location: document.getElementById('pwLocation').value,
+                map_url: document.getElementById('pwMapUrl').value || null,
                 executive_manager_id: document.getElementById('pwAssignee').value ? parseInt(document.getElementById('pwAssignee').value) : null,
                 paint_color: document.getElementById('pwPaintColor').value,
                 manufacturing_type: document.getElementById('pwManufacturingType') ? document.getElementById('pwManufacturingType').value : null,
@@ -3177,6 +3186,7 @@ window.editProject = async function(projectId) {
         document.getElementById('pwEngineerName').value = p.engineer_name || '';
         document.getElementById('pwEngineerPhone').value = p.engineer_phone || '';
         document.getElementById('pwLocation').value = p.location || '';
+        document.getElementById('pwMapUrl').value = p.map_url || '';
         document.getElementById('pwAssignee').value = p.executive_manager_id || '';
         document.getElementById('pwPaintColor').value = p.paint_color || '';
         if(document.getElementById('pwManufacturingType')) document.getElementById('pwManufacturingType').value = p.manufacturing_type || '';

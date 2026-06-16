@@ -88,6 +88,12 @@ def check_and_update_db_schema(db_engine):
                         conn.execute(text("ALTER TABLE projects ADD COLUMN expected_completion_date DATETIME"))
                 except Exception as ex:
                     pass
+        if "map_url" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE projects ADD COLUMN map_url VARCHAR"))
+            except Exception as e:
+                pass
 
     # Check purchase_requests table
     if "purchase_requests" in inspector.get_table_names():

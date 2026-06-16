@@ -412,9 +412,13 @@
                                     <label class="block text-sm font-medium text-slate-700 mb-1">رقم هاتف مسؤول الموقع</label>
                                     <input type="text" id="pwEngineerPhone" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" dir="ltr">
                                 </div>
-                                <div class="md:col-span-2">
+                                <div class="md:col-span-1">
                                     <label class="block text-sm font-medium text-slate-700 mb-1">موقع المشروع</label>
                                     <input type="text" id="pwLocation" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+                                </div>
+                                <div class="md:col-span-1">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">الخريطة (رابط الموقع)</label>
+                                    <input type="text" id="pwMapUrl" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" placeholder="أدخل رابط موقع خرائط جوجل">
                                 </div>
                                 <div class="md:col-span-2 hidden">
                                     <label class="block text-sm font-medium text-slate-700 mb-1">المستخدم المسؤول عن التنفيذ (Assignee)</label>
@@ -596,6 +600,7 @@
                                 <div class="flex justify-between"><span class="text-slate-500">مسؤول الموقع:</span> <span class="font-bold text-slate-800" id="pdEngineer"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">هاتف مسؤول الموقع:</span> <span class="font-bold text-slate-800" dir="ltr" id="pdEngineerPhone"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">الموقع:</span> <span class="font-bold text-slate-800" id="pdLocation"></span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">الخريطة:</span> <span class="font-bold text-slate-800" id="pdMapUrlContainer"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">لون الدهان:</span> <span class="font-bold text-slate-800" id="pdPaint"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">نوع التصنيع:</span> <span class="font-bold text-slate-800" id="pdManufacturingType"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">تركيب المشروع:</span> <span class="font-bold text-slate-800" id="pdInstallationType"></span></div>
@@ -1712,7 +1717,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=82"></script>
+    <script src="script.js?v=83"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

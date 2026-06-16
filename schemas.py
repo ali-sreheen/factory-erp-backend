@@ -246,6 +246,7 @@ class ProjectBase(BaseModel):
     engineer_name: Optional[str] = None
     engineer_phone: Optional[str] = None
     location: Optional[str] = None
+    map_url: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
     manufacturing_type: Optional[str] = None
@@ -271,6 +272,7 @@ class ProjectUpdate(BaseModel):
     engineer_name: Optional[str] = None
     engineer_phone: Optional[str] = None
     location: Optional[str] = None
+    map_url: Optional[str] = None
     executive_manager_id: Optional[int] = None
     paint_color: Optional[str] = None
     manufacturing_type: Optional[str] = None

@@ -101,6 +101,7 @@ class Project(Base):
     engineer_name = Column(String, nullable=True)
     engineer_phone = Column(String, nullable=True)
     location = Column(String, nullable=True)
+    map_url = Column(String, nullable=True)
     executive_manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     paint_color = Column(String, nullable=True)
     manufacturing_type = Column(String, nullable=True)
