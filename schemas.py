@@ -224,6 +224,7 @@ class ProjectDetailBase(BaseModel):
     architrave: Optional[str] = None
     architrave_2: Optional[str] = None
     under_tile: Optional[str] = None
+    specifications: Optional[str] = None
     notes: Optional[str] = None
 
 class ProjectDetailCreate(ProjectDetailBase):

@@ -11,6 +11,9 @@ let allItems = [];
 let isReorderMode = false;
 let dbLockOptions = [];
 let dbHingeOptions = [];
+let dbProfileOptions = [];
+let dbDoorTypeOptions = [];
+let dbSpecOptions = [];
 let dbSheetSizes = [];
 let activeLogItemId = null; // Track current item open in log modal
 
@@ -141,6 +144,9 @@ async function loadProjectOptions() {
             const allOpts = await response.json();
             dbLockOptions = allOpts.filter(o => o.option_type === 'lock');
             dbHingeOptions = allOpts.filter(o => o.option_type === 'hinge');
+            dbProfileOptions = allOpts.filter(o => o.option_type === 'profile');
+            dbDoorTypeOptions = allOpts.filter(o => o.option_type === 'door_type');
+            dbSpecOptions = allOpts.filter(o => o.option_type === 'specification');
         }
     } catch (e) {
         console.error('Failed to load project options', e);
@@ -2141,6 +2147,8 @@ let currentDefaultProfile = "single rabbit with rubber";
 let currentDefaultUnderTile = "0";
 let currentDefaultDoorType = "Single leaf metal";
 let currentDefaultLeafThickness = "4.5";
+let currentDefaultSpec = "Flush";
+let ignoreFireDoorValidation = false;
 
 let firstRowLockChangeCount = 0;
 let firstRowHingeChangeCount = 0;
@@ -2149,6 +2157,7 @@ let firstRowProfileChangeCount = 0;
 let firstRowUnderTileChangeCount = 0;
 let firstRowDoorTypeChangeCount = 0;
 let firstRowLeafThicknessChangeCount = 0;
+let firstRowSpecChangeCount = 0;
 
 function showModuleSelectorView() {
     const _pView = document.getElementById('purchasingView');
@@ -2238,6 +2247,15 @@ function openProjectWizard() {
     currentDefaultUnderTile = "0";
     currentDefaultDoorType = "Single leaf metal";
     currentDefaultLeafThickness = "4.5";
+    currentDefaultSpec = "Flush";
+    if (typeof dbSpecOptions !== 'undefined') {
+        const hasFlushSpec = dbSpecOptions.some(opt => opt.name.toLowerCase() === "flush");
+        if (hasFlushSpec) {
+            const found = dbSpecOptions.find(opt => opt.name.toLowerCase() === "flush");
+            currentDefaultSpec = found.name;
+        }
+    }
+    ignoreFireDoorValidation = false;
     
     firstRowLockChangeCount = 0;
     firstRowHingeChangeCount = 0;
@@ -2246,6 +2264,7 @@ function openProjectWizard() {
     firstRowUnderTileChangeCount = 0;
     firstRowDoorTypeChangeCount = 0;
     firstRowLeafThicknessChangeCount = 0;
+    firstRowSpecChangeCount = 0;
 
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
@@ -2275,6 +2294,9 @@ function openProjectWizard() {
 }
 
 function goToWizardStep(stepNumber) {
+    if (stepNumber === 2) {
+        ignoreFireDoorValidation = false;
+    }
     document.querySelectorAll('.wizard-step-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`wizardStep${stepNumber}`).classList.remove('hidden');
     
@@ -2366,6 +2388,48 @@ function addProjectDetailRow() {
         `;
     }
 
+    let profileSelectOpts = `<option value="" disabled ${!currentDefaultProfile ? 'selected' : ''}>المقطع</option>`;
+    dbProfileOptions.forEach(opt => {
+        const isSelected = opt.name === currentDefaultProfile;
+        profileSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
+    });
+    if (dbProfileOptions.length === 0) {
+        profileSelectOpts += `
+            <option value="single rabbit with rubber" ${currentDefaultProfile === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
+            <option value="double rabbit with rubber" ${currentDefaultProfile === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
+            <option value="single rabbit" ${currentDefaultProfile === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
+            <option value="double rabbit" ${currentDefaultProfile === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+        `;
+    }
+
+    let doorTypeSelectOpts = `<option value="" disabled ${!currentDefaultDoorType ? 'selected' : ''}>نوع الدرفة</option>`;
+    dbDoorTypeOptions.forEach(opt => {
+        const isSelected = opt.name === currentDefaultDoorType;
+        doorTypeSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
+    });
+    if (dbDoorTypeOptions.length === 0) {
+        doorTypeSelectOpts += `
+            <option value="Single leaf metal" ${currentDefaultDoorType === 'Single leaf metal' ? 'selected' : ''}>Single leaf metal</option>
+            <option value="Double leaf metal" ${currentDefaultDoorType === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
+            <option value="single leaf wood" ${currentDefaultDoorType === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
+            <option value="double leaf wood" ${currentDefaultDoorType === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
+        `;
+    }
+
+    let specSelectOpts = `<option value="" disabled ${!currentDefaultSpec ? 'selected' : ''}>المواصفات</option>`;
+    dbSpecOptions.forEach(opt => {
+        const isSelected = opt.name === currentDefaultSpec;
+        specSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
+    });
+    if (dbSpecOptions.length === 0) {
+        specSelectOpts += `
+            <option value="Flush" ${currentDefaultSpec === 'Flush' ? 'selected' : ''}>Flush</option>
+            <option value="louver" ${currentDefaultSpec === 'louver' ? 'selected' : ''}>louver</option>
+            <option value="VP" ${currentDefaultSpec === 'VP' ? 'selected' : ''}>VP</option>
+            <option value="GMB" ${currentDefaultSpec === 'GMB' ? 'selected' : ''}>GMB</option>
+        `;
+    }
+
     tr.innerHTML = `
         <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم" value="${nextDoorNumber}"></td>
         <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
@@ -2400,19 +2464,17 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="" disabled ${!currentDefaultProfile ? 'selected' : ''}>المقطع</option>
-                <option value="single rabbit with rubber" ${currentDefaultProfile === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
-                <option value="double rabbit with rubber" ${currentDefaultProfile === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
-                <option value="single rabbit" ${currentDefaultProfile === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
-                <option value="double rabbit" ${currentDefaultProfile === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+                ${profileSelectOpts}
             </select>
         </td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
-                <option value="Single leaf metal" ${currentDefaultDoorType === 'Single leaf metal' ? 'selected' : ''}>Single leaf metal</option>
-                <option value="Double leaf metal" ${currentDefaultDoorType === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
-                <option value="single leaf wood" ${currentDefaultDoorType === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
-                <option value="double leaf wood" ${currentDefaultDoorType === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
+                ${doorTypeSelectOpts}
+            </select>
+        </td>
+        <td class="p-2">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+                ${specSelectOpts}
             </select>
         </td>
         <td class="p-2">
@@ -2558,8 +2620,28 @@ function addProjectDetailRow() {
         }
     });
 
-    // Leaf Thickness select (selects[6])
+    // Specifications select (selects[6])
     selects[6].addEventListener('change', function() {
+        const isFirstRow = (tr.previousElementSibling === null);
+        if (isFirstRow) {
+            firstRowSpecChangeCount++;
+            if (firstRowSpecChangeCount === 1) {
+                currentDefaultSpec = this.value;
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, idx) => {
+                    if (idx > 0) {
+                        const rowSelects = row.querySelectorAll('select');
+                        if (rowSelects[6]) {
+                            rowSelects[6].value = currentDefaultSpec;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Leaf Thickness select (selects[7])
+    selects[7].addEventListener('change', function() {
         const isFirstRow = (tr.previousElementSibling === null);
         if (isFirstRow) {
             firstRowLeafThicknessChangeCount++;
@@ -2569,8 +2651,8 @@ function addProjectDetailRow() {
                 rows.forEach((row, idx) => {
                     if (idx > 0) {
                         const rowSelects = row.querySelectorAll('select');
-                        if (rowSelects[6]) {
-                            rowSelects[6].value = currentDefaultLeafThickness;
+                        if (rowSelects[7]) {
+                            rowSelects[7].value = currentDefaultLeafThickness;
                         }
                     }
                 });
@@ -2805,6 +2887,7 @@ async function viewProjectDetails(id) {
                     <td class="p-3 font-bold text-slate-700">${d.hinges_count || '4'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
+                    <td class="p-3">${d.specifications || '-'}</td>
                     <td class="p-3 font-semibold text-slate-700">${d.leaf_thickness || '4.5'}</td>
                     <td class="p-3 text-center">${d.qashatah === 'YES' ? 'نعم' : 'لا'}</td>
                     <td class="p-3 text-center">${d.fire_resistance || '-'}</td>
@@ -2923,15 +3006,16 @@ if (projectWizardForm) {
                     hinges_count: isNaN(hingesCountVal) ? 4 : hingesCountVal,
                     profile_type: inputs[9].value || null,
                     door_type: inputs[10].value || null,
-                    leaf_thickness: inputs[11].value || "4.5",
-                    qashatah: inputs[12].checked ? 'YES' : 'NO',
-                    fire_resistance: inputs[13].checked ? 'Yes' : 'No',
-                    architrave: inputs[14].value || null,
-                    architrave_2: inputs[15].value || null,
-                    under_tile: inputs[16].value || null,
-                    window_details: inputs[17].value || null,
-                    raddad: inputs[18].checked ? 'YES' : 'NO',
-                    notes: inputs[19].value || null
+                    specifications: inputs[11].value || null,
+                    leaf_thickness: inputs[12].value || "4.5",
+                    qashatah: inputs[13].checked ? 'YES' : 'NO',
+                    fire_resistance: inputs[14].checked ? 'Yes' : 'No',
+                    architrave: inputs[15].value || null,
+                    architrave_2: inputs[16].value || null,
+                    under_tile: inputs[17].value || null,
+                    window_details: inputs[18].value || null,
+                    raddad: inputs[19].checked ? 'YES' : 'NO',
+                    notes: inputs[20].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -3138,6 +3222,45 @@ window.editProject = async function(projectId) {
                     `;
                 }
 
+                let profileSelectOpts = `<option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>`;
+                dbProfileOptions.forEach(opt => {
+                    profileSelectOpts += `<option value="${opt.name}" ${d.profile_type === opt.name ? 'selected' : ''}>${opt.name}</option>`;
+                });
+                if (dbProfileOptions.length === 0) {
+                    profileSelectOpts += `
+                        <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
+                        <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
+                        <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
+                        <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+                    `;
+                }
+
+                let doorTypeSelectOpts = `<option value="" disabled ${!d.door_type ? 'selected' : ''}>نوع الدرفة</option>`;
+                dbDoorTypeOptions.forEach(opt => {
+                    doorTypeSelectOpts += `<option value="${opt.name}" ${d.door_type === opt.name ? 'selected' : ''}>${opt.name}</option>`;
+                });
+                if (dbDoorTypeOptions.length === 0) {
+                    doorTypeSelectOpts += `
+                        <option value="Single leaf metal" ${d.door_type === 'Single leaf metal' || !d.door_type ? 'selected' : ''}>Single leaf metal</option>
+                        <option value="Double leaf metal" ${d.door_type === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
+                        <option value="single leaf wood" ${d.door_type === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
+                        <option value="double leaf wood" ${d.door_type === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
+                    `;
+                }
+
+                let specSelectOpts = `<option value="" disabled ${!d.specifications ? 'selected' : ''}>المواصفات</option>`;
+                dbSpecOptions.forEach(opt => {
+                    specSelectOpts += `<option value="${opt.name}" ${d.specifications === opt.name ? 'selected' : ''}>${opt.name}</option>`;
+                });
+                if (dbSpecOptions.length === 0) {
+                    specSelectOpts += `
+                        <option value="Flush" ${d.specifications === 'Flush' ? 'selected' : ''}>Flush</option>
+                        <option value="louver" ${d.specifications === 'louver' ? 'selected' : ''}>louver</option>
+                        <option value="VP" ${d.specifications === 'VP' ? 'selected' : ''}>VP</option>
+                        <option value="GMB" ${d.specifications === 'GMB' ? 'selected' : ''}>GMB</option>
+                    `;
+                }
+
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition';
                 tr.innerHTML = `
@@ -3164,20 +3287,6 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>
-                            <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
-                            <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
-                            <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
-                            <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
-                        </select>
-                    </td>
-                    <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            ${hingeSelectOpts}
-                        </select>
-                    </td>
-                    <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white font-bold text-center">
                             <option value="3" ${d.hinges_count === 3 ? 'selected' : ''}>3</option>
                             <option value="4" ${d.hinges_count === 4 || !d.hinges_count ? 'selected' : ''}>4</option>
@@ -3188,25 +3297,24 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>
-                            <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
-                            <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
-                            <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
-                            <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
+                            ${profileSelectOpts}
                         </select>
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                            <option value="Single leaf metal" ${d.door_type === 'Single leaf metal' || !d.door_type ? 'selected' : ''}>Single leaf metal</option>
-                            <option value="Double leaf metal" ${d.door_type === 'Double leaf metal' ? 'selected' : ''}>Double leaf metal</option>
-                            <option value="single leaf wood" ${d.door_type === 'single leaf wood' ? 'selected' : ''}>single leaf wood</option>
-                            <option value="double leaf wood" ${d.door_type === 'double leaf wood' ? 'selected' : ''}>double leaf wood</option>
+                            ${doorTypeSelectOpts}
+                        </select>
+                    </td>
+                    <td class="p-2">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            ${specSelectOpts}
                         </select>
                     </td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white font-bold text-center">
                             <option value="4.5" ${d.leaf_thickness === '4.5' || !d.leaf_thickness ? 'selected' : ''}>4.5</option>
                             <option value="5.5" ${d.leaf_thickness === '5.5' ? 'selected' : ''}>5.5</option>
+                            <option value="6.5" ${d.leaf_thickness === '6.5' ? 'selected' : ''}>6.5</option>
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
@@ -4109,7 +4217,14 @@ window.submitMoveItemForm = async (e) => {
 // ------------- PROJECT OPTIONS MANAGEMENT -------------
 
 window.openAddOptionModal = function(type) {
-    document.getElementById('optionModalTitle').textContent = type === 'lock' ? 'إضافة خيار زرفيل جديد' : 'إضافة خيار فصالة جديد';
+    let title = 'إضافة خيار جديد';
+    if (type === 'lock') title = 'إضافة خيار زرفيل جديد';
+    else if (type === 'hinge') title = 'إضافة خيار فصالة جديد';
+    else if (type === 'profile') title = 'إضافة خيار مقطع جديد';
+    else if (type === 'door_type') title = 'إضافة خيار نوع درفة جديد';
+    else if (type === 'specification') title = 'إضافة خيار مواصفات جديد';
+
+    document.getElementById('optionModalTitle').textContent = title;
     document.getElementById('optFormId').value = '';
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = '';
@@ -4118,11 +4233,24 @@ window.openAddOptionModal = function(type) {
 };
 
 window.openEditOptionModal = function(id, type) {
-    const list = type === 'lock' ? dbLockOptions : dbHingeOptions;
+    let list = [];
+    if (type === 'lock') list = dbLockOptions;
+    else if (type === 'hinge') list = dbHingeOptions;
+    else if (type === 'profile') list = dbProfileOptions;
+    else if (type === 'door_type') list = dbDoorTypeOptions;
+    else if (type === 'specification') list = dbSpecOptions;
+
     const opt = list.find(o => o.id === id);
     if (!opt) return;
 
-    document.getElementById('optionModalTitle').textContent = type === 'lock' ? 'تعديل خيار الزرفيل' : 'تعديل خيار الفصالة';
+    let title = 'تعديل الخيار';
+    if (type === 'lock') title = 'تعديل خيار الزرفيل';
+    else if (type === 'hinge') title = 'تعديل خيار الفصالة';
+    else if (type === 'profile') title = 'تعديل خيار المقطع';
+    else if (type === 'door_type') title = 'تعديل خيار نوع الدرفة';
+    else if (type === 'specification') title = 'تعديل خيار المواصفات';
+
+    document.getElementById('optionModalTitle').textContent = title;
     document.getElementById('optFormId').value = id;
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = opt.name;
@@ -4209,41 +4337,101 @@ window.deleteProjectOption = async function(id) {
 window.renderProjectOptionsAdmin = function() {
     const lockTbody = document.getElementById('lockOptionsTableBody');
     const hingeTbody = document.getElementById('hingeOptionsTableBody');
-    if (!lockTbody || !hingeTbody) return;
+    const profileTbody = document.getElementById('profileOptionsTableBody');
+    const doorTypeTbody = document.getElementById('doorTypeOptionsTableBody');
+    const specTbody = document.getElementById('specOptionsTableBody');
+    
+    if (lockTbody) {
+        lockTbody.innerHTML = '';
+        dbLockOptions.forEach(opt => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+                <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditOptionModal(${opt.id}, 'lock')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                        <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                    </div>
+                </td>
+            `;
+            lockTbody.appendChild(tr);
+        });
+    }
 
-    lockTbody.innerHTML = '';
-    dbLockOptions.forEach(opt => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b hover:bg-slate-50 transition';
-        tr.innerHTML = `
-            <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
-            <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
-            <td class="p-4 text-center">
-                <div class="flex justify-center gap-2">
-                    <button onclick="openEditOptionModal(${opt.id}, 'lock')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
-                    <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
-                </div>
-            </td>
-        `;
-        lockTbody.appendChild(tr);
-    });
+    if (hingeTbody) {
+        hingeTbody.innerHTML = '';
+        dbHingeOptions.forEach(opt => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+                <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditOptionModal(${opt.id}, 'hinge')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                        <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                    </div>
+                </td>
+            `;
+            hingeTbody.appendChild(tr);
+        });
+    }
 
-    hingeTbody.innerHTML = '';
-    dbHingeOptions.forEach(opt => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b hover:bg-slate-50 transition';
-        tr.innerHTML = `
-            <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
-            <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
-            <td class="p-4 text-center">
-                <div class="flex justify-center gap-2">
-                    <button onclick="openEditOptionModal(${opt.id}, 'hinge')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
-                    <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
-                </div>
-            </td>
-        `;
-        hingeTbody.appendChild(tr);
-    });
+    if (profileTbody) {
+        profileTbody.innerHTML = '';
+        dbProfileOptions.forEach(opt => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditOptionModal(${opt.id}, 'profile')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                        <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                    </div>
+                </td>
+            `;
+            profileTbody.appendChild(tr);
+        });
+    }
+
+    if (doorTypeTbody) {
+        doorTypeTbody.innerHTML = '';
+        dbDoorTypeOptions.forEach(opt => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditOptionModal(${opt.id}, 'door_type')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                        <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                    </div>
+                </td>
+            `;
+            doorTypeTbody.appendChild(tr);
+        });
+    }
+
+    if (specTbody) {
+        specTbody.innerHTML = '';
+        dbSpecOptions.forEach(opt => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center gap-2">
+                        <button onclick="openEditOptionModal(${opt.id}, 'specification')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
+                        <button onclick="deleteProjectOption(${opt.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-100">حذف</button>
+                    </div>
+                </td>
+            `;
+            specTbody.appendChild(tr);
+        });
+    }
 };
 
 // ------------- AUTOMATIC ARCHITRAVE 2 CALCULATION -------------
@@ -4868,4 +5056,65 @@ window.exportFireDoorsToExcel = function() {
     link.click();
     document.body.removeChild(link);
     showToast('تم تصدير ملف أبواب الحريق بنجاح', 'bg-emerald-500', '✓');
+};
+
+window.proceedFromStep2 = function() {
+    if (ignoreFireDoorValidation) {
+        goToWizardStep(3);
+        return;
+    }
+
+    const rows = document.querySelectorAll('#projectDetailsTableBody tr');
+    let errors = [];
+
+    rows.forEach(tr => {
+        const inputs = tr.querySelectorAll('input, select');
+        if (inputs.length < 21) return; // safety check
+
+        const doorNum = inputs[0].value || 'بدون رقم';
+        const isFireResistant = inputs[14].checked;
+
+        if (isFireResistant) {
+            const width = parseFloat(inputs[2].value);
+            const height = parseFloat(inputs[3].value);
+            const depth = parseFloat(inputs[4].value);
+            const profile = inputs[9].value;
+
+            let doorErrors = [];
+
+            // 1. Width <= 140
+            if (isNaN(width) || width > 140) {
+                doorErrors.push("العرض يجب ألا يزيد عن 140 سم");
+            }
+            // 2. Height <= 280
+            if (isNaN(height) || height > 280) {
+                doorErrors.push("الطول يجب ألا يزيد عن 280 سم");
+            }
+            // 3. Depth and Profile validation
+            if (profile === "single rabbit with rubber") {
+                if (isNaN(depth) || depth !== 15) {
+                    doorErrors.push("العمق يجب أن يكون 15 سم لمقطع single rabbit with rubber");
+                }
+            } else if (profile === "double rabbit with rubber") {
+                if (isNaN(depth) || depth < 15 || depth > 33) {
+                    doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم لمقطع Double rabbit with rubber");
+                }
+            } else {
+                doorErrors.push("المقطع المختار غير مطابق لمواصفات أبواب الحريق (يجب اختيار single rabbit with rubber أو Double rabbit with rubber)");
+            }
+
+            if (doorErrors.length > 0) {
+                errors.push(`الباب رقم (${doorNum}): ${doorErrors.join('، ')}`);
+            }
+        }
+    });
+
+    if (errors.length > 0) {
+        ignoreFireDoorValidation = true;
+        // Show validation errors to user using an alert
+        alert("تنبيه: بعض الأبواب المقاومة للحريق غير مطابقة للمواصفات:\n\n" + errors.join('\n') + "\n\nإذا كنت متأكداً وتريد التجاوز، اضغط على التالي مرة أخرى.");
+        return;
+    }
+
+    goToWizardStep(3);
 };

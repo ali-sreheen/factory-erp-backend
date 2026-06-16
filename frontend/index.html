@@ -486,6 +486,7 @@
                                              <th class="p-2 border-b">عدد الفصالات</th>
                                             <th class="p-2 border-b">المقطع</th>
                                             <th class="p-2 border-b">نوع الدرفه</th>
+                                            <th class="p-2 border-b">المواصفات</th>
                                              <th class="p-2 border-b">سماكة الدرفه</th>
                                             <th class="p-2 border-b text-center">قشاطه</th>
                                             <th class="p-2 border-b text-center">مقاوم حريق</th>
@@ -502,12 +503,12 @@
                                         <!-- Rows added dynamically -->
                                     </tbody>
                                 </table>
-                            </div>
-                            <div class="mt-8 flex justify-between">
-                                <button type="button" onclick="goToWizardStep(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl transition border border-slate-300">السابق</button>
-                                <button type="button" onclick="goToWizardStep(3)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow">التالي: المرفقات</button>
-                            </div>
-                        </div>
+                             </div>
+                             <div class="mt-8 flex justify-between">
+                                 <button type="button" onclick="goToWizardStep(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-6 rounded-xl transition border border-slate-300">السابق</button>
+                                 <button type="button" onclick="proceedFromStep2()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow">التالي: المرفقات</button>
+                             </div>
+                         </div>
 
                         <!-- STEP 3: Attachments -->
                         <div id="wizardStep3" class="wizard-step-content hidden">
@@ -642,6 +643,7 @@
                                              <th class="p-3">عدد الفصالات</th>
                                             <th class="p-3">المقطع</th>
                                             <th class="p-3">نوع الدرفه</th>
+                                            <th class="p-3">المواصفات</th>
                                              <th class="p-3">سماكة الدرفه</th>
                                             <th class="p-3 text-center">قشاطه</th>
                                             <th class="p-3 text-center">حريق</th>
@@ -956,6 +958,80 @@
                                 </thead>
                                 <tbody id="hingeOptionsTableBody">
                                     <!-- Hinge options go here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+                    <!-- Profile Options Section -->
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات المقطع</h3>
+                            <button onclick="openAddOptionModal('profile')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                إضافة خيار
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                        <th class="p-4 font-bold">الاسم</th>
+                                        <th class="p-4 font-bold text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="profileOptionsTableBody">
+                                    <!-- Profile options go here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Door Type Options Section -->
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات نوع الدرفة</h3>
+                            <button onclick="openAddOptionModal('door_type')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                إضافة خيار
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                        <th class="p-4 font-bold">الاسم</th>
+                                        <th class="p-4 font-bold text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="doorTypeOptionsTableBody">
+                                    <!-- Door Type options go here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Specification Options Section -->
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات المواصفات</h3>
+                            <button onclick="openAddOptionModal('specification')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                إضافة خيار
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                        <th class="p-4 font-bold">الاسم</th>
+                                        <th class="p-4 font-bold text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="specOptionsTableBody">
+                                    <!-- Specification options go here -->
                                 </tbody>
                             </table>
                         </div>

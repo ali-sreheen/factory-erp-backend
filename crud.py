@@ -564,16 +564,32 @@ def delete_project_option(db: Session, option_id: int):
     return False
 
 def seed_default_project_options(db: Session):
-    if not db.query(models.ProjectOption).first():
-        # Seed locks
+    # Seed locks
+    if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "lock").first():
         locks = ["devon mortice lock", "euroart mortice lock", "euroart roller", "consort mortice lock", "special"]
         for lock in locks:
             db.add(models.ProjectOption(option_type="lock", name=lock))
-        # Seed hinges
+    # Seed hinges
+    if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "hinge").first():
         hinges = ["Devon", "vantage", "euroart", "consort", "conseld", "spical"]
         for hinge in hinges:
             db.add(models.ProjectOption(option_type="hinge", name=hinge))
-        db.commit()
+    # Seed profiles
+    if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "profile").first():
+        profiles = ["single rabbit with rubber", "double rabbit with rubber", "single rabbit", "double rabbit"]
+        for p in profiles:
+            db.add(models.ProjectOption(option_type="profile", name=p))
+    # Seed door types
+    if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "door_type").first():
+        door_types = ["Single leaf metal", "Double leaf metal", "single leaf wood", "double leaf wood"]
+        for dt in door_types:
+            db.add(models.ProjectOption(option_type="door_type", name=dt))
+    # Seed specifications
+    if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "specification").first():
+        specs = ["Flush", "louver", "VP", "GMB"]
+        for sp in specs:
+            db.add(models.ProjectOption(option_type="specification", name=sp))
+    db.commit()
 
 def get_sheet_sizes(db: Session, thickness: float = None):
     query = db.query(models.SheetSize)
