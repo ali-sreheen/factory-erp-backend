@@ -831,6 +831,9 @@ def delete_project(project_id: int, db: Session = Depends(get_db), current_user:
     if current_user.username != "admin" and current_user.id != project.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized")
         
+    if project.status.lower() in ["active", "completed"]:
+        raise HTTPException(status_code=400, detail="لا يمكن حذف مشروع فعال أو منتهي")
+        
     try:
         success = crud.delete_project(db, project_id)
         if not success:
