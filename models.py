@@ -10,11 +10,20 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_approved = Column(Integer, default=0, nullable=False)
+    
+    # Profile information
+    full_name = Column(String, nullable=True)
+    job_title = Column(String, nullable=True)
+    employment_id = Column(String, nullable=True)
+    department = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
 
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
     managed_projects = relationship("Project", foreign_keys="[Project.executive_manager_id]", back_populates="executive_manager")
     assigned_tasks = relationship("ProjectTask", foreign_keys="[ProjectTask.assigned_to]", back_populates="assignee")
     created_tasks = relationship("ProjectTask", foreign_keys="[ProjectTask.created_by]", back_populates="creator")
+    hr_requests = relationship("HRRequest", back_populates="user", cascade="all, delete-orphan")
+    attendance_records = relationship("AttendanceRecord", back_populates="user", cascade="all, delete-orphan")
 
 class Department(Base):
     __tablename__ = "departments"
@@ -225,3 +234,33 @@ class SheetSize(Base):
     width = Column(Float, nullable=False)
     height = Column(Float, nullable=False)
     sku = Column(String(7), nullable=True)
+
+class HRRequest(Base):
+    __tablename__ = "hr_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    request_type = Column(String, nullable=False) # "مغادرة", "اجازة", "استفسار"
+    reason = Column(String, nullable=False)
+    request_date = Column(DateTime(timezone=True), server_default=func.now())
+    start_date = Column(String, nullable=True) # "YYYY-MM-DD" for vacation
+    end_date = Column(String, nullable=True)   # "YYYY-MM-DD" for vacation
+    start_time = Column(String, nullable=True) # "HH:MM" for permission
+    end_time = Column(String, nullable=True)   # "HH:MM" for permission
+    attachment_url = Column(String, nullable=True)
+    status = Column(String, default="قيد الانتظار", nullable=False) # "قيد الانتظار", "موافق", "مرفوض"
+
+    user = relationship("User", back_populates="hr_requests")
+
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    record_date = Column(String, nullable=False) # "YYYY-MM-DD"
+    check_in = Column(String, nullable=True) # "HH:MM:SS"
+    check_out = Column(String, nullable=True) # "HH:MM:SS"
+    status = Column(String, default="حاضر", nullable=False) # "حاضر", "غائب", "إجازة", etc.
+
+    user = relationship("User", back_populates="attendance_records")
+

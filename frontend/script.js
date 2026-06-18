@@ -463,6 +463,9 @@ async function showDepartmentsView() {
         return;
     }
 
+    const hrView = document.getElementById('hrView');
+    if(hrView) hrView.classList.add('hidden');
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -719,6 +722,9 @@ async function fetchDepartmentCounts() {
 // ----------------- ADMIN VIEW LOGIC -----------------
 
 async function showAdminView() {
+    const hrView = document.getElementById('hrView');
+    if(hrView) hrView.classList.add('hidden');
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -2046,6 +2052,9 @@ async function openPermissionsModal(userId, username) {
         const sysPurchPerm = user.permissions.find(p => p.department_name === 'system_purchasing');
         const sysPurchCanEdit = sysPurchPerm && (sysPurchPerm.can_edit == 1 || sysPurchPerm.can_edit === true);
 
+        const hrMgmtPerm = user.permissions.find(p => p.department_name === 'hr_management');
+        const hrMgmtCanEdit = hrMgmtPerm && (hrMgmtPerm.can_edit == 1 || hrMgmtPerm.can_edit === true);
+
         let systemsHtml = `
             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
                 <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
@@ -2080,6 +2089,16 @@ async function openPermissionsModal(userId, username) {
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" ${sysPurchCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_purchasing', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">إدارة الموظفين</p>
+                            <p class="text-xs text-slate-500">منح صلاحية إدارة واعتماد طلبات الموظفين</p>
+                        </div>
+                        <label class="relative inline-flex inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${hrMgmtCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'hr_management', this.checked)" class="sr-only peer">
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
@@ -2246,6 +2265,9 @@ let firstRowLeafThicknessChangeCount = 0;
 let firstRowSpecChangeCount = 0;
 
 function showModuleSelectorView() {
+    const hrView = document.getElementById('hrView');
+    if(hrView) hrView.classList.add('hidden');
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -2268,6 +2290,9 @@ function showProjectsView() {
         showToast('غير مصرح لك بالوصول لنظام إدارة المشاريع', 'bg-rose-500', '✗');
         return;
     }
+
+    const hrView = document.getElementById('hrView');
+    if(hrView) hrView.classList.add('hidden');
 
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
@@ -3598,6 +3623,9 @@ function showPurchasingView() {
         showToast('غير مصرح لك بالوصول لنظام إدارة المشتريات', 'bg-rose-500', '✗');
         return;
     }
+
+    const hrView = document.getElementById('hrView');
+    if(hrView) hrView.classList.add('hidden');
 
     const _prdView = document.getElementById('purchaseRequestDetailView');
     if(_prdView) _prdView.classList.add('hidden');
@@ -5396,3 +5424,510 @@ function doExportManufacturing(project) {
     XLSX.writeFile(wb, fileName);
     showToast('تم تصدير جدول التصنيع بنجاح', 'bg-emerald-500', '✓');
 }
+
+// ==================== HR SYSTEM FRONTEND ====================
+let hrCurrentTab = 'profile';
+
+async function showHRView() {
+    const views = [
+        'moduleSelectorView', 'departmentsView', 'accessoriesSubDeptView', 
+        'departmentDetailView', 'adminView', 'purchasingView', 
+        'purchaseRequestDetailView', 'projectsView', 'projectWizardView', 
+        'projectDetailView'
+    ];
+    views.forEach(v => {
+        const el = document.getElementById(v);
+        if (el) el.classList.add('hidden');
+    });
+
+    const hrView = document.getElementById('hrView');
+    if (hrView) hrView.classList.remove('hidden');
+
+    // Check permissions
+    const currentUsername = localStorage.getItem('username');
+    const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
+    
+    const adminBtn = document.getElementById('hrAdminRequestsBtn');
+    if (adminBtn) {
+        if (hasHrMgmt) {
+            adminBtn.classList.remove('hidden');
+        } else {
+            adminBtn.classList.add('hidden');
+        }
+    }
+
+    // Default tab
+    switchHrTab('profile');
+
+    // Load Data
+    await loadHrProfile();
+    await loadHrRequests();
+    await loadHrAttendance();
+}
+
+function switchHrTab(tabName) {
+    hrCurrentTab = tabName;
+    const tabs = ['profile', 'forms', 'attendance'];
+    tabs.forEach(t => {
+        const btn = document.getElementById('hrTab' + t.charAt(0).toUpperCase() + t.slice(1));
+        const section = document.getElementById('hr' + t.charAt(0).toUpperCase() + t.slice(1) + 'Section');
+        if (btn) {
+            if (t === tabName) {
+                btn.className = "border-b-2 border-indigo-600 px-6 py-3 text-sm font-bold text-indigo-600 transition-all";
+            } else {
+                btn.className = "border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all";
+            }
+        }
+        if (section) {
+            if (t === tabName) {
+                section.classList.remove('hidden');
+                section.classList.add('block');
+            } else {
+                section.classList.remove('block');
+                section.classList.add('hidden');
+            }
+        }
+    });
+}
+
+async function loadHrProfile() {
+    try {
+        const res = await authFetch('/api/users/me');
+        if (!res.ok) throw new Error('Failed to load user profile');
+        const user = await res.json();
+        
+        document.getElementById('hrProfileName').value = user.full_name || '';
+        document.getElementById('hrProfileJobTitle').value = user.job_title || '';
+        document.getElementById('hrProfileEmpId').value = user.employment_id || '';
+        document.getElementById('hrProfileDepartment').value = user.department || '';
+
+        const previewImg = document.getElementById('hrProfileAvatarPreview');
+        const placeholder = document.getElementById('hrProfileAvatarPlaceholder');
+
+        if (user.avatar_url) {
+            previewImg.src = user.avatar_url;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        } else {
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل الملف الشخصي: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+function previewHrAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewImg = document.getElementById('hrProfileAvatarPreview');
+            const placeholder = document.getElementById('hrProfileAvatarPlaceholder');
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function saveHrProfile(event) {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('full_name', document.getElementById('hrProfileName').value);
+    formData.append('job_title', document.getElementById('hrProfileJobTitle').value);
+    formData.append('employment_id', document.getElementById('hrProfileEmpId').value);
+    formData.append('department', document.getElementById('hrProfileDepartment').value);
+
+    const avatarInput = document.getElementById('hrProfileAvatarInput');
+    if (avatarInput.files && avatarInput.files[0]) {
+        formData.append('avatar', avatarInput.files[0]);
+    }
+
+    try {
+        const res = await authFetch('/api/users/me/profile', {
+            method: 'PUT',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to save profile changes');
+        showToast('تم حفظ الملف الشخصي بنجاح', 'bg-emerald-500', '✓');
+        await loadHrProfile();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء حفظ الملف الشخصي: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// Modal Toggle Functions
+function openHrLeaveModal() {
+    document.getElementById('hrLeaveRequestModal').classList.remove('hidden');
+    // Set default date to today
+    document.getElementById('hrLeaveDate').value = new Date().toISOString().split('T')[0];
+    // Set default start time to current time
+    document.getElementById('hrLeaveStartTime').value = new Date().toTimeString().split(' ')[0].substring(0, 5);
+    document.getElementById('hrLeaveEndTime').value = '';
+    document.getElementById('hrLeaveReason').value = '';
+    document.getElementById('hrLeaveAttachment').value = '';
+}
+function closeHrLeaveModal() {
+    document.getElementById('hrLeaveRequestModal').classList.add('hidden');
+}
+
+function openHrVacationModal() {
+    document.getElementById('hrVacationRequestModal').classList.remove('hidden');
+    document.getElementById('hrVacationStartDate').value = '';
+    document.getElementById('hrVacationEndDate').value = '';
+    document.getElementById('hrVacationReason').value = '';
+    document.getElementById('hrVacationAttachment').value = '';
+}
+function closeHrVacationModal() {
+    document.getElementById('hrVacationRequestModal').classList.add('hidden');
+}
+
+function openHrInquiryModal() {
+    document.getElementById('hrInquiryRequestModal').classList.remove('hidden');
+    document.getElementById('hrInquiryReason').value = '';
+}
+function closeHrInquiryModal() {
+    document.getElementById('hrInquiryRequestModal').classList.add('hidden');
+}
+
+// Forms Submissions
+async function submitHrLeaveForm(event) {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('request_type', 'مغادرة');
+    formData.append('reason', document.getElementById('hrLeaveReason').value);
+    formData.append('start_date', document.getElementById('hrLeaveDate').value);
+    formData.append('start_time', document.getElementById('hrLeaveStartTime').value);
+    formData.append('end_time', document.getElementById('hrLeaveEndTime').value);
+    
+    const fileInput = document.getElementById('hrLeaveAttachment');
+    if (fileInput.files.length > 0) {
+        formData.append('attachment', fileInput.files[0]);
+    }
+
+    try {
+        const res = await authFetch('/api/hr/requests/', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to submit leave request');
+        showToast('تم تقديم طلب المغادرة بنجاح', 'bg-emerald-500', '✓');
+        closeHrLeaveModal();
+        await loadHrRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في إرسال طلب المغادرة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function submitHrVacationForm(event) {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('request_type', 'اجازة');
+    formData.append('reason', document.getElementById('hrVacationReason').value);
+    formData.append('start_date', document.getElementById('hrVacationStartDate').value);
+    formData.append('end_date', document.getElementById('hrVacationEndDate').value);
+    
+    const fileInput = document.getElementById('hrVacationAttachment');
+    if (fileInput.files.length > 0) {
+        formData.append('attachment', fileInput.files[0]);
+    }
+
+    try {
+        const res = await authFetch('/api/hr/requests/', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to submit vacation request');
+        showToast('تم تقديم طلب الإجازة بنجاح', 'bg-emerald-500', '✓');
+        closeHrVacationModal();
+        await loadHrRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في إرسال طلب الإجازة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function submitHrInquiryForm(event) {
+    event.preventDefault();
+    const formData = new FormData();
+    formData.append('request_type', 'استفسار');
+    formData.append('reason', document.getElementById('hrInquiryReason').value);
+
+    try {
+        const res = await authFetch('/api/hr/requests/', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to submit inquiry');
+        showToast('تم تقديم الاستفسار بنجاح', 'bg-emerald-500', '✓');
+        closeHrInquiryModal();
+        await loadHrRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في إرسال الاستفسار: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// Request logs loader
+async function loadHrRequests() {
+    try {
+        const res = await authFetch('/api/hr/requests/me');
+        if (!res.ok) throw new Error('Failed to load my requests');
+        const list = await res.json();
+        
+        const tbody = document.getElementById('hrMyRequestsTableBody');
+        tbody.innerHTML = '';
+        
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">لا يوجد طلبات سابقة بعد</td></tr>`;
+            return;
+        }
+
+        list.forEach(req => {
+            let details = req.reason;
+            if (req.request_type === 'مغادرة') {
+                details += ` <span class="text-slate-400 text-[10px]">(${req.start_date} | ${req.start_time} - ${req.end_time})</span>`;
+            } else if (req.request_type === 'اجازة') {
+                details += ` <span class="text-slate-400 text-[10px]">(${req.start_date} إلى ${req.end_date})</span>`;
+            }
+
+            let attachmentCell = '-';
+            if (req.attachment_url) {
+                attachmentCell = `<a href="${req.attachment_url}" target="_blank" class="text-indigo-600 hover:underline font-bold">عرض المرفق 📎</a>`;
+            }
+
+            let statusClass = 'bg-slate-50 text-slate-700 border-slate-200';
+            if (req.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            if (req.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition';
+            row.innerHTML = `
+                <td class="p-4 text-slate-500 font-semibold">${new Date(req.request_date).toLocaleDateString()}</td>
+                <td class="p-4 font-bold text-slate-800">${req.request_type}</td>
+                <td class="p-4 text-slate-700">${details}</td>
+                <td class="p-4 text-center">${attachmentCell}</td>
+                <td class="p-4 text-center">
+                    <span class="inline-block px-2.5 py-1 ${statusClass} rounded-full text-xs font-bold border">${req.status}</span>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// Attendance features
+async function loadHrAttendance() {
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('attendanceCurrentDate').textContent = new Date().toLocaleDateString('ar-SA', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        const res = await authFetch('/api/hr/attendance/me');
+        if (!res.ok) throw new Error('Failed to load attendance logs');
+        const list = await res.json();
+
+        const checkInBtn = document.getElementById('attendanceCheckInBtn');
+        const checkOutBtn = document.getElementById('attendanceCheckOutBtn');
+        
+        // Reset buttons default enabled
+        checkInBtn.disabled = false;
+        checkInBtn.className = "w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow flex items-center justify-center gap-2 cursor-pointer";
+        
+        checkOutBtn.disabled = false;
+        checkOutBtn.className = "w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition shadow flex items-center justify-center gap-2 cursor-pointer";
+
+        // Find today's entry
+        const todayRecord = list.find(r => r.record_date === todayStr);
+        if (todayRecord) {
+            if (todayRecord.check_in) {
+                checkInBtn.disabled = true;
+                checkInBtn.className = "w-full py-3 bg-slate-200 text-slate-400 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-not-allowed";
+                checkInBtn.textContent = `✓ تم تسجيل الدخول (${todayRecord.check_in})`;
+            }
+            if (todayRecord.check_out) {
+                checkOutBtn.disabled = true;
+                checkOutBtn.className = "w-full py-3 bg-slate-200 text-slate-400 rounded-xl font-bold transition flex items-center justify-center gap-2 cursor-not-allowed";
+                checkOutBtn.textContent = `✓ تم تسجيل الانصراف (${todayRecord.check_out})`;
+            }
+        } else {
+            checkInBtn.textContent = '✓ تسجيل دخول';
+            checkOutBtn.textContent = '🚫 تسجيل انصراف';
+        }
+
+        const tbody = document.getElementById('attendanceLogsTableBody');
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">لا يوجد سجلات دوام للموظف بعد</td></tr>`;
+            return;
+        }
+
+        list.forEach(record => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition text-right';
+            row.innerHTML = `
+                <td class="p-3 font-semibold text-slate-500">${record.record_date}</td>
+                <td class="p-3 text-center font-bold text-slate-700">${record.check_in || '-'}</td>
+                <td class="p-3 text-center font-bold text-slate-700">${record.check_out || '-'}</td>
+                <td class="p-3 text-center">
+                    <span class="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[10px] font-bold">${record.status}</span>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function doAttendanceCheckIn() {
+    const record_date = new Date().toISOString().split('T')[0];
+    const check_in = new Date().toTimeString().split(' ')[0];
+    
+    const formData = new FormData();
+    formData.append('record_date', record_date);
+    formData.append('check_in', check_in);
+    formData.append('status', 'حاضر');
+
+    try {
+        const res = await authFetch('/api/hr/attendance/log', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to log check in');
+        showToast('تم تسجيل الدخول للعمل بنجاح', 'bg-emerald-500', '✓');
+        await loadHrAttendance();
+    } catch (err) {
+        console.error(err);
+        showToast('فشل تسجيل الدخول: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function doAttendanceCheckOut() {
+    const record_date = new Date().toISOString().split('T')[0];
+    const check_out = new Date().toTimeString().split(' ')[0];
+    
+    const formData = new FormData();
+    formData.append('record_date', record_date);
+    formData.append('check_out', check_out);
+    formData.append('status', 'حاضر');
+
+    try {
+        const res = await authFetch('/api/hr/attendance/log', {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to log check out');
+        showToast('تم تسجيل الخروج والانصراف بنجاح', 'bg-emerald-500', '✓');
+        await loadHrAttendance();
+    } catch (err) {
+        console.error(err);
+        showToast('فشل تسجيل الانصراف: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// Admin panel requests dashboard
+async function openHrAdminRequestsModal() {
+    document.getElementById('hrAdminRequestsModal').classList.remove('hidden');
+    await loadHrAdminRequests();
+}
+
+function closeHrAdminRequestsModal() {
+    document.getElementById('hrAdminRequestsModal').classList.add('hidden');
+}
+
+async function loadHrAdminRequests() {
+    try {
+        const res = await authFetch('/api/hr/requests/all');
+        if (!res.ok) throw new Error('Failed to load all employee requests');
+        const list = await res.json();
+
+        const tbody = document.getElementById('hrAdminRequestsTableBody');
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">لا توجد طلبات مقدمة من الموظفين بعد</td></tr>`;
+            return;
+        }
+
+        list.forEach(req => {
+            const employeeName = req.user ? (req.user.full_name || req.user.username) : 'غير معروف';
+            
+            let details = req.reason;
+            if (req.request_type === 'مغادرة') {
+                details += ` <span class="text-slate-400 text-[10px]">(${req.start_date} | ${req.start_time} - ${req.end_time})</span>`;
+            } else if (req.request_type === 'اجازة') {
+                details += ` <span class="text-slate-400 text-[10px]">(${req.start_date} إلى ${req.end_date})</span>`;
+            }
+
+            let attachmentCell = '-';
+            if (req.attachment_url) {
+                attachmentCell = `<a href="${req.attachment_url}" target="_blank" class="text-indigo-600 hover:underline font-bold">عرض المرفق 📎</a>`;
+            }
+
+            let statusClass = 'bg-slate-50 text-slate-700 border-slate-200';
+            if (req.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            if (req.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+
+            let actionsHtml = '-';
+            if (req.status === 'قيد الانتظار') {
+                actionsHtml = `
+                    <div class="flex justify-center gap-1.5">
+                        <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
+                            ✓ موافقة
+                        </button>
+                        <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
+                            ✗ رفض
+                        </button>
+                    </div>
+                `;
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition text-right';
+            row.innerHTML = `
+                <td class="p-3 font-bold text-slate-800">${employeeName}</td>
+                <td class="p-3 font-bold text-indigo-700">${req.request_type}</td>
+                <td class="p-3 text-slate-500 font-semibold">${new Date(req.request_date).toLocaleDateString()}</td>
+                <td class="p-3 text-slate-700">${details}</td>
+                <td class="p-3 text-center">${attachmentCell}</td>
+                <td class="p-3 text-center">
+                    <span class="inline-block px-2.5 py-1 ${statusClass} rounded-full text-[10px] font-bold border">${req.status}</span>
+                </td>
+                <td class="p-3 text-center">${actionsHtml}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل طلبات الموظفين: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function changeRequestStatus(reqId, status) {
+    try {
+        const res = await authFetch(`/api/hr/requests/${reqId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        });
+        if (!res.ok) throw new Error('Failed to update request status');
+        showToast('تم تحديث حالة الطلب بنجاح', 'bg-emerald-500', '✓');
+        await loadHrAdminRequests();
+        await loadHrRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في تحديث حالة الطلب: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+

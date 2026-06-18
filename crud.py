@@ -658,3 +658,79 @@ def seed_default_sheet_sizes(db: Session):
         for thickness, width, height in defaults:
             db.add(models.SheetSize(thickness=thickness, width=width, height=height))
         db.commit()
+
+def update_user_profile(db: Session, user_id: int, full_name: str, job_title: str, employment_id: str, department: str, avatar_url: str = None):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        db_user.full_name = full_name
+        db_user.job_title = job_title
+        db_user.employment_id = employment_id
+        db_user.department = department
+        if avatar_url:
+            db_user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    return None
+
+def create_hr_request(db: Session, user_id: int, request_type: str, reason: str, start_date: str = None, end_date: str = None, start_time: str = None, end_time: str = None, attachment_url: str = None):
+    db_req = models.HRRequest(
+        user_id=user_id,
+        request_type=request_type,
+        reason=reason,
+        start_date=start_date,
+        end_date=end_date,
+        start_time=start_time,
+        end_time=end_time,
+        attachment_url=attachment_url,
+        status="قيد الانتظار"
+    )
+    db.add(db_req)
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
+def get_user_hr_requests(db: Session, user_id: int):
+    return db.query(models.HRRequest).filter(models.HRRequest.user_id == user_id).order_by(models.HRRequest.id.desc()).all()
+
+def get_all_hr_requests(db: Session):
+    return db.query(models.HRRequest).order_by(models.HRRequest.id.desc()).all()
+
+def update_hr_request_status(db: Session, request_id: int, status: str):
+    db_req = db.query(models.HRRequest).filter(models.HRRequest.id == request_id).first()
+    if db_req:
+        db_req.status = status
+        db.commit()
+        db.refresh(db_req)
+        return db_req
+    return None
+
+def log_attendance(db: Session, user_id: int, record_date: str, check_in: str = None, check_out: str = None, status: str = "حاضر"):
+    db_record = db.query(models.AttendanceRecord).filter(
+        models.AttendanceRecord.user_id == user_id,
+        models.AttendanceRecord.record_date == record_date
+    ).first()
+    
+    if db_record:
+        if check_in:
+            db_record.check_in = check_in
+        if check_out:
+            db_record.check_out = check_out
+        db_record.status = status
+    else:
+        db_record = models.AttendanceRecord(
+            user_id=user_id,
+            record_date=record_date,
+            check_in=check_in,
+            check_out=check_out,
+            status=status
+        )
+        db.add(db_record)
+        
+    db.commit()
+    db.refresh(db_record)
+    return db_record
+
+def get_user_attendance(db: Session, user_id: int):
+    return db.query(models.AttendanceRecord).filter(models.AttendanceRecord.user_id == user_id).order_by(models.AttendanceRecord.record_date.desc()).all()
+

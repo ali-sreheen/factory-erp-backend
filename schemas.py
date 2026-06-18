@@ -14,6 +14,11 @@ class UserResponse(BaseModel):
     id: int
     username: str
     is_approved: int
+    full_name: Optional[str] = None
+    job_title: Optional[str] = None
+    employment_id: Optional[str] = None
+    department: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -22,6 +27,11 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     username: str
     password: Optional[str] = None
+    full_name: Optional[str] = None
+    job_title: Optional[str] = None
+    employment_id: Optional[str] = None
+    department: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class UserPermissionBase(BaseModel):
     department_name: str
@@ -381,3 +391,45 @@ class SheetSizeResponse(SheetSizeBase):
 
     class Config:
         from_attributes = True
+
+class HRRequestBase(BaseModel):
+    request_type: str
+    reason: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    attachment_url: Optional[str] = None
+
+class HRRequestCreate(HRRequestBase):
+    pass
+
+class HRRequestResponse(HRRequestBase):
+    id: int
+    user_id: int
+    request_date: datetime
+    status: str
+    user: Optional[UserResponse] = None
+
+    class Config:
+        from_attributes = True
+
+class HRRequestStatusUpdate(BaseModel):
+    status: str
+
+class AttendanceRecordBase(BaseModel):
+    record_date: str
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
+    status: str
+
+class AttendanceRecordCreate(AttendanceRecordBase):
+    pass
+
+class AttendanceRecordResponse(AttendanceRecordBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+

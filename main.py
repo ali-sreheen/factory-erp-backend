@@ -34,6 +34,13 @@ def check_and_update_db_schema(db_engine):
                     conn.execute(text("ALTER TABLE users ADD COLUMN is_approved INTEGER DEFAULT 1"))
             except Exception as e:
                 pass
+        for col in ["full_name", "job_title", "employment_id", "department", "avatar_url"]:
+            if col not in columns:
+                try:
+                    with db_engine.begin() as conn:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} VARCHAR"))
+                except Exception as e:
+                    pass
 
     # Check transactions table
     if "transactions" in inspector.get_table_names():
@@ -1700,6 +1707,127 @@ def delete_purchase_request(req_id: int, db: Session = Depends(get_db), current_
     db.delete(db_req)
     db.commit()
     return {"message": "Deleted successfully"}
+
+
+def user_has_hr_management(user: models.User, db: Session) -> bool:
+    if user.username == "admin":
+        return True
+    perm = db.query(models.UserPermission).filter(
+        models.UserPermission.user_id == user.id,
+        models.UserPermission.department_name == "hr_management"
+    ).first()
+    return perm is not None and (perm.can_edit == 1)
+
+@app.put("/api/users/me/profile", response_model=schemas.UserResponse)
+def update_my_profile(
+    full_name: str = Form(...),
+    job_title: str = Form(...),
+    employment_id: str = Form(...),
+    department: str = Form(...),
+    avatar: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    avatar_url = None
+    if avatar and avatar.filename:
+        ext = os.path.splitext(avatar.filename)[1]
+        fname = f"avatar_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(avatar.file, buffer)
+        avatar_url = f"/uploads/{fname}"
+    
+    # If no new avatar uploaded, preserve the existing avatar_url
+    if not avatar_url:
+        avatar_url = current_user.avatar_url
+
+    return crud.update_user_profile(
+        db=db,
+        user_id=current_user.id,
+        full_name=full_name,
+        job_title=job_title,
+        employment_id=employment_id,
+        department=department,
+        avatar_url=avatar_url
+    )
+
+@app.post("/api/hr/requests/", response_model=schemas.HRRequestResponse)
+def create_request(
+    request_type: str = Form(...),
+    reason: str = Form(...),
+    start_date: Optional[str] = Form(None),
+    end_date: Optional[str] = Form(None),
+    start_time: Optional[str] = Form(None),
+    end_time: Optional[str] = Form(None),
+    attachment: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    attachment_url = None
+    if attachment and attachment.filename:
+        ext = os.path.splitext(attachment.filename)[1]
+        fname = f"hr_attach_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(attachment.file, buffer)
+        attachment_url = f"/uploads/{fname}"
+    return crud.create_hr_request(
+        db=db,
+        user_id=current_user.id,
+        request_type=request_type,
+        reason=reason,
+        start_date=start_date,
+        end_date=end_date,
+        start_time=start_time,
+        end_time=end_time,
+        attachment_url=attachment_url
+    )
+
+@app.get("/api/hr/requests/me", response_model=List[schemas.HRRequestResponse])
+def get_my_requests(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_user_hr_requests(db, current_user.id)
+
+@app.get("/api/hr/requests/all", response_model=List[schemas.HRRequestResponse])
+def get_all_requests(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if not user_has_hr_management(current_user, db):
+        raise HTTPException(status_code=403, detail="Not authorized to manage employee requests")
+    return crud.get_all_hr_requests(db)
+
+@app.put("/api/hr/requests/{request_id}/status", response_model=schemas.HRRequestResponse)
+def change_request_status(
+    request_id: int,
+    payload: schemas.HRRequestStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not user_has_hr_management(current_user, db):
+        raise HTTPException(status_code=403, detail="Not authorized to manage employee requests")
+    updated = crud.update_hr_request_status(db, request_id, payload.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Request not found")
+    return updated
+
+@app.post("/api/hr/attendance/log", response_model=schemas.AttendanceRecordResponse)
+def log_my_attendance(
+    record_date: str = Form(...),
+    check_in: Optional[str] = Form(None),
+    check_out: Optional[str] = Form(None),
+    status: str = Form("حاضر"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.log_attendance(
+        db=db,
+        user_id=current_user.id,
+        record_date=record_date,
+        check_in=check_in,
+        check_out=check_out,
+        status=status
+    )
+
+@app.get("/api/hr/attendance/me", response_model=List[schemas.AttendanceRecordResponse])
+def get_my_attendance(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_user_attendance(db, current_user.id)
 
 
 # Serve frontend files

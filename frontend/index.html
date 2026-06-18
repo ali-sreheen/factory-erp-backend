@@ -131,30 +131,219 @@
                     <h2 class="text-3xl font-extrabold text-slate-900 mb-2">مرحباً بك في نظام الإدارة</h2>
                     <p class="text-slate-500 text-sm">الرجاء اختيار النظام الذي تود الدخول إليه اليوم.</p>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                     <!-- Inventory Module -->
-                    <div id="moduleInventory" onclick="showDepartmentsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
-                        <div class="w-20 h-20 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                    <div id="moduleInventory" onclick="showDepartmentsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                         </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">نظام إدارة المخازن</h3>
-                        <p class="text-slate-500 text-sm">تتبع البنود، الحجوزات، والأقسام</p>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">نظام إدارة المخازن</h3>
+                        <p class="text-slate-500 text-xs">تتبع البنود، الحجوزات، والأقسام</p>
                     </div>
                     <!-- Projects Module -->
-                    <div id="moduleProjects" onclick="showProjectsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
-                        <div class="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                    <div id="moduleProjects" onclick="showProjectsView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                         </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">نظام إدارة المشاريع</h3>
-                        <p class="text-slate-500 text-sm">إضافة ومتابعة المشاريع الجديدة</p>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">نظام إدارة المشاريع</h3>
+                        <p class="text-slate-500 text-xs">إضافة ومتابعة المشاريع الجديدة</p>
                     </div>
                     <!-- Purchasing Module -->
-                    <div id="modulePurchasing" onclick="showPurchasingView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
-                        <div class="w-20 h-20 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                    <div id="modulePurchasing" onclick="showPurchasingView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                         </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">نظام إدارة المشتريات</h3>
-                        <p class="text-slate-500 text-sm">طلبات الشراء وإدارة الموردين</p>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">نظام إدارة المشتريات</h3>
+                        <p class="text-slate-500 text-xs">طلبات الشراء وإدارة الموردين</p>
+                    </div>
+                    <!-- HR Module -->
+                    <div id="moduleHR" onclick="showHRView()" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-8 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">شؤون الموظفين</h3>
+                        <p class="text-slate-500 text-xs">النماذج، الدوام، والملف الشخصي</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= HR / STAFF MANAGEMENT SYSTEM ================= -->
+            <div id="hrView" class="hidden space-y-6 animate-fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
+                    <div class="flex items-center gap-4">
+                        <button onclick="showModuleSelectorView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع للقائمة الرئيسية">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-slate-900">إدارة شؤون الموظفين</h2>
+                            <p class="text-slate-500 text-sm mt-0.5">الملف الشخصي، نماذج الطلبات، وسجل الدوام</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="hrAdminRequestsBtn" onclick="openHrAdminRequestsModal()" class="hidden bg-indigo-650 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md flex items-center gap-2">
+                            🛡️ طلبات الموظفين
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HR Tabs Selector -->
+                <div class="flex border-b border-slate-200">
+                    <button id="hrTabProfile" onclick="switchHrTab('profile')" class="border-b-2 border-indigo-600 px-6 py-3 text-sm font-bold text-indigo-600 transition-all">الملف الشخصي</button>
+                    <button id="hrTabForms" onclick="switchHrTab('forms')" class="border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all">النماذج والطلبات</button>
+                    <button id="hrTabAttendance" onclick="switchHrTab('attendance')" class="border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all">سجل الدوام</button>
+                </div>
+
+                <!-- HR Profile Tab -->
+                <div id="hrProfileSection" class="block space-y-6">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                        <form id="hrProfileForm" onsubmit="saveHrProfile(event)">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                                <div class="md:col-span-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-l border-slate-100 pb-6 md:pb-0 md:pl-6">
+                                    <div class="relative w-36 h-36 rounded-full overflow-hidden bg-slate-100 border-4 border-slate-200 flex items-center justify-center mb-4 group">
+                                        <img id="hrProfileAvatarPreview" src="" alt="avatar" class="w-full h-full object-cover hidden" />
+                                        <div id="hrProfileAvatarPlaceholder" class="text-4xl text-slate-400">👤</div>
+                                    </div>
+                                    <label class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition">
+                                        تغيير الصورة
+                                        <input type="file" id="hrProfileAvatarInput" accept="image/*" class="hidden" onchange="previewHrAvatar(this)" />
+                                    </label>
+                                </div>
+                                <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-2">الاسم بالكامل</label>
+                                        <input type="text" id="hrProfileName" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="أدخل اسمك الكامل">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-2">المسمى الوظيفي</label>
+                                        <input type="text" id="hrProfileJobTitle" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: مهندس إنتاج">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-2">رقم التعيين</label>
+                                        <input type="text" id="hrProfileEmpId" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: EMP-104">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-2">القسم</label>
+                                        <input type="text" id="hrProfileDepartment" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: قسم التصنيع">
+                                    </div>
+                                    <div class="sm:col-span-2 flex justify-end mt-4">
+                                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-md">حفظ التغييرات</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- HR Forms Tab -->
+                <div id="hrFormsSection" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Leave Request Card -->
+                        <div onclick="openHrLeaveModal()" class="cursor-pointer bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md hover:border-indigo-250 transition flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800 mb-1">تقديم طلب مغادرة</h3>
+                                <p class="text-slate-500 text-xs leading-relaxed">تقديم طلب خروج/مغادرة مؤقتة خلال الدوام مع تحديد السبب والوقت والمرفقات.</p>
+                            </div>
+                            <div class="mt-6 flex justify-end text-xs font-bold text-indigo-600">تقديم الطلب ←</div>
+                        </div>
+                        
+                        <!-- Vacation Request Card -->
+                        <div onclick="openHrVacationModal()" class="cursor-pointer bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md hover:border-indigo-250 transition flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800 mb-1">تقديم طلب إجازة</h3>
+                                <p class="text-slate-500 text-xs leading-relaxed">تقديم طلب إجازة سنوية أو مرضية أو طارئة مع إرفاق التقارير المطلوبة.</p>
+                            </div>
+                            <div class="mt-6 flex justify-end text-xs font-bold text-indigo-600">تقديم الطلب ←</div>
+                        </div>
+
+                        <!-- Inquiry Request Card -->
+                        <div onclick="openHrInquiryModal()" class="cursor-pointer bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md hover:border-indigo-250 transition flex flex-col justify-between">
+                            <div>
+                                <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800 mb-1">تقديم طلب استفسار</h3>
+                                <p class="text-slate-500 text-xs leading-relaxed">إرسال استفسار أو تساؤل خاص بالعمل إلى الموارد البشرية.</p>
+                            </div>
+                            <div class="mt-6 flex justify-end text-xs font-bold text-indigo-600">إرسال الاستفسار ←</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HR Attendance Tab -->
+                <div id="hrAttendanceSection" class="hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Clock In/Out Control Panel -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between h-full">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-1">تسجيل الحضور والانصراف</h3>
+                                <p class="text-xs text-slate-500 mb-6">سجل حركة حضورك وانصرافك اليومي بالوقت الفعلي.</p>
+                                <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center mb-6">
+                                    <p class="text-xs text-slate-400 font-bold mb-1">التاريخ الحالي</p>
+                                    <p id="attendanceCurrentDate" class="text-sm font-extrabold text-slate-800">18 يونيو 2026</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-3">
+                                <button id="attendanceCheckInBtn" onclick="doAttendanceCheckIn()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow flex items-center justify-center gap-2">
+                                    ✓ تسجيل دخول
+                                </button>
+                                <button id="attendanceCheckOutBtn" onclick="doAttendanceCheckOut()" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition shadow flex items-center justify-center gap-2">
+                                    🚫 تسجيل انصراف
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Attendance History Logs -->
+                        <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 overflow-hidden flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 mb-1">حركات الدوام الأخيرة</h3>
+                                <p class="text-xs text-slate-500 mb-4">قائمة الحركات المسجلة الخاصة بك لهذا الشهر.</p>
+                                <div class="overflow-y-auto max-h-60">
+                                    <table class="w-full text-right border-collapse text-xs">
+                                        <thead>
+                                            <tr class="bg-slate-50 text-slate-600 border-b">
+                                                <th class="p-3 font-bold">التاريخ</th>
+                                                <th class="p-3 font-bold text-center">وقت الدخول</th>
+                                                <th class="p-3 font-bold text-center">وقت الخروج</th>
+                                                <th class="p-3 font-bold text-center">الحالة</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="attendanceLogsTableBody">
+                                            <!-- Dynamically filled -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Common Requests History table at the bottom of HR view -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                    <div class="p-5 border-b border-slate-150">
+                        <h3 class="font-bold text-slate-900 text-lg">سجل طلباتي</h3>
+                        <p class="text-xs text-slate-500">حالة الطلبات السابقة المقدمة من قبلك.</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse text-xs">
+                            <thead class="bg-slate-50 text-slate-600 border-b">
+                                <tr>
+                                    <th class="p-4 font-bold">تاريخ الطلب</th>
+                                    <th class="p-4 font-bold">نوع الطلب</th>
+                                    <th class="p-4 font-bold">تفاصيل / سبب الطلب</th>
+                                    <th class="p-4 font-bold text-center">المرفقات</th>
+                                    <th class="p-4 font-bold text-center">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hrMyRequestsTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1636,6 +1825,131 @@
         </div>
     </div>
 
+    <!-- ================= HR REQUESTS & ADMIN MODALS ================= -->
+    <!-- Leave Request Modal -->
+    <div id="hrLeaveRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all">
+            <div class="bg-amber-600 text-white p-5 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-xl font-bold">طلب مغادرة جديد</h3>
+                <button type="button" onclick="closeHrLeaveModal()" class="text-white hover:text-slate-200 transition">✕</button>
+            </div>
+            <form id="hrLeaveForm" onsubmit="submitHrLeaveForm(event)" class="p-6 space-y-4 text-right">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">سبب المغادرة</label>
+                    <textarea id="hrLeaveReason" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none" rows="3" placeholder="اكتب سبب المغادرة بالتفصيل"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2">تاريخ المغادرة</label>
+                        <input type="date" id="hrLeaveDate" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2">وقت البداية</label>
+                        <input type="time" id="hrLeaveStartTime" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">وقت النهاية المتوقع</label>
+                    <input type="time" id="hrLeaveEndTime" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">المرفقات</label>
+                    <input type="file" id="hrLeaveAttachment" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs bg-slate-50">
+                </div>
+                <div class="flex gap-3 pt-3">
+                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl transition shadow">ارسال الطلب</button>
+                    <button type="button" onclick="closeHrLeaveModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Vacation Request Modal -->
+    <div id="hrVacationRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all">
+            <div class="bg-emerald-600 text-white p-5 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-xl font-bold">طلب إجازة جديد</h3>
+                <button type="button" onclick="closeHrVacationModal()" class="text-white hover:text-slate-200 transition">✕</button>
+            </div>
+            <form id="hrVacationForm" onsubmit="submitHrVacationForm(event)" class="p-6 space-y-4 text-right">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">سبب الإجازة</label>
+                    <textarea id="hrVacationReason" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none" rows="3" placeholder="اكتب سبب الإجازة ونوعها"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2">تاريخ البداية</label>
+                        <input type="date" id="hrVacationStartDate" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2">تاريخ النهاية</label>
+                        <input type="date" id="hrVacationEndDate" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">المرفقات</label>
+                    <input type="file" id="hrVacationAttachment" required class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs bg-slate-50">
+                    <p class="text-[10px] text-amber-600 font-bold mt-1">⚠️ ملاحظة: في حالة الاجازة المرضية يرجى ارفاق التقرير الطبي</p>
+                </div>
+                <div class="flex gap-3 pt-3">
+                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow">ارسال الطلب</button>
+                    <button type="button" onclick="closeHrVacationModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inquiry Request Modal -->
+    <div id="hrInquiryRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all">
+            <div class="bg-indigo-600 text-white p-5 flex justify-between items-center rounded-t-2xl">
+                <h3 class="text-xl font-bold">طلب استفسار جديد</h3>
+                <button type="button" onclick="closeHrInquiryModal()" class="text-white hover:text-slate-200 transition">✕</button>
+            </div>
+            <form id="hrInquiryForm" onsubmit="submitHrInquiryForm(event)" class="p-6 space-y-4 text-right">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">الاستفسار</label>
+                    <textarea id="hrInquiryReason" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" rows="5" placeholder="اكتب استفسارك بالتفصيل وسيتم الرد عليك قريباً"></textarea>
+                </div>
+                <div class="flex gap-3 pt-3">
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition shadow">ارسال الاستفسار</button>
+                    <button type="button" onclick="closeHrInquiryModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Manage Employee Requests Modal -->
+    <div id="hrAdminRequestsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl transform transition-all overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="bg-slate-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 class="text-xl font-bold">لوحة طلبات الموظفين العامة</h3>
+                <button type="button" onclick="closeHrAdminRequestsModal()" class="text-white hover:text-slate-200 transition">✕</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <table class="w-full text-right border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 border-b">
+                            <th class="p-3 font-bold">الموظف</th>
+                            <th class="p-3 font-bold">نوع الطلب</th>
+                            <th class="p-3 font-bold">التاريخ</th>
+                            <th class="p-3 font-bold">تفاصيل / سبب الطلب</th>
+                            <th class="p-3 font-bold text-center">المرفقات</th>
+                            <th class="p-3 font-bold text-center">الحالة</th>
+                            <th class="p-3 font-bold text-center">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hrAdminRequestsTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-150 shrink-0">
+                <button onclick="closeHrAdminRequestsModal()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Purchase Request Modal -->
     <div id="purchaseRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg transform transition-all">
@@ -1720,7 +2034,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=89"></script>
+    <script src="script.js?v=90"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
