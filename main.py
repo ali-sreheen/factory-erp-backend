@@ -1237,6 +1237,30 @@ def delete_project_detail(detail_id: int, db: Session = Depends(get_db), current
         raise HTTPException(status_code=404, detail="Detail not found")
     return {"message": "Deleted successfully"}
 
+def get_stickers_list(sticker_number: str | None, quantity: int) -> list[str]:
+    qty = quantity if quantity and quantity > 0 else 1
+    if not sticker_number:
+        return [""] * qty
+    parts = [p.strip() for p in sticker_number.split(',')]
+    if len(parts) < qty:
+        import re
+        last_part = parts[-1]
+        try:
+            digits = re.findall(r'\d+', last_part)
+            if digits:
+                val = int(digits[-1])
+                prefix = last_part[:last_part.rfind(digits[-1])]
+                while len(parts) < qty:
+                    val += 1
+                    parts.append(f"{prefix}{val}")
+            else:
+                while len(parts) < qty:
+                    parts.append("")
+        except Exception:
+            while len(parts) < qty:
+                parts.append("")
+    return parts[:qty]
+
 @app.get("/api/fire-doors/")
 def get_fire_doors(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.username != "admin" and not user_has_project_management(current_user, db):
@@ -1253,14 +1277,52 @@ def get_fire_doors(db: Session = Depends(get_db), current_user: models.User = De
     
     result = []
     for d in details:
-        result.append({
-            "id": d.id,
-            "project_name": d.project.name if d.project else "-",
-            "project_number": d.project.project_number if d.project else "-",
-            "door_number": d.door_number or "-",
-            "sticker_number": d.sticker_number or ""
-        })
+        is_project_active = d.project.status == "active" if d.project else False
+        has_sticker = bool(d.sticker_number)
+        
+        if is_project_active or has_sticker:
+            qty = d.quantity if d.quantity and d.quantity > 0 else 1
+            stickers = get_stickers_list(d.sticker_number, qty)
+            for idx in range(qty):
+                sticker_val = stickers[idx]
+                door_label = d.door_number or "-"
+                if qty > 1:
+                    door_label = f"{door_label} ({idx+1}/{qty})"
+                result.append({
+                    "id": d.id,
+                    "index": idx,
+                    "project_name": d.project.name if d.project else "-",
+                    "project_number": d.project.project_number if d.project else "-",
+                    "door_number": door_label,
+                    "sticker_number": sticker_val
+                })
     return result
+
+class StickerUpdateRequest(BaseModel):
+    index: int
+    sticker_number: str
+
+@app.put("/api/projects/details/{detail_id}/sticker")
+def update_detail_sticker(detail_id: int, payload: StickerUpdateRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
+    if not db_detail:
+        raise HTTPException(status_code=404, detail="Detail not found")
+        
+    project = db_detail.project
+    if current_user.username != "admin" and (not project or current_user.id != project.executive_manager_id) and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    qty = db_detail.quantity if db_detail.quantity and db_detail.quantity > 0 else 1
+    stickers = get_stickers_list(db_detail.sticker_number, qty)
+    
+    if payload.index < 0 or payload.index >= qty:
+        raise HTTPException(status_code=400, detail="Index out of range")
+        
+    stickers[payload.index] = payload.sticker_number
+    db_detail.sticker_number = ",".join(stickers)
+    db.commit()
+    db.refresh(db_detail)
+    return {"message": "Sticker updated successfully", "sticker_number": db_detail.sticker_number}
 
 @app.put("/api/projects/details/{detail_id}", response_model=schemas.ProjectDetailResponse)
 def update_project_detail(detail_id: int, detail_update: schemas.ProjectDetailCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

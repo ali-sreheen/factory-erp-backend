@@ -457,6 +457,12 @@ function setupDescriptionEditAction() {
 // ----------------- VIEW ROUTING -----------------
 
 async function showDepartmentsView() {
+    const username = localStorage.getItem('username');
+    if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_inventory' && (p.can_edit == 1 || p.can_edit === true))) {
+        showToast('غير مصرح لك بالوصول لنظام إدارة المخازن', 'bg-rose-500', '✗');
+        return;
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -883,6 +889,35 @@ function applyPermissionsToUI() {
     const isCreatePRAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_create' && (p.can_edit == 1 || p.can_edit === true));
     const isSupplierEditAuthorized = username === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_suppliers' && (p.can_edit == 1 || p.can_edit === true));
     const hasProjectMgmt = username === 'admin' || userPermissionsList.some(p => p.department_name === 'project_management' && (p.can_edit == 1 || p.can_edit === true));
+
+    const hasInventoryAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_inventory' && (p.can_edit == 1 || p.can_edit === true));
+    const hasProjectsAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_projects' && (p.can_edit == 1 || p.can_edit === true));
+    const hasPurchasingAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_purchasing' && (p.can_edit == 1 || p.can_edit === true));
+
+    const modInv = document.getElementById('moduleInventory');
+    if (modInv) {
+        if (hasInventoryAccess) {
+            modInv.classList.remove('opacity-40');
+        } else {
+            modInv.classList.add('opacity-40');
+        }
+    }
+    const modProj = document.getElementById('moduleProjects');
+    if (modProj) {
+        if (hasProjectsAccess) {
+            modProj.classList.remove('opacity-40');
+        } else {
+            modProj.classList.add('opacity-40');
+        }
+    }
+    const modPurch = document.getElementById('modulePurchasing');
+    if (modPurch) {
+        if (hasPurchasingAccess) {
+            modPurch.classList.remove('opacity-40');
+        } else {
+            modPurch.classList.add('opacity-40');
+        }
+    }
 
     const btnCreatePR = document.getElementById('btnCreatePurchaseRequest');
     if (btnCreatePR) {
@@ -2001,6 +2036,57 @@ async function openPermissionsModal(userId, username) {
         
         permissionsList.innerHTML = '';
         
+        // Section 0: System Access Permissions (صلاحيات دخول الأنظمة الرئيسية)
+        const sysInvPerm = user.permissions.find(p => p.department_name === 'system_inventory');
+        const sysInvCanEdit = sysInvPerm && (sysInvPerm.can_edit == 1 || sysInvPerm.can_edit === true);
+
+        const sysProjPerm = user.permissions.find(p => p.department_name === 'system_projects');
+        const sysProjCanEdit = sysProjPerm && (sysProjPerm.can_edit == 1 || sysProjPerm.can_edit === true);
+
+        const sysPurchPerm = user.permissions.find(p => p.department_name === 'system_purchasing');
+        const sysPurchCanEdit = sysPurchPerm && (sysPurchPerm.can_edit == 1 || sysPurchPerm.can_edit === true);
+
+        let systemsHtml = `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    صلاحيات دخول الأنظمة الرئيسية
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">نظام إدارة المخازن</p>
+                            <p class="text-xs text-slate-500">منح صلاحية الدخول لنظام إدارة المخازن</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${sysInvCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_inventory', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">نظام إدارة المشاريع</p>
+                            <p class="text-xs text-slate-500">منح صلاحية الدخول لنظام إدارة المشاريع</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${sysProjCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_projects', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">نظام إدارة المشتريات</p>
+                            <p class="text-xs text-slate-500">منح صلاحية الدخول لنظام إدارة المشتريات</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${sysPurchCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_purchasing', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
+
         // Section 1: Store/Inventory Management (نظام إدارة المخازن)
         let inventoryHtml = `
             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
@@ -2103,7 +2189,7 @@ async function openPermissionsModal(userId, username) {
             </div>
         `;
         
-        permissionsList.innerHTML = inventoryHtml + projectHtml + purchasingHtml;
+        permissionsList.innerHTML = systemsHtml + inventoryHtml + projectHtml + purchasingHtml;
         
     } catch (err) {
         permissionsList.innerHTML = `<p class="text-rose-500 text-sm">${err.message}</p>`;
@@ -2177,6 +2263,12 @@ function showModuleSelectorView() {
 }
 
 function showProjectsView() {
+    const username = localStorage.getItem('username');
+    if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_projects' && (p.can_edit == 1 || p.can_edit === true))) {
+        showToast('غير مصرح لك بالوصول لنظام إدارة المشاريع', 'bg-rose-500', '✗');
+        return;
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -3501,6 +3593,12 @@ const SUPPLIERS_URL = `${API_HOST}/api/suppliers`;
 const PURCHASE_REQUESTS_URL = `${API_HOST}/api/purchase-requests`;
 
 function showPurchasingView() {
+    const username = localStorage.getItem('username');
+    if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_purchasing' && (p.can_edit == 1 || p.can_edit === true))) {
+        showToast('غير مصرح لك بالوصول لنظام إدارة المشتريات', 'bg-rose-500', '✗');
+        return;
+    }
+
     const _prdView = document.getElementById('purchaseRequestDetailView');
     if(_prdView) _prdView.classList.add('hidden');
 
@@ -4978,10 +5076,10 @@ window.openFireDoorsModal = async function() {
                 <td class="p-3 text-slate-500 font-bold">${d.project_number}</td>
                 <td class="p-3 text-slate-700">${d.door_number}</td>
                 <td class="p-3">
-                    <input type="text" value="${d.sticker_number || ''}" onchange="updateStickerNumber(${d.id}, this)" class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition" placeholder="أدخل رقم الملصق..." />
+                    <input type="text" value="${d.sticker_number || ''}" onchange="updateStickerNumber(${d.id}, ${d.index}, this)" class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition" placeholder="أدخل رقم الملصق..." />
                 </td>
                 <td class="p-3 text-center">
-                    <button onclick="saveSingleStickerNumber(${d.id}, this)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1 mx-auto">
+                    <button onclick="saveSingleStickerNumber(${d.id}, ${d.index}, this)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1 mx-auto">
                         💾 حفظ
                     </button>
                 </td>
@@ -5005,13 +5103,13 @@ window.closeFireDoorsModal = function() {
     }, 300);
 };
 
-window.updateStickerNumber = async function(detailId, inputEl) {
+window.updateStickerNumber = async function(detailId, index, inputEl) {
     const val = inputEl.value;
     try {
-        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}`, {
+        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}/sticker`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sticker_number: val })
+            body: JSON.stringify({ index: index, sticker_number: val })
         });
         if (!response.ok) throw new Error('فشل تحديث رقم الملصق');
         showToast('تم تحديث رقم الملصق تلقائياً', 'bg-emerald-500', '✓');
@@ -5020,14 +5118,14 @@ window.updateStickerNumber = async function(detailId, inputEl) {
     }
 };
 
-window.saveSingleStickerNumber = async function(detailId, btnEl) {
+window.saveSingleStickerNumber = async function(detailId, index, btnEl) {
     const inputEl = btnEl.closest('tr').querySelector('input');
     const val = inputEl.value;
     try {
-        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}`, {
+        const response = await authFetch(`${API_HOST}/api/projects/details/${detailId}/sticker`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sticker_number: val })
+            body: JSON.stringify({ index: index, sticker_number: val })
         });
         if (!response.ok) throw new Error('فشل حفظ رقم الملصق');
         showToast('تم حفظ رقم الملصق بنجاح', 'bg-emerald-500', '✓');
@@ -5146,3 +5244,155 @@ window.bypassFireDoorValidation = function() {
     closeFireDoorValidationModal();
     goToWizardStep(3);
 };
+
+window.exportManufacturingTableToExcel = function() {
+    if (!window.currentProjectData) {
+        showToast('لا يوجد بيانات للمشروع', 'bg-amber-500', '⚠');
+        return;
+    }
+    
+    // Load SheetJS dynamically if not loaded
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.onload = () => doExportManufacturing(window.currentProjectData);
+        document.head.appendChild(script);
+    } else {
+        doExportManufacturing(window.currentProjectData);
+    }
+};
+
+function doExportManufacturing(project) {
+    const wb = XLSX.utils.book_new();
+    const data = [];
+    
+    // Rows 1-4: Project Info Block
+    data.push(["FT JADA", "", "", "", "Production Order", "", "", "", "رقم الأوردر:", project.project_number || "-", "تاريخ الاستلام:", project.created_at ? new Date(project.created_at).toLocaleDateString() : "-"]);
+    data.push(["METAL STEEL MANUFACTURING", "", "", "", "", "", "", "", "مسؤول التنفيذ:", project.executive_manager_name || "-", "تاريخ التسليم:", project.delivery_date ? new Date(project.delivery_date).toLocaleDateString() : "-"]);
+    data.push(["", "", "", "", "", "", "", "", "اسم المشروع:", project.name || "-", "الموقع:", project.location || "-"]);
+    data.push(["", "", "", "", "", "", "", "", "اسم مهندس المشروع:", project.engineer_name || "-", "الشخص المسؤول:", project.contractor_name || "-"]);
+    data.push([]); // Row 5: Empty space
+    
+    // Row 6: Main headers
+    data.push([
+        "الرقم", 
+        "العدد", 
+        "قياس الحلق (Frame)", "", "", "", "", "", "", "", "", "", "", // Columns 3-13 (C to M)
+        "قياس الدرفة (Leaf)", "", "", "", "", "", "", "", // Columns 14-21 (N to U)
+        "تفاصيل عامة (General Info)", "", "", "", "", "" // Columns 22-27
+    ]);
+    
+    // Row 7: Detail headers
+    data.push([
+        "الرقم", 
+        "العدد", 
+        "الاتجاه", "العرض", "الارتفاع", "الحمالة", "السماكة", "تحت الأرض", "شكل المقطع", "نوع المقطع", "كاوتشوك", "عرض الكشفة", "كشفة 2",
+        "الاتجاه", "العرض", "الارتفاع", "الحمالة", "السماكة", "المواصفات", "النوع", "العدد",
+        "FR/NFR", "نوع القفل", "الفصالات", "اللون", "ملاحظات"
+    ]);
+    
+    // Insert details
+    if (project.details && project.details.length > 0) {
+        project.details.forEach((d, index) => {
+            const frameWidth = parseFloat(d.width) || 0;
+            const frameHeight = parseFloat(d.height) || 0;
+            
+            const dir = d.direction || "";
+            const isDouble = dir.toUpperCase().includes("D/RA") || dir.includes("دبل") || dir.toUpperCase().includes("DOUBLE");
+            
+            let leafWidth = "";
+            if (frameWidth > 0) {
+                if (isDouble) {
+                    leafWidth = ((frameWidth - 11.5) / 2).toFixed(1);
+                } else {
+                    leafWidth = (frameWidth - 10.8).toFixed(1);
+                }
+            }
+            
+            let leafHeight = frameHeight > 0 ? (frameHeight - 6).toFixed(1) : "";
+            const isFire = d.fire_resistance && (d.fire_resistance.toUpperCase().startsWith("Y") || d.fire_resistance.startsWith("نعم"));
+            const frLabel = isFire ? "FR" : "NFR";
+            const hasRubber = d.profile_type && (d.profile_type.toLowerCase().includes("rubber") || d.profile_type.includes("rubber") || d.profile_type.includes("كاوتشوك")) ? "نعم" : "لا";
+            
+            data.push([
+                d.door_number || `A-${index+1}`,
+                d.quantity || 1,
+                // Frame
+                d.direction || "-",
+                d.width || "-",
+                d.height || "-",
+                d.depth || "-",
+                "1.5",
+                d.under_tile || "0",
+                d.profile_type || "-",
+                "ستاندر",
+                hasRubber,
+                d.architrave || "-",
+                d.architrave_2 || "-",
+                // Leaf
+                d.direction || "-",
+                leafWidth,
+                leafHeight,
+                "4.5",
+                d.leaf_thickness || "4.5",
+                d.specifications || "Flush",
+                d.door_type || "-",
+                d.quantity || 1,
+                // General
+                frLabel,
+                d.lock_type || "-",
+                d.hinges || "-",
+                project.paint_color || "-",
+                d.notes || "-"
+            ]);
+        });
+    }
+    
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Set merges for headers
+    ws['!merges'] = [
+        // Top Title
+        { s: { r: 0, c: 4 }, e: { r: 2, c: 7 } },
+        // Row 6 Main sections
+        { s: { r: 5, c: 2 }, e: { r: 5, c: 12 } }, // Frame merged (C to M)
+        { s: { r: 5, c: 13 }, e: { r: 5, c: 20 } }, // Leaf merged (N to U)
+        { s: { r: 5, c: 21 }, e: { r: 5, c: 25 } }  // General merged (V to Z)
+    ];
+    
+    // Set column widths
+    ws['!cols'] = [
+        { wch: 12 }, // الرقم
+        { wch: 6 },  // العدد
+        { wch: 8 },  // الاتجاه (Frame)
+        { wch: 8 },  // العرض
+        { wch: 8 },  // الارتفاع
+        { wch: 8 },  // الحمالة
+        { wch: 8 },  // السماكة
+        { wch: 10 }, // تحت الأرض
+        { wch: 12 }, // شكل المقطع
+        { wch: 12 }, // نوع المقطع
+        { wch: 8 },  // كاوتشوك
+        { wch: 10 }, // عرض الكشفة
+        { wch: 10 }, // كشفة 2
+        { wch: 8 },  // الاتجاه (Leaf)
+        { wch: 8 },  // العرض
+        { wch: 8 },  // الارتفاع
+        { wch: 8 },  // الحمالة
+        { wch: 8 },  // السماكة
+        { wch: 12 }, // المواصفات
+        { wch: 12 }, // النوع
+        { wch: 6 },  // العدد (Leaf)
+        { wch: 8 },  // FR/NFR
+        { wch: 12 }, // نوع القفل
+        { wch: 12 }, // الفصالات
+        { wch: 10 }, // اللون
+        { wch: 20 }  // ملاحظات
+    ];
+    
+    XLSX.utils.book_append_sheet(wb, ws, "جدول التصنيع");
+    
+    const fileName = `جدول_تصنيع_${project.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    showToast('تم تصدير جدول التصنيع بنجاح', 'bg-emerald-500', '✓');
+}
