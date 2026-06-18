@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
 from datetime import timedelta
 import os
 import shutil
