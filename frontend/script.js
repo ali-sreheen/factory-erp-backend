@@ -899,6 +899,7 @@ function applyPermissionsToUI() {
     const hasInventoryAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_inventory' && (p.can_edit == 1 || p.can_edit === true));
     const hasProjectsAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_projects' && (p.can_edit == 1 || p.can_edit === true));
     const hasPurchasingAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_purchasing' && (p.can_edit == 1 || p.can_edit === true));
+    const hasHrAccess = username === 'admin' || userPermissionsList.some(p => p.department_name === 'system_hr' && (p.can_edit == 1 || p.can_edit === true));
 
     const modInv = document.getElementById('moduleInventory');
     if (modInv) {
@@ -922,6 +923,14 @@ function applyPermissionsToUI() {
             modPurch.classList.remove('opacity-40');
         } else {
             modPurch.classList.add('opacity-40');
+        }
+    }
+    const modHR = document.getElementById('moduleHR');
+    if (modHR) {
+        if (hasHrAccess) {
+            modHR.classList.remove('opacity-40');
+        } else {
+            modHR.classList.add('opacity-40');
         }
     }
 
@@ -2052,6 +2061,9 @@ async function openPermissionsModal(userId, username) {
         const sysPurchPerm = user.permissions.find(p => p.department_name === 'system_purchasing');
         const sysPurchCanEdit = sysPurchPerm && (sysPurchPerm.can_edit == 1 || sysPurchPerm.can_edit === true);
 
+        const sysHrPerm = user.permissions.find(p => p.department_name === 'system_hr');
+        const sysHrCanEdit = sysHrPerm && (sysHrPerm.can_edit == 1 || sysHrPerm.can_edit === true);
+
         const hrMgmtPerm = user.permissions.find(p => p.department_name === 'hr_management');
         const hrMgmtCanEdit = hrMgmtPerm && (hrMgmtPerm.can_edit == 1 || hrMgmtPerm.can_edit === true);
 
@@ -2089,6 +2101,16 @@ async function openPermissionsModal(userId, username) {
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" ${sysPurchCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_purchasing', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">نظام إدارة شؤون الموظفين</p>
+                            <p class="text-xs text-slate-500">منح صلاحية الدخول لنظام إدارة شؤون الموظفين</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${sysHrCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'system_hr', this.checked)" class="sr-only peer">
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
@@ -5429,6 +5451,13 @@ function doExportManufacturing(project) {
 let hrCurrentSection = 'menu';
 
 async function showHRView() {
+    const currentUsername = localStorage.getItem('username');
+    const hasHrAccess = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'system_hr' && (p.can_edit == 1 || p.can_edit === true));
+    if (!hasHrAccess) {
+        showToast('غير مصرح لك بالوصول لنظام إدارة شؤون الموظفين', 'bg-rose-500', '✗');
+        return;
+    }
+
     const views = [
         'moduleSelectorView', 'departmentsView', 'accessoriesSubDeptView', 
         'departmentDetailView', 'adminView', 'purchasingView', 
@@ -5444,7 +5473,6 @@ async function showHRView() {
     if (hrView) hrView.classList.remove('hidden');
 
     // Check permissions
-    const currentUsername = localStorage.getItem('username');
     const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
     
     const adminBtn = document.getElementById('hrAdminRequestsBtn');
