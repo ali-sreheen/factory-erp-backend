@@ -171,7 +171,7 @@
             <div id="hrView" class="hidden space-y-6 animate-fade-in">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
                     <div class="flex items-center gap-4">
-                        <button onclick="showModuleSelectorView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع للقائمة الرئيسية">
+                        <button onclick="handleHrBackNavigation()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </button>
                         <div>
@@ -186,15 +186,36 @@
                     </div>
                 </div>
 
-                <!-- HR Tabs Selector -->
-                <div class="flex border-b border-slate-200">
-                    <button id="hrTabProfile" onclick="switchHrTab('profile')" class="border-b-2 border-indigo-600 px-6 py-3 text-sm font-bold text-indigo-600 transition-all">الملف الشخصي</button>
-                    <button id="hrTabForms" onclick="switchHrTab('forms')" class="border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all">النماذج والطلبات</button>
-                    <button id="hrTabAttendance" onclick="switchHrTab('attendance')" class="border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all">سجل الدوام</button>
+                <!-- HR Main Menu Section (3 Cards) -->
+                <div id="hrMainMenuSection" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto py-6 animate-fade-in">
+                    <!-- Profile Card -->
+                    <div onclick="enterHrSubSection('profile')" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">الملف الشخصي</h3>
+                        <p class="text-slate-500 text-sm">عرض وتعديل معلوماتك الشخصية وصورتك</p>
+                    </div>
+                    <!-- Forms Card -->
+                    <div onclick="enterHrSubSection('forms')" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">النماذج والطلبات</h3>
+                        <p class="text-slate-500 text-sm">طلب مغادرة، طلب إجازة، أو طلب استفسار</p>
+                    </div>
+                    <!-- Attendance Card -->
+                    <div onclick="enterHrSubSection('attendance')" class="group cursor-pointer bg-white rounded-2xl shadow-md hover:shadow-xl border border-slate-100 p-10 transition-all duration-300 transform hover:-translate-y-1 text-center flex flex-col items-center">
+                        <div class="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-2">سجل الدوام</h3>
+                        <p class="text-slate-500 text-sm">تسجيل حضور وانصراف، ومتابعة سجلاتك اليومية</p>
+                    </div>
                 </div>
 
-                <!-- HR Profile Tab -->
-                <div id="hrProfileSection" class="block space-y-6">
+                <!-- HR Profile Section -->
+                <div id="hrProfileSection" class="hidden space-y-6">
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
                         <form id="hrProfileForm" onsubmit="saveHrProfile(event)">
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -2034,7 +2055,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=90"></script>
+    <script src="script.js?v=91"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

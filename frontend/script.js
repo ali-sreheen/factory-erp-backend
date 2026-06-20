@@ -5426,7 +5426,7 @@ function doExportManufacturing(project) {
 }
 
 // ==================== HR SYSTEM FRONTEND ====================
-let hrCurrentTab = 'profile';
+let hrCurrentSection = 'menu';
 
 async function showHRView() {
     const views = [
@@ -5456,8 +5456,16 @@ async function showHRView() {
         }
     }
 
-    // Default tab
-    switchHrTab('profile');
+    // Default to main menu
+    hrCurrentSection = 'menu';
+    document.getElementById('hrMainMenuSection').classList.remove('hidden');
+    document.getElementById('hrMainMenuSection').classList.add('grid');
+    document.getElementById('hrProfileSection').classList.add('hidden');
+    document.getElementById('hrProfileSection').classList.remove('block');
+    document.getElementById('hrFormsSection').classList.add('hidden');
+    document.getElementById('hrFormsSection').classList.remove('block');
+    document.getElementById('hrAttendanceSection').classList.add('hidden');
+    document.getElementById('hrAttendanceSection').classList.remove('block');
 
     // Load Data
     await loadHrProfile();
@@ -5465,29 +5473,45 @@ async function showHRView() {
     await loadHrAttendance();
 }
 
-function switchHrTab(tabName) {
-    hrCurrentTab = tabName;
-    const tabs = ['profile', 'forms', 'attendance'];
-    tabs.forEach(t => {
-        const btn = document.getElementById('hrTab' + t.charAt(0).toUpperCase() + t.slice(1));
-        const section = document.getElementById('hr' + t.charAt(0).toUpperCase() + t.slice(1) + 'Section');
-        if (btn) {
-            if (t === tabName) {
-                btn.className = "border-b-2 border-indigo-600 px-6 py-3 text-sm font-bold text-indigo-600 transition-all";
+function enterHrSubSection(section) {
+    hrCurrentSection = section;
+    
+    // Hide main menu
+    document.getElementById('hrMainMenuSection').classList.add('hidden');
+    document.getElementById('hrMainMenuSection').classList.remove('grid');
+
+    // Show selected section
+    const sections = ['profile', 'forms', 'attendance'];
+    sections.forEach(s => {
+        const el = document.getElementById('hr' + s.charAt(0).toUpperCase() + s.slice(1) + 'Section');
+        if (el) {
+            if (s === section) {
+                el.classList.remove('hidden');
+                el.classList.add('block');
             } else {
-                btn.className = "border-b-2 border-transparent px-6 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-all";
-            }
-        }
-        if (section) {
-            if (t === tabName) {
-                section.classList.remove('hidden');
-                section.classList.add('block');
-            } else {
-                section.classList.remove('block');
-                section.classList.add('hidden');
+                el.classList.remove('block');
+                el.classList.add('hidden');
             }
         }
     });
+}
+
+function handleHrBackNavigation() {
+    if (hrCurrentSection === 'menu') {
+        showModuleSelectorView();
+    } else {
+        // Go back to main HR menu
+        hrCurrentSection = 'menu';
+        document.getElementById('hrMainMenuSection').classList.remove('hidden');
+        document.getElementById('hrMainMenuSection').classList.add('grid');
+        
+        document.getElementById('hrProfileSection').classList.add('hidden');
+        document.getElementById('hrProfileSection').classList.remove('block');
+        document.getElementById('hrFormsSection').classList.add('hidden');
+        document.getElementById('hrFormsSection').classList.remove('block');
+        document.getElementById('hrAttendanceSection').classList.add('hidden');
+        document.getElementById('hrAttendanceSection').classList.remove('block');
+    }
 }
 
 async function loadHrProfile() {
