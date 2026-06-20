@@ -224,7 +224,7 @@
                                         <img id="hrProfileAvatarPreview" src="" alt="avatar" class="w-full h-full object-cover hidden" />
                                         <div id="hrProfileAvatarPlaceholder" class="text-4xl text-slate-400">👤</div>
                                     </div>
-                                    <label class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition">
+                                    <label id="hrProfileAvatarLabel" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition">
                                         تغيير الصورة
                                         <input type="file" id="hrProfileAvatarInput" accept="image/*" class="hidden" onchange="previewHrAvatar(this)" />
                                     </label>
@@ -247,7 +247,7 @@
                                         <input type="text" id="hrProfileDepartment" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: قسم التصنيع">
                                     </div>
                                     <div class="sm:col-span-2 flex justify-end mt-4">
-                                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-md">حفظ التغييرات</button>
+                                        <button id="hrProfileSaveBtn" type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-md">حفظ التغييرات</button>
                                     </div>
                                 </div>
                             </div>
@@ -2055,7 +2055,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=91"></script>
+    <script src="script.js?v=92"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

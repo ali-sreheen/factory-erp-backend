@@ -2097,7 +2097,7 @@ async function openPermissionsModal(userId, username) {
                             <p class="font-bold text-slate-800 text-sm">إدارة الموظفين</p>
                             <p class="text-xs text-slate-500">منح صلاحية إدارة واعتماد طلبات الموظفين</p>
                         </div>
-                        <label class="relative inline-flex inline-flex items-center cursor-pointer">
+                        <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" ${hrMgmtCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'hr_management', this.checked)" class="sr-only peer">
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
@@ -5494,6 +5494,10 @@ function enterHrSubSection(section) {
             }
         }
     });
+
+    if (section === 'profile') {
+        loadHrProfile();
+    }
 }
 
 function handleHrBackNavigation() {
@@ -5516,6 +5520,19 @@ function handleHrBackNavigation() {
 
 async function loadHrProfile() {
     try {
+        const currentUsername = localStorage.getItem('username');
+        if (currentUsername !== 'admin') {
+            try {
+                const permUrl = `${API_HOST}/api/users/me/permissions`;
+                const permsResponse = await authFetch(permUrl);
+                if (permsResponse.ok) {
+                    userPermissionsList = await permsResponse.json();
+                }
+            } catch (e) {
+                console.error('[DEBUG] loadHrProfile: Failed to fetch permissions', e);
+            }
+        }
+
         const res = await authFetch('/api/users/me');
         if (!res.ok) throw new Error('Failed to load user profile');
         const user = await res.json();
@@ -5533,8 +5550,38 @@ async function loadHrProfile() {
             previewImg.classList.remove('hidden');
             placeholder.classList.add('hidden');
         } else {
+            previewImg.src = '';
             previewImg.classList.add('hidden');
             placeholder.classList.remove('hidden');
+        }
+
+        // Apply read-only restriction based on permission
+        const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
+
+        const nameInput = document.getElementById('hrProfileName');
+        const jobTitleInput = document.getElementById('hrProfileJobTitle');
+        const empIdInput = document.getElementById('hrProfileEmpId');
+        const deptInput = document.getElementById('hrProfileDepartment');
+        const avatarInput = document.getElementById('hrProfileAvatarInput');
+        const avatarLabel = document.getElementById('hrProfileAvatarLabel');
+        const saveBtn = document.getElementById('hrProfileSaveBtn');
+
+        if (hasHrMgmt) {
+            nameInput.disabled = false;
+            jobTitleInput.disabled = false;
+            empIdInput.disabled = false;
+            deptInput.disabled = false;
+            avatarInput.disabled = false;
+            if (avatarLabel) avatarLabel.classList.remove('hidden');
+            if (saveBtn) saveBtn.classList.remove('hidden');
+        } else {
+            nameInput.disabled = true;
+            jobTitleInput.disabled = true;
+            empIdInput.disabled = true;
+            deptInput.disabled = true;
+            avatarInput.disabled = true;
+            if (avatarLabel) avatarLabel.classList.add('hidden');
+            if (saveBtn) saveBtn.classList.add('hidden');
         }
     } catch (err) {
         console.error(err);
