@@ -521,27 +521,43 @@
                             <p class="text-slate-500 text-sm mt-0.5">قائمة بجميع المشاريع المسجلة في النظام.</p>
                         </div>
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                        <button id="btnFireDoors" onclick="openFireDoorsModal()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm hidden">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            أبواب الحريق
-                        </button>
-                        <button onclick="openProjectActivationModal()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            تفعيل المشاريع
-                        </button>
-                        <button onclick="openAllProjectsTrackingModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
-                            متابعة خطوات التصنيع
-                        </button>
-                        <button onclick="openProjectWizard()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
+                        <!-- Navigation Tabs on the far left -->
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                            <button id="tabContractorsList" onclick="switchProjectsTab('contractors')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900">
+                                قائمة المقاولين
+                            </button>
+                            <button id="tabProjectsTable" onclick="switchProjectsTab('projects')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow">
+                                جدول المشاريع
+                            </button>
+                        </div>
+
+                        <!-- Action buttons for Projects (hidden when in Contractors tab) -->
+                        <div id="projectActionButtons" class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button id="btnFireDoors" onclick="openFireDoorsModal()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm hidden">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                أبواب الحريق
+                            </button>
+                            <button onclick="openProjectActivationModal()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                تفعيل المشاريع
+                            </button>
+                            <button onclick="openAllProjectsTrackingModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
+                                متابعة خطوات التصنيع
+                            </button>
+                        </div>
+
+                        <!-- Main Dynamic Add Button -->
+                        <button id="btnProjectsMainAction" onclick="handleProjectsMainAction()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                            إضافة مشروع جديد
+                            <span id="lblProjectsMainAction">إضافة مشروع جديد</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                <!-- Projects Table Container -->
+                <div id="projectsTableContainer" class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full text-right border-collapse">
                             <thead>
@@ -562,6 +578,26 @@
                             <div class="inline-block w-6 h-6 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                             <p class="text-slate-400 text-xs mt-2">جاري تحميل المشاريع...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Project Contractors / Suppliers Table Container -->
+                <div id="projectContractorsTableContainer" class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead class="bg-slate-50 text-slate-600 text-xs border-b border-slate-200">
+                                <tr>
+                                    <th class="p-4 font-bold">الاسم</th>
+                                    <th class="p-4 font-bold">رقم الهاتف</th>
+                                    <th class="p-4 font-bold">صفة التوريد / المقاولات</th>
+                                    <th class="p-4 font-bold">الموقع</th>
+                                    <th class="p-4 font-bold text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectContractorsTableBody">
+                                <!-- Contractor/Supplier rows injected here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -2073,7 +2109,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=110"></script>
+    <script src="script.js?v=111"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

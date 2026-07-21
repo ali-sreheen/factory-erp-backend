@@ -2335,10 +2335,59 @@ function showProjectsView() {
     departmentDetailView.classList.add('hidden');
     adminView.classList.add('hidden');
     const pdView = document.getElementById('projectDetailView');
-    if(pdView) pdView.classList.add('hidden');
     applyPermissionsToUI();
+    switchProjectsTab(currentProjectsTab || 'projects');
     loadProjects();
 }
+
+let currentProjectsTab = 'projects';
+
+window.handleProjectsMainAction = function() {
+    if (currentProjectsTab === 'contractors') {
+        openSupplierModal();
+    } else {
+        openProjectWizard();
+    }
+};
+
+window.switchProjectsTab = function(tabName) {
+    currentProjectsTab = tabName;
+    
+    const projectsTableContainer = document.getElementById('projectsTableContainer');
+    const projectContractorsTableContainer = document.getElementById('projectContractorsTableContainer');
+    const projectActionButtons = document.getElementById('projectActionButtons');
+    const lblProjectsMainAction = document.getElementById('lblProjectsMainAction');
+    const tabProjectsTable = document.getElementById('tabProjectsTable');
+    const tabContractorsList = document.getElementById('tabContractorsList');
+    
+    if (tabName === 'contractors') {
+        if (projectsTableContainer) projectsTableContainer.classList.add('hidden');
+        if (projectContractorsTableContainer) projectContractorsTableContainer.classList.remove('hidden');
+        if (projectActionButtons) projectActionButtons.classList.add('hidden');
+        if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مورد جديد';
+        
+        if (tabContractorsList) {
+            tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
+        }
+        if (tabProjectsTable) {
+            tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
+        }
+        
+        loadSuppliers();
+    } else {
+        if (projectsTableContainer) projectsTableContainer.classList.remove('hidden');
+        if (projectContractorsTableContainer) projectContractorsTableContainer.classList.add('hidden');
+        if (projectActionButtons) projectActionButtons.classList.remove('hidden');
+        if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مشروع جديد';
+        
+        if (tabProjectsTable) {
+            tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
+        }
+        if (tabContractorsList) {
+            tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
+        }
+    }
+};
 
 let currentEditingProjectId = null;
 let currentEditingProjectStatus = "pending";
@@ -3789,44 +3838,53 @@ function switchPurchasingTab(tab) {
 async function loadSuppliers() {
     try {
         const response = await authFetch(`${SUPPLIERS_URL}/`);
+        if (!response.ok) return;
         const suppliers = await response.json();
-        const tbody = document.getElementById('suppliersTableBody');
-        tbody.innerHTML = '';
-        if (suppliers.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">لا يوجد موردين مضافين بعد</td></tr>`;
-            return;
-        }
+        allSuppliers = suppliers;
         
-        const isSupplierEditAuthorized = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => p.department_name === 'purchasing_suppliers' && (p.can_edit == 1 || p.can_edit === true));
-
-        suppliers.forEach(s => {
-            const mapsLink = s.maps_url ? `<a href="${s.maps_url}" target="_blank" class="text-blue-500 hover:underline">عرض الخريطة</a>` : '-';
-            
-            let actionsHtml = '';
-            if (isSupplierEditAuthorized) {
-                actionsHtml = `
-                    <button onclick="editSupplier(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
-                    <button onclick="deleteSupplier(${s.id})" class="text-rose-600 hover:text-rose-800 p-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                `;
-            } else {
-                actionsHtml = '-';
-            }
-
-            tbody.innerHTML += `
-                <tr class="border-b hover:bg-slate-50 transition">
-                    <td class="p-4 font-bold text-slate-800">${s.name}</td>
-                    <td class="p-4" dir="ltr">${s.phone || '-'}</td>
-                    <td class="p-4 text-slate-600">${s.supply_type || '-'}</td>
-                    <td class="p-4">${s.location || '-'} <br> ${mapsLink}</td>
-                    <td class="p-4 text-center">
-                        ${actionsHtml}
-                    </td>
-                </tr>
-            `;
-        });
+        renderSuppliersToBody(suppliers, 'suppliersTableBody');
+        renderSuppliersToBody(suppliers, 'projectContractorsTableBody');
     } catch (err) {
-        showToast("فشل تحميل قائمة الموردين", "bg-rose-500", "✗");
+        console.error("Failed loading suppliers:", err);
     }
+}
+
+function renderSuppliersToBody(suppliers, tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!suppliers || suppliers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">لا يوجد مقاولين/موردين مضافين بعد</td></tr>`;
+        return;
+    }
+    
+    const isSupplierEditAuthorized = localStorage.getItem('username') === 'admin' || userPermissionsList.some(p => (p.department_name === 'purchasing_suppliers' || p.department_name === 'system_projects') && (p.can_edit == 1 || p.can_edit === true));
+
+    suppliers.forEach(s => {
+        const mapsLink = s.maps_url ? `<a href="${s.maps_url}" target="_blank" class="text-blue-500 hover:underline">عرض الخريطة</a>` : '-';
+        
+        let actionsHtml = '';
+        if (isSupplierEditAuthorized) {
+            actionsHtml = `
+                <button onclick="editSupplier(${s.id})" class="text-indigo-600 hover:text-indigo-800 p-1" title="تعديل"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                <button onclick="deleteSupplier(${s.id})" class="text-rose-600 hover:text-rose-800 p-1" title="حذف"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+            `;
+        } else {
+            actionsHtml = '-';
+        }
+
+        tbody.innerHTML += `
+            <tr class="border-b hover:bg-slate-50 transition">
+                <td class="p-4 font-bold text-slate-800">${s.name}</td>
+                <td class="p-4" dir="ltr">${s.phone || '-'}</td>
+                <td class="p-4 text-slate-600">${s.supply_type || '-'}</td>
+                <td class="p-4">${s.location || '-'} ${s.maps_url ? '<br>' + mapsLink : ''}</td>
+                <td class="p-4 text-center">
+                    ${actionsHtml}
+                </td>
+            </tr>
+        `;
+    });
 }
 
 let allSuppliers = []; // cache
