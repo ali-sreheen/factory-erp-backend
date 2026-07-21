@@ -5320,39 +5320,48 @@ function doExportManufacturing(project) {
     // Row 1 (Index 0): Empty spacer
     data.push([]);
     
-    // Row 2-5 (Index 1-4): Header Block
+    const formatDate = (dStr) => {
+        if (!dStr) return "-";
+        const d = new Date(dStr);
+        if (isNaN(d.getTime())) return dStr;
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}/${mm}/${dd}`;
+    };
+    
     const pNumber = project.project_number || "-";
     const execMgr = project.executive_manager_name || "-";
     const pName = project.name || "-";
     const engName = project.engineer_name || "-";
-    const recvDate = project.created_at ? new Date(project.created_at).toLocaleDateString('en-GB') : "-";
-    const delivDate = project.delivery_date ? new Date(project.delivery_date).toLocaleDateString('en-GB') : "-";
+    const recvDate = formatDate(project.created_at);
+    const delivDate = formatDate(project.delivery_date);
     const pLoc = project.location || "-";
     const contractor = project.contractor_name || "-";
     
     data.push([
         "FIRAS AND TAREQ\nFT Jada\nMETAL STEEL MANUFACTURING", "", "",
         "Production Order", "", "", "", "", "", "", "",
-        pNumber, "", "", ":", "رقم الأوردر",
-        recvDate, "", "", ":", "تاريخ الاستلام", ""
+        pNumber, "", "", ":", "رقم الأوردر", "",
+        recvDate, "", "", ":", "تاريخ الاستلام", "", "", ""
     ]);
     data.push([
         "", "", "",
         "", "", "", "", "", "", "", "",
-        execMgr, "", "", ":", "مسؤول التنفيذ",
-        delivDate, "", "", ":", "تاريخ التسليم", ""
+        execMgr, "", "", ":", "مسؤول التنفيذ", "",
+        delivDate, "", "", ":", "تاريخ التسليم", "", "", ""
     ]);
     data.push([
         "", "", "",
         "", "", "", "", "", "", "", "",
-        pName, "", "", ":", "اسم المشروع",
-        pLoc, "", "", ":", "الموقع", ""
+        pName, "", "", ":", "اسم المشروع", "",
+        pLoc, "", "", ":", "الموقع", "", "", ""
     ]);
     data.push([
         "", "", "",
         "", "", "", "", "", "", "", "",
-        engName, "", "", ":", "اسم مهندس المشروع",
-        contractor, "", "", ":", "الشخص المسؤول", ""
+        engName, "", "", ":", "اسم مهندس المشروع", "",
+        contractor, "", "", ":", "الشخص المسؤول", "", "", ""
     ]);
     
     // Row 6 (Index 5): Empty spacer
