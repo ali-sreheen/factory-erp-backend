@@ -2367,7 +2367,7 @@ window.switchProjectsTab = function(tabName) {
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.remove('hidden');
         if (projectActionButtons) projectActionButtons.classList.add('hidden');
         if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مقاول جديد';
-        if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المقاولين والموردين المسجلين في النظام.';
+        if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المقاولين المسجلين في النظام.';
         
         if (tabContractorsList) {
             tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
