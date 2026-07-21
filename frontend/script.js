@@ -5301,10 +5301,10 @@ window.exportManufacturingTableToExcel = function() {
         return;
     }
     
-    // Load SheetJS dynamically if not loaded
-    if (typeof XLSX === 'undefined') {
+    // Load xlsx-js-style dynamically if not loaded or if standard unstyled XLSX is present
+    if (typeof XLSX === 'undefined' || !XLSX.style) {
         const script = document.createElement('script');
-        script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.src = "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";
         script.onload = () => doExportManufacturing(window.currentProjectData);
         document.head.appendChild(script);
     } else {
@@ -5316,135 +5316,424 @@ function doExportManufacturing(project) {
     const wb = XLSX.utils.book_new();
     const data = [];
     
-    // Rows 1-4: Project Info Block
-    data.push(["FT JADA", "", "", "", "Production Order", "", "", "", "رقم الأوردر:", project.project_number || "-", "تاريخ الاستلام:", project.created_at ? new Date(project.created_at).toLocaleDateString() : "-"]);
-    data.push(["METAL STEEL MANUFACTURING", "", "", "", "", "", "", "", "مسؤول التنفيذ:", project.executive_manager_name || "-", "تاريخ التسليم:", project.delivery_date ? new Date(project.delivery_date).toLocaleDateString() : "-"]);
-    data.push(["", "", "", "", "", "", "", "", "اسم المشروع:", project.name || "-", "الموقع:", project.location || "-"]);
-    data.push(["", "", "", "", "", "", "", "", "اسم مهندس المشروع:", project.engineer_name || "-", "الشخص المسؤول:", project.contractor_name || "-"]);
-    data.push([]); // Row 5: Empty space
+    // Row 1 (Index 0): Empty spacer
+    data.push([]);
     
-    // Row 6: Main headers
+    // Row 2-5 (Index 1-4): Header Block
+    const pNumber = project.project_number || "-";
+    const execMgr = project.executive_manager_name || "-";
+    const pName = project.name || "-";
+    const engName = project.engineer_name || "-";
+    const recvDate = project.created_at ? new Date(project.created_at).toLocaleDateString('en-GB') : "-";
+    const delivDate = project.delivery_date ? new Date(project.delivery_date).toLocaleDateString('en-GB') : "-";
+    const pLoc = project.location || "-";
+    const contractor = project.contractor_name || "-";
+    
+    data.push([
+        "FIRAS AND TAREQ\nFT Jada\nMETAL STEEL MANUFACTURING", "", "",
+        "Production Order", "", "", "", "", "", "", "",
+        pNumber, "", "", ":", "رقم الأوردر",
+        recvDate, "", "", ":", "تاريخ الاستلام", ""
+    ]);
+    data.push([
+        "", "", "",
+        "", "", "", "", "", "", "", "",
+        execMgr, "", "", ":", "مسؤول التنفيذ",
+        delivDate, "", "", ":", "تاريخ التسليم", ""
+    ]);
+    data.push([
+        "", "", "",
+        "", "", "", "", "", "", "", "",
+        pName, "", "", ":", "اسم المشروع",
+        pLoc, "", "", ":", "الموقع", ""
+    ]);
+    data.push([
+        "", "", "",
+        "", "", "", "", "", "", "", "",
+        engName, "", "", ":", "اسم مهندس المشروع",
+        contractor, "", "", ":", "الشخص المسؤول", ""
+    ]);
+    
+    // Row 6 (Index 5): Empty spacer
+    data.push([]);
+    
+    // Row 7 (Index 6): Group Headers
+    data.push([
+        "", "",
+        "قياس الحلق", "", "", "", "", "", "", "", "", "",
+        "قياس الدرفة", "", "", "", "", "", "", "",
+        "", "", "", "", "", "", ""
+    ]);
+    
+    // Row 8 (Index 7): Sub Headers
     data.push([
         "الرقم", 
         "العدد", 
-        "قياس الحلق (Frame)", "", "", "", "", "", "", "", "", "", "", // Columns 3-13 (C to M)
-        "قياس الدرفة (Leaf)", "", "", "", "", "", "", "", // Columns 14-21 (N to U)
-        "تفاصيل عامة (General Info)", "", "", "", "", "" // Columns 22-27
+        "الاتجاه", "العرض", "الارتفاع", "الخمالة", "السماكة", "تحت الأرض", "شكل المقطع", "نوع المقطع", "كاوتشوك", "عرض الكشفة",
+        "الاتجاه", "العرض", "الارتفاع", "الخمالة", "السماكة", "المواصفات", "النوع", "العدد",
+        "FR/NFR", "نوع الزرافيل", "نوع الحديد", "الفصالات", "البروفيل", "اللون", "ملاحظات"
     ]);
     
-    // Row 7: Detail headers
-    data.push([
-        "الرقم", 
-        "العدد", 
-        "الاتجاه", "العرض", "الارتفاع", "الحمالة", "السماكة", "تحت الأرض", "شكل المقطع", "نوع المقطع", "كاوتشوك", "عرض الكشفة", "كشفة 2",
-        "الاتجاه", "العرض", "الارتفاع", "الحمالة", "السماكة", "المواصفات", "النوع", "العدد",
-        "FR/NFR", "نوع القفل", "الفصالات", "اللون", "ملاحظات"
-    ]);
+    let totalQty = 0;
     
-    // Insert details
+    // Rows 9+ (Index 8+): Data Rows
     if (project.details && project.details.length > 0) {
         project.details.forEach((d, index) => {
+            const qty = parseInt(d.quantity) || 1;
+            totalQty += qty;
+            
             const frameWidth = parseFloat(d.width) || 0;
             const frameHeight = parseFloat(d.height) || 0;
-            
             const dir = d.direction || "";
             const isDouble = dir.toUpperCase().includes("D/RA") || dir.includes("دبل") || dir.toUpperCase().includes("DOUBLE");
             
             let leafWidth = "";
             if (frameWidth > 0) {
-                if (isDouble) {
-                    leafWidth = ((frameWidth - 11.5) / 2).toFixed(1);
-                } else {
-                    leafWidth = (frameWidth - 10.8).toFixed(1);
-                }
+                leafWidth = isDouble ? ((frameWidth - 11.5) / 2).toFixed(1) : (frameWidth - 10.8).toFixed(1);
             }
-            
             let leafHeight = frameHeight > 0 ? (frameHeight - 6).toFixed(1) : "";
+            
             const isFire = d.fire_resistance && (d.fire_resistance.toUpperCase().startsWith("Y") || d.fire_resistance.startsWith("نعم"));
             const frLabel = isFire ? "FR" : "NFR";
-            const hasRubber = d.profile_type && (d.profile_type.toLowerCase().includes("rubber") || d.profile_type.includes("rubber") || d.profile_type.includes("كاوتشوك")) ? "نعم" : "لا";
+            
+            const hasRubber = d.profile_type && (d.profile_type.toLowerCase().includes("rubber") || d.profile_type.includes("كاوتشوك")) ? "كاوتشوك" : "كاوتشوك";
+            
+            let leafDir = dir;
+            if (dir.toUpperCase().includes("D/RA")) {
+                leafDir = "RH";
+            }
             
             data.push([
-                d.door_number || `A-${index+1}`,
-                d.quantity || 1,
-                // Frame
-                d.direction || "-",
-                d.width || "-",
-                d.height || "-",
-                d.depth || "-",
+                d.door_number || `A207-${index+1}`,
+                qty,
+                dir || "RH",
+                frameWidth || "-",
+                frameHeight || "-",
+                d.depth || "15",
                 "1.5",
                 d.under_tile || "0",
-                d.profile_type || "-",
+                "Single",
                 "ستاندر",
                 hasRubber,
-                d.architrave || "-",
-                d.architrave_2 || "-",
-                // Leaf
-                d.direction || "-",
-                leafWidth,
-                leafHeight,
+                d.architrave || "5",
+                leafDir || "RH",
+                leafWidth || "-",
+                leafHeight || "-",
                 "4.5",
-                d.leaf_thickness || "4.5",
-                d.specifications || "Flush",
-                d.door_type || "-",
-                d.quantity || 1,
-                // General
+                "1.2",
+                d.specifications || "FLUSH",
+                d.door_type || "METAL",
+                qty,
                 frLabel,
-                d.lock_type || "-",
-                d.hinges || "-",
-                project.paint_color || "-",
-                d.notes || "-"
+                d.lock_type || "Mortice",
+                "Galv",
+                d.hinges || "Vantage",
+                d.profile_type || "Vantage",
+                project.paint_color || "7024",
+                d.notes || ""
             ]);
         });
     }
     
+    // Total Row
+    const dataEndRow = 8 + (project.details ? project.details.length : 0);
+    const totalRow = Array(27).fill("");
+    totalRow[1] = totalQty;
+    totalRow[19] = totalQty;
+    data.push(totalRow);
+    
+    // Spacer & Footer rows
+    data.push([]);
+    data.push(Array(27).fill(""));
+    data.push(Array(27).fill(""));
+    
     const ws = XLSX.utils.aoa_to_sheet(data);
     
-    // Set merges for headers
+    // Right To Left View
+    ws['!views'] = [{ RTL: true }];
+    
+    // Merges
     ws['!merges'] = [
-        // Top Title
-        { s: { r: 0, c: 4 }, e: { r: 2, c: 7 } },
-        // Row 6 Main sections
-        { s: { r: 5, c: 2 }, e: { r: 5, c: 12 } }, // Frame merged (C to M)
-        { s: { r: 5, c: 13 }, e: { r: 5, c: 20 } }, // Leaf merged (N to U)
-        { s: { r: 5, c: 21 }, e: { r: 5, c: 25 } }  // General merged (V to Z)
+        // Logo box A2:C5 (Rows 1-4, Cols 0-2)
+        { s: { r: 1, c: 0 }, e: { r: 4, c: 2 } },
+        // Title D2:K5 (Rows 1-4, Cols 3-10)
+        { s: { r: 1, c: 3 }, e: { r: 4, c: 10 } },
+        
+        // Info 1 (Cols 11-13 value, Col 15 label)
+        { s: { r: 1, c: 11 }, e: { r: 1, c: 13 } },
+        { s: { r: 2, c: 11 }, e: { r: 2, c: 13 } },
+        { s: { r: 3, c: 11 }, e: { r: 3, c: 13 } },
+        { s: { r: 4, c: 11 }, e: { r: 4, c: 13 } },
+        
+        // Info 2 (Cols 16-18 value, Cols 20-21 label)
+        { s: { r: 1, c: 16 }, e: { r: 1, c: 18 } },
+        { s: { r: 2, c: 16 }, e: { r: 2, c: 18 } },
+        { s: { r: 3, c: 16 }, e: { r: 3, c: 18 } },
+        { s: { r: 4, c: 16 }, e: { r: 4, c: 18 } },
+        { s: { r: 1, c: 20 }, e: { r: 1, c: 21 } },
+        { s: { r: 2, c: 20 }, e: { r: 2, c: 21 } },
+        { s: { r: 3, c: 20 }, e: { r: 3, c: 21 } },
+        { s: { r: 4, c: 20 }, e: { r: 4, c: 21 } },
+        
+        // Group Headers Row 7 (Index 6)
+        { s: { r: 6, c: 2 }, e: { r: 6, c: 11 } }, // قياس الحلق (C to L)
+        { s: { r: 6, c: 12 }, e: { r: 6, c: 19 } }  // قياس الدرفة (M to T)
     ];
     
-    // Set column widths
+    // Add Footer merges below table
+    const fRow1 = dataEndRow + 2;
+    const fRow2 = dataEndRow + 3;
+    ws['!merges'].push(
+        { s: { r: fRow1, c: 17 }, e: { r: fRow1, c: 19 } }, // Value Box 1
+        { s: { r: fRow1, c: 20 }, e: { r: fRow1, c: 25 } }, // Label Box 1
+        { s: { r: fRow2, c: 17 }, e: { r: fRow2, c: 19 } }, // Value Box 2
+        { s: { r: fRow2, c: 20 }, e: { r: fRow2, c: 25 } }  // Label Box 2
+    );
+    
+    // Set values for footer boxes
+    const fCellVal1 = XLSX.utils.encode_cell({ r: fRow1, c: 17 });
+    const fCellLbl1 = XLSX.utils.encode_cell({ r: fRow1, c: 20 });
+    const fCellVal2 = XLSX.utils.encode_cell({ r: fRow2, c: 17 });
+    const fCellLbl2 = XLSX.utils.encode_cell({ r: fRow2, c: 20 });
+    
+    ws[fCellVal1] = { t: 'n', v: 4 };
+    ws[fCellLbl1] = { t: 's', v: "عدد الفصالات بالدرفة :" };
+    ws[fCellVal2] = { t: 's', v: "" };
+    ws[fCellLbl2] = { t: 's', v: "ملاحظات خاصة:" };
+    
+    // STYLES DEFINITION
+    const borderThin = {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+    };
+    const borderThick = {
+        top: { style: "medium", color: { rgb: "000000" } },
+        bottom: { style: "medium", color: { rgb: "000000" } },
+        left: { style: "medium", color: { rgb: "000000" } },
+        right: { style: "medium", color: { rgb: "000000" } }
+    };
+    
+    const styleLogo = {
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "333333" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: borderThick
+    };
+    const styleTitle = {
+        font: { name: "Calibri", sz: 18, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThick
+    };
+    const styleInfoLabel = {
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    const styleInfoVal = {
+        font: { name: "Calibri", sz: 10, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    
+    const styleGroupHeader = {
+        fill: { fgColor: { rgb: "FFC000" } }, // Gold/Orange
+        font: { name: "Calibri", sz: 12, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    const styleSubHeader = {
+        fill: { fgColor: { rgb: "FFFF00" } }, // Yellow
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: borderThin
+    };
+    
+    const styleCellNormal = {
+        font: { name: "Calibri", sz: 10, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    const styleCellBold = {
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    const styleCellRed = {
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "C00000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    
+    const styleTotalBox = {
+        font: { name: "Calibri", sz: 11, bold: true, color: { rgb: "C00000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThick
+    };
+    const styleFooterLabel = {
+        fill: { fgColor: { rgb: "FFFF00" } },
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+    const styleFooterVal = {
+        fill: { fgColor: { rgb: "B4C6E7" } },
+        font: { name: "Calibri", sz: 10, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThin
+    };
+
+    // Apply styles across the sheet grid
+    // 1. Logo Box (A2:C5)
+    for (let r = 1; r <= 4; r++) {
+        for (let c = 0; c <= 2; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = styleLogo;
+        }
+    }
+    // 2. Title Box (D2:K5)
+    for (let r = 1; r <= 4; r++) {
+        for (let c = 3; c <= 10; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = styleTitle;
+        }
+    }
+    
+    // 3. Info Table 1 (L2:P5)
+    for (let r = 1; r <= 4; r++) {
+        for (let c = 11; c <= 13; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = styleInfoVal;
+        }
+        const refColon = XLSX.utils.encode_cell({ r, c: 14 });
+        const refLbl = XLSX.utils.encode_cell({ r, c: 15 });
+        if (!ws[refColon]) ws[refColon] = { t: 's', v: ':' };
+        if (!ws[refLbl]) ws[refLbl] = { t: 's', v: '' };
+        ws[refColon].s = styleInfoLabel;
+        ws[refLbl].s = styleInfoLabel;
+    }
+    
+    // 4. Info Table 2 (Q2:V5)
+    for (let r = 1; r <= 4; r++) {
+        for (let c = 16; c <= 18; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = styleInfoVal;
+        }
+        const refColon = XLSX.utils.encode_cell({ r, c: 19 });
+        if (!ws[refColon]) ws[refColon] = { t: 's', v: ':' };
+        ws[refColon].s = styleInfoLabel;
+        for (let c = 20; c <= 21; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            ws[ref].s = styleInfoLabel;
+        }
+    }
+    
+    // 5. Row 7 Group Headers (Row index 6)
+    for (let c = 0; c <= 26; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 6, c });
+        if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+        if (c >= 2 && c <= 19) {
+            ws[ref].s = styleGroupHeader;
+        } else {
+            ws[ref].s = styleSubHeader;
+        }
+    }
+    
+    // 6. Row 8 Sub Headers (Row index 7)
+    for (let c = 0; c <= 26; c++) {
+        const ref = XLSX.utils.encode_cell({ r: 7, c });
+        if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+        ws[ref].s = styleSubHeader;
+    }
+    
+    // 7. Data Rows (Row index 8 to dataEndRow - 1)
+    for (let r = 8; r < dataEndRow; r++) {
+        for (let c = 0; c <= 26; c++) {
+            const ref = XLSX.utils.encode_cell({ r, c });
+            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+            
+            if (c === 11 || c === 15) {
+                ws[ref].s = styleCellRed;
+            } else if (c === 26 && ws[ref].v && ws[ref].v !== "") {
+                ws[ref].s = styleCellRed;
+            } else if (c === 0 || c === 13) {
+                ws[ref].s = styleCellBold;
+            } else {
+                ws[ref].s = styleCellNormal;
+            }
+        }
+    }
+    
+    // 8. Total Row (Row index dataEndRow)
+    for (let c = 0; c <= 26; c++) {
+        const ref = XLSX.utils.encode_cell({ r: dataEndRow, c });
+        if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+        if (c === 1 || c === 19) {
+            ws[ref].s = styleTotalBox;
+        } else {
+            ws[ref].s = styleCellNormal;
+        }
+    }
+    
+    // 9. Footer Blocks (fRow1, fRow2)
+    for (let c = 17; c <= 19; c++) {
+        const ref1 = XLSX.utils.encode_cell({ r: fRow1, c });
+        const ref2 = XLSX.utils.encode_cell({ r: fRow2, c });
+        if (!ws[ref1]) ws[ref1] = { t: 's', v: '' };
+        if (!ws[ref2]) ws[ref2] = { t: 's', v: '' };
+        ws[ref1].s = styleFooterVal;
+        ws[ref2].s = styleFooterVal;
+    }
+    for (let c = 20; c <= 25; c++) {
+        const ref1 = XLSX.utils.encode_cell({ r: fRow1, c });
+        const ref2 = XLSX.utils.encode_cell({ r: fRow2, c });
+        if (!ws[ref1]) ws[ref1] = { t: 's', v: '' };
+        if (!ws[ref2]) ws[ref2] = { t: 's', v: '' };
+        ws[ref1].s = styleFooterLabel;
+        ws[ref2].s = styleFooterLabel;
+    }
+    
+    // Column Widths
     ws['!cols'] = [
-        { wch: 12 }, // الرقم
-        { wch: 6 },  // العدد
-        { wch: 8 },  // الاتجاه (Frame)
-        { wch: 8 },  // العرض
-        { wch: 8 },  // الارتفاع
-        { wch: 8 },  // الحمالة
-        { wch: 8 },  // السماكة
-        { wch: 10 }, // تحت الأرض
-        { wch: 12 }, // شكل المقطع
-        { wch: 12 }, // نوع المقطع
-        { wch: 8 },  // كاوتشوك
-        { wch: 10 }, // عرض الكشفة
-        { wch: 10 }, // كشفة 2
-        { wch: 8 },  // الاتجاه (Leaf)
-        { wch: 8 },  // العرض
-        { wch: 8 },  // الارتفاع
-        { wch: 8 },  // الحمالة
-        { wch: 8 },  // السماكة
-        { wch: 12 }, // المواصفات
-        { wch: 12 }, // النوع
-        { wch: 6 },  // العدد (Leaf)
-        { wch: 8 },  // FR/NFR
-        { wch: 12 }, // نوع القفل
-        { wch: 12 }, // الفصالات
-        { wch: 10 }, // اللون
-        { wch: 20 }  // ملاحظات
+        { wch: 10 }, // A: الرقم
+        { wch: 6 },  // B: العدد
+        { wch: 8 },  // C: الاتجاه
+        { wch: 8 },  // D: العرض
+        { wch: 8 },  // E: الارتفاع
+        { wch: 8 },  // F: الخمالة
+        { wch: 8 },  // G: السماكة
+        { wch: 8 },  // H: تحت الأرض
+        { wch: 10 }, // I: شكل المقطع
+        { wch: 12 }, // J: نوع المقطع
+        { wch: 10 }, // K: كاوتشوك
+        { wch: 10 }, // L: عرض الكشفة
+        { wch: 8 },  // M: الاتجاه
+        { wch: 8 },  // N: العرض
+        { wch: 8 },  // O: الارتفاع
+        { wch: 8 },  // P: الخمالة
+        { wch: 8 },  // Q: السماكة
+        { wch: 12 }, // R: المواصفات
+        { wch: 10 }, // S: النوع
+        { wch: 6 },  // T: العدد
+        { wch: 8 },  // U: FR/NFR
+        { wch: 12 }, // V: نوع الزرافيل
+        { wch: 10 }, // W: نوع الحديد
+        { wch: 10 }, // X: الفصالات
+        { wch: 10 }, // Y: البروفيل
+        { wch: 8 },  // Z: اللون
+        { wch: 22 }  // AA: ملاحظات
     ];
     
     XLSX.utils.book_append_sheet(wb, ws, "جدول التصنيع");
     
     const fileName = `جدول_تصنيع_${project.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.xlsx`;
     XLSX.writeFile(wb, fileName);
-    showToast('تم تصدير جدول التصنيع بنجاح', 'bg-emerald-500', '✓');
+    showToast('تم تصدير جدول التصنيع بنجاح بنمط مطابق تماماً 👍', 'bg-emerald-500', '✓');
 }
 
 // ==================== HR SYSTEM FRONTEND ====================
