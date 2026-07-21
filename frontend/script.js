@@ -3223,7 +3223,6 @@ if (projectWizardForm) {
 }
 
 
-// Update Project Status
 window.updateProjectStatus = async function(projectId, newStatus) {
     try {
         const response = await authFetch(`${PROJECTS_URL}/${projectId}`, {
@@ -3233,10 +3232,83 @@ window.updateProjectStatus = async function(projectId, newStatus) {
         });
         if (!response.ok) throw new Error('فشل تحديث حالة المشروع');
         showToast('تم تحديث حالة المشروع بنجاح', 'bg-emerald-500', '✓');
-        // Refresh details view
-        viewProjectDetails(projectId);
+        // Refresh details view if open
+        const pdView = document.getElementById('projectDetailView');
+        if (pdView && !pdView.classList.contains('hidden') && window.currentProjectData && window.currentProjectData.id === projectId) {
+            viewProjectDetails(projectId);
+        }
+        // Refresh main table if open
+        loadProjects();
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+window.openProjectActivationModal = async function() {
+    const modal = document.getElementById('projectActivationModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    await renderProjectActivationList();
+};
+
+window.closeProjectActivationModal = function() {
+    const modal = document.getElementById('projectActivationModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+function getStatusSelectColorClass(status) {
+    if (status === 'active' || status === 'فعال') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    if (status === 'completed' || status === 'مكتمل') return 'bg-blue-100 text-blue-800 border-blue-300';
+    return 'bg-amber-100 text-amber-800 border-amber-300';
+}
+
+async function renderProjectActivationList() {
+    const tbody = document.getElementById('projectActivationTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">جاري جلب المشاريع...</td></tr>';
+    
+    try {
+        const response = await authFetch(PROJECTS_URL + '/');
+        if (!response.ok) throw new Error('فشل جلب المشاريع');
+        const projects = await response.json();
+        
+        if (projects.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">لا توجد مشاريع مسجلة.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        projects.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+            
+            const currentStatus = p.status ? p.status.toLowerCase() : 'pending';
+            
+            tr.innerHTML = `
+                <td class="p-3 font-bold text-slate-800">${p.project_number || p.id}</td>
+                <td class="p-3 font-bold text-slate-900">${p.name}</td>
+                <td class="p-3 text-center">
+                    <select onchange="changeProjectStatusFromModal(${p.id}, this)" class="px-3 py-1.5 rounded-xl font-bold border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getStatusSelectColorClass(currentStatus)}">
+                        <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>قيد الانتظار (Pending)</option>
+                        <option value="active" ${currentStatus === 'active' ? 'selected' : ''}>فعال (Active)</option>
+                        <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>مكتمل (Completed)</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
+    }
+}
+
+window.changeProjectStatusFromModal = async function(projectId, selectElem) {
+    const newStatus = selectElem.value;
+    try {
+        await updateProjectStatus(projectId, newStatus);
+        selectElem.className = `px-3 py-1.5 rounded-xl font-bold border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getStatusSelectColorClass(newStatus)}`;
+    } catch (e) {
+        console.error("Failed to change status from modal:", e);
     }
 };
 
