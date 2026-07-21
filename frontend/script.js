@@ -2531,6 +2531,7 @@ async function loadContractorOptions(selectedName = '') {
         const response = await authFetch(`${CONTRACTORS_URL}/`);
         if (!response.ok) return;
         const contractors = await response.json();
+        allContractors = contractors;
         
         contractors.forEach(c => {
             const opt = document.createElement('option');
@@ -2553,6 +2554,24 @@ async function loadContractorOptions(selectedName = '') {
         console.error("Failed loading contractor options:", e);
     }
 }
+
+window.handleContractorSelectChange = function(selectElem) {
+    const selectedName = selectElem.value;
+    if (!selectedName) return;
+    
+    const contractor = allContractors.find(c => c.name === selectedName);
+    if (contractor) {
+        const engNameInput = document.getElementById('pwEngineerName');
+        const engPhoneInput = document.getElementById('pwEngineerPhone');
+        
+        if (engNameInput && contractor.contact_person) {
+            engNameInput.value = contractor.contact_person;
+        }
+        if (engPhoneInput && contractor.phone) {
+            engPhoneInput.value = contractor.phone;
+        }
+    }
+};
 
 function openProjectWizard() {
     const _pView = document.getElementById('purchasingView');
