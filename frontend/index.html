@@ -587,10 +587,12 @@
                         <table class="w-full text-right border-collapse">
                             <thead class="bg-slate-50 text-slate-600 text-xs border-b border-slate-200">
                                 <tr>
-                                    <th class="p-4 font-bold">الاسم</th>
+                                    <th class="p-4 font-bold">اسم المقاول</th>
+                                    <th class="p-4 font-bold">الشخص المسؤول</th>
                                     <th class="p-4 font-bold">رقم الهاتف</th>
-                                    <th class="p-4 font-bold">صفة التوريد / المقاولات</th>
-                                    <th class="p-4 font-bold">الموقع</th>
+                                    <th class="p-4 font-bold">قسم المالية</th>
+                                    <th class="p-4 font-bold">رقم هاتف المالية</th>
+                                    <th class="p-4 font-bold">ملاحظات</th>
                                     <th class="p-4 font-bold text-center">الإجراءات</th>
                                 </tr>
                             </thead>
@@ -2056,6 +2058,53 @@
     </div>
 
 
+    <!-- Contractor Modal -->
+    <div id="contractorModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center animate-fade-in">
+        <div class="bg-white rounded-2xl max-w-lg w-full mx-4 shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-emerald-600 px-6 py-4 flex justify-between items-center text-white">
+                <h3 class="text-xl font-bold" id="contractorModalTitle">إضافة مقاول جديد</h3>
+                <button onclick="closeContractorModal()" class="text-emerald-200 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="contractorForm" onsubmit="saveContractorForm(event)" class="p-6 space-y-4">
+                <input type="hidden" id="contractorId">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">اسم المقاول *</label>
+                    <input type="text" id="contractorName" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">الشخص المسؤول</label>
+                        <input type="text" id="contractorContactPerson" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">رقم الهاتف</label>
+                        <input type="text" id="contractorPhone" dir="ltr" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">قسم المالية</label>
+                        <input type="text" id="contractorFinanceDept" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">رقم هاتف المالية</label>
+                        <input type="text" id="contractorFinancialPhone" dir="ltr" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">ملاحظات</label>
+                    <textarea id="contractorNotes" rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition resize-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-3 border-t border-slate-100">
+                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition shadow">حفظ المقاول</button>
+                    <button type="button" onclick="closeContractorModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Edit Username Modal -->
     <div id="editUsernameModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center animate-fade-in">
         <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl border border-slate-100 animate-scale-up">
@@ -2109,7 +2158,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=111"></script>
+    <script src="script.js?v=112"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

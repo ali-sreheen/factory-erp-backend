@@ -3,6 +3,7 @@ const API_URL = `${API_HOST}/api/items`;
 const AUTH_URL = `${API_HOST}/api/auth`;
 const USERS_URL = `${API_HOST}/api/users`;
 const USERS_BASIC_URL = `${API_HOST}/api/users/basic`;
+const CONTRACTORS_URL = `${API_HOST}/api/contractors`;
 
 // State
 let currentDepartment = '';
@@ -2344,7 +2345,7 @@ let currentProjectsTab = 'projects';
 
 window.handleProjectsMainAction = function() {
     if (currentProjectsTab === 'contractors') {
-        openSupplierModal();
+        openContractorModal();
     } else {
         openProjectWizard();
     }
@@ -2364,7 +2365,7 @@ window.switchProjectsTab = function(tabName) {
         if (projectsTableContainer) projectsTableContainer.classList.add('hidden');
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.remove('hidden');
         if (projectActionButtons) projectActionButtons.classList.add('hidden');
-        if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مورد جديد';
+        if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مقاول جديد';
         
         if (tabContractorsList) {
             tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
@@ -2373,7 +2374,7 @@ window.switchProjectsTab = function(tabName) {
             tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
         }
         
-        loadSuppliers();
+        loadContractors();
     } else {
         if (projectsTableContainer) projectsTableContainer.classList.remove('hidden');
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.add('hidden');
@@ -2386,6 +2387,134 @@ window.switchProjectsTab = function(tabName) {
         if (tabContractorsList) {
             tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
         }
+    }
+};
+
+let allContractors = [];
+
+window.openContractorModal = function(contractorId = null) {
+    const form = document.getElementById('contractorForm');
+    if (form) form.reset();
+    document.getElementById('contractorId').value = '';
+    const titleEl = document.getElementById('contractorModalTitle');
+    
+    if (contractorId) {
+        if (titleEl) titleEl.textContent = 'تعديل بيانات المقاول';
+        const contractor = allContractors.find(c => c.id === contractorId);
+        if (contractor) {
+            document.getElementById('contractorId').value = contractor.id;
+            document.getElementById('contractorName').value = contractor.name || '';
+            document.getElementById('contractorContactPerson').value = contractor.contact_person || '';
+            document.getElementById('contractorPhone').value = contractor.phone || '';
+            document.getElementById('contractorFinanceDept').value = contractor.finance_dept || '';
+            document.getElementById('contractorFinancialPhone').value = contractor.financial_phone || '';
+            document.getElementById('contractorNotes').value = contractor.notes || '';
+        }
+    } else {
+        if (titleEl) titleEl.textContent = 'إضافة مقاول جديد';
+    }
+    
+    const modal = document.getElementById('contractorModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeContractorModal = function() {
+    const modal = document.getElementById('contractorModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.saveContractorForm = async function(event) {
+    event.preventDefault();
+    const id = document.getElementById('contractorId').value;
+    const payload = {
+        name: document.getElementById('contractorName').value.trim(),
+        contact_person: document.getElementById('contractorContactPerson').value.trim() || null,
+        phone: document.getElementById('contractorPhone').value.trim() || null,
+        finance_dept: document.getElementById('contractorFinanceDept').value.trim() || null,
+        financial_phone: document.getElementById('contractorFinancialPhone').value.trim() || null,
+        notes: document.getElementById('contractorNotes').value.trim() || null
+    };
+    
+    try {
+        let response;
+        if (id) {
+            response = await authFetch(`${CONTRACTORS_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            response = await authFetch(`${CONTRACTORS_URL}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        
+        if (!response.ok) throw new Error('فشل حفظ بيانات المقاول');
+        
+        showToast(id ? 'تم تعديل بيانات المقاول بنجاح' : 'تم إضافة المقاول بنجاح', 'bg-emerald-500', '✓');
+        closeContractorModal();
+        await loadContractors();
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+window.loadContractors = async function() {
+    const tbody = document.getElementById('projectContractorsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">جاري تحميل قائمة المقاولين...</td></tr>';
+    
+    try {
+        const response = await authFetch(`${CONTRACTORS_URL}/`);
+        if (!response.ok) throw new Error('فشل جلب المقاولين');
+        const contractors = await response.json();
+        allContractors = contractors;
+        
+        tbody.innerHTML = '';
+        if (contractors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مقاولين مضافين بعد.</td></tr>';
+            return;
+        }
+        
+        contractors.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition text-sm';
+            tr.innerHTML = `
+                <td class="p-4 font-bold text-slate-800">${c.name}</td>
+                <td class="p-4 text-slate-700 font-semibold">${c.contact_person || '-'}</td>
+                <td class="p-4 text-slate-700" dir="ltr">${c.phone || '-'}</td>
+                <td class="p-4 text-slate-700">${c.finance_dept || '-'}</td>
+                <td class="p-4 text-slate-700" dir="ltr">${c.financial_phone || '-'}</td>
+                <td class="p-4 text-slate-600 text-xs">${c.notes || '-'}</td>
+                <td class="p-4 text-center">
+                    <button onclick="openContractorModal(${c.id})" class="text-indigo-600 hover:text-indigo-800 p-1" title="تعديل">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
+                    <button onclick="deleteContractorItem(${c.id})" class="text-rose-600 hover:text-rose-800 p-1" title="حذف">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
+    }
+};
+
+window.deleteContractorItem = async function(contractorId) {
+    if (!confirm('هل أنت متأكد من حذف هذا المقاول؟')) return;
+    try {
+        const response = await authFetch(`${CONTRACTORS_URL}/${contractorId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('فشل حذف المقاول');
+        showToast('تم حذف المقاول بنجاح', 'bg-emerald-500', '✓');
+        await loadContractors();
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
     }
 };
 

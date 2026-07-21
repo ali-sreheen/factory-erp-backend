@@ -335,6 +335,31 @@ class SupplierResponse(SupplierBase):
     class Config:
         from_attributes = True
 
+class ContractorBase(BaseModel):
+    name: str
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    finance_dept: Optional[str] = None
+    financial_phone: Optional[str] = None
+    notes: Optional[str] = None
+
+class ContractorCreate(ContractorBase):
+    pass
+
+class ContractorUpdate(BaseModel):
+    name: Optional[str] = None
+    contact_person: Optional[str] = None
+    phone: Optional[str] = None
+    finance_dept: Optional[str] = None
+    financial_phone: Optional[str] = None
+    notes: Optional[str] = None
+
+class ContractorResponse(ContractorBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 class PurchaseRequestBase(BaseModel):
     title: str
     description: Optional[str] = None

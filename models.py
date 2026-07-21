@@ -220,6 +220,17 @@ class Supplier(Base):
     location = Column(String, nullable=True)
     maps_url = Column(String, nullable=True)
 
+class Contractor(Base):
+    __tablename__ = "contractors"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    contact_person = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    finance_dept = Column(String, nullable=True)
+    financial_phone = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
 class ProjectOption(Base):
     __tablename__ = "project_options"
     

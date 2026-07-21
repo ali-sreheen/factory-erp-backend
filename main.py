@@ -1604,6 +1604,42 @@ def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_use
     db.commit()
     return {"message": "Deleted successfully"}
 
+# --- CONTRACTORS ENDPOINTS ---
+@app.get("/api/contractors/", response_model=List[schemas.ContractorResponse])
+def get_contractors(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return db.query(models.Contractor).all()
+
+@app.post("/api/contractors/", response_model=schemas.ContractorResponse)
+def create_contractor(contractor: schemas.ContractorCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_contractor = models.Contractor(**contractor.model_dump())
+    db.add(db_contractor)
+    db.commit()
+    db.refresh(db_contractor)
+    return db_contractor
+
+@app.put("/api/contractors/{contractor_id}", response_model=schemas.ContractorResponse)
+def update_contractor(contractor_id: int, contractor_update: schemas.ContractorUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_contractor = db.query(models.Contractor).filter(models.Contractor.id == contractor_id).first()
+    if not db_contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    
+    update_data = contractor_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_contractor, key, value)
+        
+    db.commit()
+    db.refresh(db_contractor)
+    return db_contractor
+
+@app.delete("/api/contractors/{contractor_id}")
+def delete_contractor(contractor_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_contractor = db.query(models.Contractor).filter(models.Contractor.id == contractor_id).first()
+    if not db_contractor:
+        raise HTTPException(status_code=404, detail="Contractor not found")
+    db.delete(db_contractor)
+    db.commit()
+    return {"message": "Contractor deleted successfully"}
+
 @app.get("/api/purchase-requests/", response_model=List[schemas.PurchaseRequestResponse])
 def get_purchase_requests(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     return db.query(models.PurchaseRequest).order_by(models.PurchaseRequest.created_at.desc()).all()
