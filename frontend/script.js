@@ -5331,10 +5331,10 @@ function doExportManufacturing(project) {
     };
     
     const pNumber = project.project_number || "-";
-    const execMgr = project.executive_manager_name || "-";
+    const execMgr = project.executive_manager_name || project.executive_manager_username || "-";
     const pName = project.name || "-";
     const engName = project.engineer_name || "-";
-    const recvDate = formatDate(project.created_at);
+    const recvDate = formatDate(project.created_at || project.receipt_date);
     const delivDate = formatDate(project.delivery_date);
     const pLoc = project.location || "-";
     const contractor = project.contractor_name || "-";
