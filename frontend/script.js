@@ -5339,33 +5339,40 @@ function doExportManufacturing(project) {
     const pLoc = project.location || "-";
     const contractor = project.contractor_name || "-";
     
-    data.push([
-        "FIRAS AND TAREQ\nFT Jada\nMETAL STEEL MANUFACTURING", "", "",
-        "Production Order", "", "", "", "", "", "", "",
-        pNumber, "", "", ":", "رقم الأوردر", "",
-        recvDate, "", "", ":", "تاريخ الاستلام", "", "", ""
-    ]);
-    data.push([
-        "", "", "",
-        "", "", "", "", "", "", "", "",
-        execMgr, "", "", ":", "مسؤول التنفيذ", "",
-        delivDate, "", "", ":", "تاريخ التسليم", "", "", ""
-    ]);
-    data.push([
-        "", "", "",
-        "", "", "", "", "", "", "", "",
-        pName, "", "", ":", "اسم المشروع", "",
-        pLoc, "", "", ":", "الموقع", "", "", ""
-    ]);
-    data.push([
-        "", "", "",
-        "", "", "", "", "", "", "", "",
-        engName, "", "", ":", "اسم مهندس المشروع", "",
-        contractor, "", "", ":", "الشخص المسؤول", "", "", ""
-    ]);
+    // Rows 2-6 (Indices 1-5): Built strictly per user specifications
+    // Row 2 (Index 1 - Excel Row 2)
+    // A2:B2 -> "تاريخ الاستلام", C2:E2 -> recvDate, G2:H3 -> "اسم المشروع", I2:K3 -> pName, M2:T5 -> " أمر انتاج "
+    const row2 = Array(27).fill("");
+    row2[0] = "تاريخ الاستلام"; // A2
+    row2[2] = recvDate; // C2
+    row2[6] = "اسم المشروع"; // G2
+    row2[8] = pName; // I2
+    row2[12] = " أمر انتاج "; // M2
+    data.push(row2);
     
-    // Row 6 (Index 5): Empty spacer
-    data.push([]);
+    // Row 3 (Index 2 - Excel Row 3)
+    // A3:B3 -> "تاريخ التسليم", C3:E3 -> delivDate
+    const row3 = Array(27).fill("");
+    row3[0] = "تاريخ التسليم"; // A3
+    row3[2] = delivDate; // C3
+    data.push(row3);
+    
+    // Row 4 (Index 3 - Excel Row 4)
+    data.push(Array(27).fill(""));
+    
+    // Row 5 (Index 4 - Excel Row 5)
+    // G5:H5 -> "رقم المشروع", I5:K5 -> pNumber
+    const row5 = Array(27).fill("");
+    row5[6] = "رقم المشروع"; // G5
+    row5[8] = pNumber; // I5
+    data.push(row5);
+    
+    // Row 6 (Index 5 - Excel Row 6)
+    // G6:H6 -> "مسؤول التنفيذ", I6:K6 -> execMgr
+    const row6 = Array(27).fill("");
+    row6[6] = "مسؤول التنفيذ"; // G6
+    row6[8] = execMgr; // I6
+    data.push(row6);
     
     // Row 7 (Index 6): Group Headers
     data.push([
@@ -5462,28 +5469,35 @@ function doExportManufacturing(project) {
     // Right To Left View
     ws['!views'] = [{ RTL: true }];
     
-    // Merges
+    // Merges strictly defined as instructed by user:
     ws['!merges'] = [
-        // Logo box A2:C5 (Rows 1-4, Cols 0-2)
-        { s: { r: 1, c: 0 }, e: { r: 4, c: 2 } },
-        // Title D2:K5 (Rows 1-4, Cols 3-10)
-        { s: { r: 1, c: 3 }, e: { r: 4, c: 10 } },
+        // A2:B2 (Row 1, Cols 0-1) - تاريخ الاستلام Label
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+        // C2:E2 (Row 1, Cols 2-4) - تاريخ الاستلام Value
+        { s: { r: 1, c: 2 }, e: { r: 1, c: 4 } },
         
-        // Info 1 (Cols 11-13 value, Col 15 label)
-        { s: { r: 1, c: 11 }, e: { r: 1, c: 13 } },
-        { s: { r: 2, c: 11 }, e: { r: 2, c: 13 } },
-        { s: { r: 3, c: 11 }, e: { r: 3, c: 13 } },
-        { s: { r: 4, c: 11 }, e: { r: 4, c: 13 } },
+        // A3:B3 (Row 2, Cols 0-1) - تاريخ التسليم Label
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } },
+        // C3:E3 (Row 2, Cols 2-4) - تاريخ التسليم Value
+        { s: { r: 2, c: 2 }, e: { r: 2, c: 4 } },
         
-        // Info 2 (Cols 16-18 value, Cols 20-21 label)
-        { s: { r: 1, c: 16 }, e: { r: 1, c: 18 } },
-        { s: { r: 2, c: 16 }, e: { r: 2, c: 18 } },
-        { s: { r: 3, c: 16 }, e: { r: 3, c: 18 } },
-        { s: { r: 4, c: 16 }, e: { r: 4, c: 18 } },
-        { s: { r: 1, c: 20 }, e: { r: 1, c: 21 } },
-        { s: { r: 2, c: 20 }, e: { r: 2, c: 21 } },
-        { s: { r: 3, c: 20 }, e: { r: 3, c: 21 } },
-        { s: { r: 4, c: 20 }, e: { r: 4, c: 21 } },
+        // G2:H3 (Rows 1-2, Cols 6-7) - اسم المشروع Label
+        { s: { r: 1, c: 6 }, e: { r: 2, c: 7 } },
+        // I2:K3 (Rows 1-2, Cols 8-10) - اسم المشروع Value
+        { s: { r: 1, c: 8 }, e: { r: 2, c: 10 } },
+        
+        // G5:H5 (Row 4, Cols 6-7) - رقم المشروع Label
+        { s: { r: 4, c: 6 }, e: { r: 4, c: 7 } },
+        // I5:K5 (Row 4, Cols 8-10) - رقم المشروع Value
+        { s: { r: 4, c: 8 }, e: { r: 4, c: 10 } },
+        
+        // G6:H6 (Row 5, Cols 6-7) - مسؤول التنفيذ Label
+        { s: { r: 5, c: 6 }, e: { r: 5, c: 7 } },
+        // I6:K6 (Row 5, Cols 8-10) - مسؤول التنفيذ Value
+        { s: { r: 5, c: 8 }, e: { r: 5, c: 10 } },
+        
+        // M2:T5 (Rows 1-4, Cols 12-19) - أمر انتاج Title (Size 20 Bold)
+        { s: { r: 1, c: 12 }, e: { r: 4, c: 19 } },
         
         // Group Headers Row 7 (Index 6)
         { s: { r: 6, c: 2 }, e: { r: 6, c: 11 } }, // قياس الحلق (C to L)
@@ -5593,55 +5607,37 @@ function doExportManufacturing(project) {
         border: borderThin
     };
 
-    // Apply styles across the sheet grid
-    // 1. Logo Box (A2:C5)
-    for (let r = 1; r <= 4; r++) {
-        for (let c = 0; c <= 2; c++) {
-            const ref = XLSX.utils.encode_cell({ r, c });
-            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
-            ws[ref].s = styleLogo;
+    // Helper to apply style to a rectangular range
+    function styleRange(startRow, endRow, startCol, endCol, style) {
+        for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
+                const ref = XLSX.utils.encode_cell({ r, c });
+                if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+                ws[ref].s = style;
+            }
         }
     }
-    // 2. Title Box (D2:K5)
-    for (let r = 1; r <= 4; r++) {
-        for (let c = 3; c <= 10; c++) {
-            const ref = XLSX.utils.encode_cell({ r, c });
-            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
-            ws[ref].s = styleTitle;
-        }
-    }
+
+    const styleTitle20 = {
+        font: { name: "Calibri", sz: 20, bold: true, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: borderThick
+    };
+
+    // Apply styles to Top Block per user layout instructions:
+    styleRange(1, 1, 0, 1, styleInfoLabel);   // A2:B2 -> "تاريخ الاستلام"
+    styleRange(1, 1, 2, 4, styleInfoVal);     // C2:E2 -> recvDate
+    styleRange(2, 2, 0, 1, styleInfoLabel);   // A3:B3 -> "تاريخ التسليم"
+    styleRange(2, 2, 2, 4, styleInfoVal);     // C3:E3 -> delivDate
     
-    // 3. Info Table 1 (L2:P5)
-    for (let r = 1; r <= 4; r++) {
-        for (let c = 11; c <= 13; c++) {
-            const ref = XLSX.utils.encode_cell({ r, c });
-            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
-            ws[ref].s = styleInfoVal;
-        }
-        const refColon = XLSX.utils.encode_cell({ r, c: 14 });
-        const refLbl = XLSX.utils.encode_cell({ r, c: 15 });
-        if (!ws[refColon]) ws[refColon] = { t: 's', v: ':' };
-        if (!ws[refLbl]) ws[refLbl] = { t: 's', v: '' };
-        ws[refColon].s = styleInfoLabel;
-        ws[refLbl].s = styleInfoLabel;
-    }
+    styleRange(1, 2, 6, 7, styleInfoLabel);   // G2:H3 -> "اسم المشروع"
+    styleRange(1, 2, 8, 10, styleInfoVal);    // I2:K3 -> pName
+    styleRange(4, 4, 6, 7, styleInfoLabel);   // G5:H5 -> "رقم المشروع"
+    styleRange(4, 4, 8, 10, styleInfoVal);    // I5:K5 -> pNumber
+    styleRange(5, 5, 6, 7, styleInfoLabel);   // G6:H6 -> "مسؤول التنفيذ"
+    styleRange(5, 5, 8, 10, styleInfoVal);    // I6:K6 -> execMgr
     
-    // 4. Info Table 2 (Q2:V5)
-    for (let r = 1; r <= 4; r++) {
-        for (let c = 16; c <= 18; c++) {
-            const ref = XLSX.utils.encode_cell({ r, c });
-            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
-            ws[ref].s = styleInfoVal;
-        }
-        const refColon = XLSX.utils.encode_cell({ r, c: 19 });
-        if (!ws[refColon]) ws[refColon] = { t: 's', v: ':' };
-        ws[refColon].s = styleInfoLabel;
-        for (let c = 20; c <= 21; c++) {
-            const ref = XLSX.utils.encode_cell({ r, c });
-            if (!ws[ref]) ws[ref] = { t: 's', v: '' };
-            ws[ref].s = styleInfoLabel;
-        }
-    }
+    styleRange(1, 4, 12, 19, styleTitle20);   // M2:T5 -> " أمر انتاج " (Size 20 Bold)
     
     // 5. Row 7 Group Headers (Row index 6)
     for (let c = 0; c <= 26; c++) {
