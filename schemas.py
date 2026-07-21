@@ -263,6 +263,7 @@ class ProjectBase(BaseModel):
     installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: str = "Pending"
+    activated_at: Optional[datetime] = None
     step_design: Optional[str] = "لم يتم البدء"
     step_cutting: Optional[str] = "لم يتم البدء"
     step_forming: Optional[str] = "لم يتم البدء"
@@ -289,6 +290,7 @@ class ProjectUpdate(BaseModel):
     installation_type: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
+    activated_at: Optional[datetime] = None
     step_design: Optional[str] = None
     step_cutting: Optional[str] = None
     step_forming: Optional[str] = None

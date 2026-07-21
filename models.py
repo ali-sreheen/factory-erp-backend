@@ -117,6 +117,7 @@ class Project(Base):
     installation_type = Column(String, nullable=True)
     notes = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Active, Completed
+    activated_at = Column(DateTime(timezone=True), nullable=True)
     
     # Tracking fields
     step_design = Column(String, default="لم يتم البدء")

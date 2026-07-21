@@ -315,6 +315,9 @@ def delete_item(db: Session, item_id: int):
 # --- Projects ---
 def create_project(db: Session, project: schemas.ProjectCreate):
     db_project = models.Project(**project.model_dump())
+    if db_project.status == "active" and not db_project.activated_at:
+        from datetime import datetime, timezone
+        db_project.activated_at = datetime.now(timezone.utc)
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
@@ -373,13 +376,14 @@ def update_project(db: Session, project_id: int, project_update: schemas.Project
         update_data = project_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_project, key, value)
+            
+        if db_project.status == "active" and old_status != "active":
+            from datetime import datetime, timezone
+            db_project.activated_at = datetime.now(timezone.utc)
+            generate_stickers_for_project_details(db, project_id)
+            
         db.commit()
         db.refresh(db_project)
-        
-        if db_project.status == "active" and old_status != "active":
-            generate_stickers_for_project_details(db, project_id)
-            db.refresh(db_project)
-            
         return db_project
     return None
 

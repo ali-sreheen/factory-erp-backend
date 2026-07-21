@@ -2904,6 +2904,10 @@ async function viewProjectDetails(id) {
         
         document.getElementById('pdNumber').textContent = p.project_number;
         document.getElementById('pdContractor').textContent = p.contractor_name || '-';
+        const receiptDateVal = p.activated_at || p.created_at;
+        if (document.getElementById('pdReceipt')) {
+            document.getElementById('pdReceipt').textContent = receiptDateVal ? new Date(receiptDateVal).toLocaleDateString() : '-';
+        }
         document.getElementById('pdDelivery').textContent = p.delivery_date ? new Date(p.delivery_date).toLocaleDateString() : '-';
         document.getElementById('pdEngineer').textContent = p.engineer_name || '-';
         document.getElementById('pdEngineerPhone').textContent = p.engineer_phone || '-';
