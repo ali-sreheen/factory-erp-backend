@@ -2407,11 +2407,11 @@ function openProjectWizard() {
 
     document.getElementById('attachmentsList').innerHTML = '';
     goToWizardStep(1);
-    loadAssignees();
 
-    // Auto-calculate next project number
+    // Auto-calculate next project number and pre-select previous executive manager
     (async () => {
         try {
+            let lastExecutiveManagerId = localStorage.getItem('last_executive_manager_id');
             const response = await authFetch(PROJECTS_URL + '/');
             if (response.ok) {
                 const projects = await response.json();
@@ -2425,9 +2425,18 @@ function openProjectWizard() {
                     }
                 });
                 document.getElementById('pwProjectNumber').value = maxNum + 1;
+                
+                if (!lastExecutiveManagerId && projects.length > 0) {
+                    const lastProjWithMgr = projects.find(p => p.executive_manager_id);
+                    if (lastProjWithMgr) {
+                        lastExecutiveManagerId = lastProjWithMgr.executive_manager_id;
+                    }
+                }
             }
+            await loadAssignees(lastExecutiveManagerId);
         } catch (err) {
             console.error("Failed to auto-detect next project number:", err);
+            await loadAssignees();
         }
     })();
 }
@@ -2815,19 +2824,24 @@ function updateAttachmentsList(input) {
     }
 }
 
-async function loadAssignees() {
+async function loadAssignees(selectedId = null) {
     try {
         const response = await authFetch(USERS_BASIC_URL);
         if (response.ok) {
             const users = await response.json();
             const select = document.getElementById('pwAssignee');
-            select.innerHTML = '<option value="">-- اختر مستخدم --</option>';
-            users.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = u.username;
-                select.appendChild(opt);
-            });
+            if (select) {
+                select.innerHTML = '<option value="">-- اختر مسؤول التنفيذ --</option>';
+                users.forEach(u => {
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = u.full_name ? `${u.username} (${u.full_name})` : u.username;
+                    select.appendChild(opt);
+                });
+                if (selectedId) {
+                    select.value = selectedId;
+                }
+            }
         }
     } catch (e) {
         console.error('Failed to load assignees', e);
@@ -3115,6 +3129,10 @@ if (projectWizardForm) {
                 notes: document.getElementById('pwNotes') ? document.getElementById('pwNotes').value : null,
                 status: document.querySelector('input[name="pwStatus"]:checked').value
             };
+            
+            if (payload.executive_manager_id) {
+                localStorage.setItem('last_executive_manager_id', payload.executive_manager_id);
+            }
             
             let response, createdProject;
             if (currentEditingProjectId) {
