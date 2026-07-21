@@ -2846,7 +2846,11 @@ async function loadProjects() {
             const projects = await response.json();
             projects.forEach(p => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50 transition text-sm';
+                tr.className = 'border-b hover:bg-slate-50 transition text-sm cursor-pointer';
+                tr.onclick = (e) => {
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    viewProjectDetails(p.id);
+                };
                 
                 let statusBadge = '<span class="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg font-bold text-xs">قيد الانتظار</span>';
                 if (p.status === 'active') {
@@ -2857,7 +2861,7 @@ async function loadProjects() {
                 
                 tr.innerHTML = `
                     <td class="p-4 font-bold text-slate-800">${p.project_number || '-'}</td>
-                    <td class="p-4">${p.name || '-'}</td>
+                    <td class="p-4 font-semibold text-slate-700 hover:text-indigo-600 transition">${p.name || '-'}</td>
                     <td class="p-4 text-slate-500">${p.contractor_name || '-'}</td>
                     <td class="p-4 text-slate-500" dir="ltr">${p.delivery_date ? new Date(p.delivery_date).toLocaleDateString() : '-'}</td>
                     <td class="p-4">${statusBadge}</td>
