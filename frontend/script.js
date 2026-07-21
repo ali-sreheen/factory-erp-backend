@@ -2521,8 +2521,38 @@ window.deleteContractorItem = async function(contractorId) {
     }
 };
 
-let currentEditingProjectId = null;
-let currentEditingProjectStatus = "pending";
+async function loadContractorOptions(selectedName = '') {
+    const selectEl = document.getElementById('pwContractor');
+    if (!selectEl) return;
+    
+    selectEl.innerHTML = '<option value="">بدون</option>';
+    
+    try {
+        const response = await authFetch(`${CONTRACTORS_URL}/`);
+        if (!response.ok) return;
+        const contractors = await response.json();
+        
+        contractors.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            if (selectedName && selectedName === c.name) {
+                opt.selected = true;
+            }
+            selectEl.appendChild(opt);
+        });
+        
+        if (selectedName && !contractors.some(c => c.name === selectedName)) {
+            const opt = document.createElement('option');
+            opt.value = selectedName;
+            opt.textContent = selectedName;
+            opt.selected = true;
+            selectEl.appendChild(opt);
+        }
+    } catch (e) {
+        console.error("Failed loading contractor options:", e);
+    }
+}
 
 function openProjectWizard() {
     const _pView = document.getElementById('purchasingView');
@@ -2549,6 +2579,7 @@ function openProjectWizard() {
     if(pdView) pdView.classList.add('hidden');
     
     document.getElementById('projectWizardForm').reset();
+    loadContractorOptions();
     document.getElementById('projectDetailsTableBody').innerHTML = '';
     
     // Reset defaults and first row change counters
@@ -3567,11 +3598,12 @@ window.editProject = async function(projectId) {
         
         document.getElementById('projectWizardForm').reset();
         await loadAssignees();
+        await loadContractorOptions(p.contractor_name || '');
         
         // Fill basic info
         document.getElementById('pwName').value = p.name || '';
         document.getElementById('pwProjectNumber').value = p.project_number || '';
-        document.getElementById('pwContractor').value = p.contractor_name || '';
+        if (document.getElementById('pwContractor')) document.getElementById('pwContractor').value = p.contractor_name || '';
         if (p.delivery_date) {
             document.getElementById('pwDeliveryDate').value = p.delivery_date.split('T')[0];
         }
