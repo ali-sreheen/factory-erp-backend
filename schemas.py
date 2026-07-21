@@ -264,6 +264,7 @@ class ProjectBase(BaseModel):
     notes: Optional[str] = None
     status: str = "Pending"
     activated_at: Optional[datetime] = None
+    delivery_approval: Optional[str] = "stopped"
     step_design: Optional[str] = "لم يتم البدء"
     step_cutting: Optional[str] = "لم يتم البدء"
     step_forming: Optional[str] = "لم يتم البدء"
@@ -291,6 +292,7 @@ class ProjectUpdate(BaseModel):
     notes: Optional[str] = None
     status: Optional[str] = None
     activated_at: Optional[datetime] = None
+    delivery_approval: Optional[str] = None
     step_design: Optional[str] = None
     step_cutting: Optional[str] = None
     step_forming: Optional[str] = None

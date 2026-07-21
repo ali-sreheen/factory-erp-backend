@@ -3203,10 +3203,15 @@ function getStatusSelectColorClass(status) {
     return 'bg-amber-100 text-amber-800 border-amber-300';
 }
 
+function getDeliverySelectColorClass(delivery) {
+    if (delivery === 'approved' || delivery === 'موافق') return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+    return 'bg-rose-100 text-rose-800 border-rose-300';
+}
+
 async function renderProjectActivationList() {
     const tbody = document.getElementById('projectActivationTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">جاري جلب المشاريع...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">جاري جلب المشاريع...</td></tr>';
     
     try {
         const response = await authFetch(PROJECTS_URL + '/');
@@ -3214,7 +3219,7 @@ async function renderProjectActivationList() {
         const projects = await response.json();
         
         if (projects.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-500">لا توجد مشاريع مسجلة.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">لا توجد مشاريع مسجلة.</td></tr>';
             return;
         }
 
@@ -3224,6 +3229,7 @@ async function renderProjectActivationList() {
             tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
             
             const currentStatus = p.status ? p.status.toLowerCase() : 'pending';
+            const currentDelivery = p.delivery_approval ? p.delivery_approval.toLowerCase() : 'stopped';
             
             tr.innerHTML = `
                 <td class="p-3 font-bold text-slate-800">${p.project_number || p.id}</td>
@@ -3235,11 +3241,17 @@ async function renderProjectActivationList() {
                         <option value="completed" ${currentStatus === 'completed' ? 'selected' : ''}>مكتمل (Completed)</option>
                     </select>
                 </td>
+                <td class="p-3 text-center">
+                    <select onchange="changeDeliveryApprovalFromModal(${p.id}, this)" class="px-3 py-1.5 rounded-xl font-bold border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getDeliverySelectColorClass(currentDelivery)}">
+                        <option value="stopped" ${currentDelivery === 'stopped' ? 'selected' : ''}>موقوف</option>
+                        <option value="approved" ${currentDelivery === 'approved' ? 'selected' : ''}>موافق</option>
+                    </select>
+                </td>
             `;
             tbody.appendChild(tr);
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
     }
 }
 
@@ -3250,6 +3262,22 @@ window.changeProjectStatusFromModal = async function(projectId, selectElem) {
         selectElem.className = `px-3 py-1.5 rounded-xl font-bold border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getStatusSelectColorClass(newStatus)}`;
     } catch (e) {
         console.error("Failed to change status from modal:", e);
+    }
+};
+
+window.changeDeliveryApprovalFromModal = async function(projectId, selectElem) {
+    const newApproval = selectElem.value;
+    try {
+        const response = await authFetch(`${PROJECTS_URL}/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ delivery_approval: newApproval })
+        });
+        if (!response.ok) throw new Error('فشل تحديث حالة موافقة التسليم');
+        showToast('تم تحديث حالة التسليم بنجاح', 'bg-emerald-500', '✓');
+        selectElem.className = `px-3 py-1.5 rounded-xl font-bold border text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer ${getDeliverySelectColorClass(newApproval)}`;
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
     }
 };
 
@@ -3599,14 +3627,22 @@ async function openProjectTracking(projectId) {
             
             const currentValue = currentTrackingProjectData[step.key] || 'لم يتم البدء';
             
+            let isDisabled = false;
+            let extraTitle = '';
+            if (step.key === 'step_installation' && (currentTrackingProjectData.delivery_approval || 'stopped').toLowerCase() === 'stopped') {
+                isDisabled = true;
+                extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+            }
+            
             tr.innerHTML = `
                 <td class="p-4 font-bold text-slate-800 text-base border-l border-slate-100">${step.label}</td>
                 <td class="p-4">
-                    <select onchange="updateTrackingStep('${step.key}', this)" class="w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(currentValue)}">
+                    <select ${isDisabled ? 'disabled' : ''} ${extraTitle} onchange="updateTrackingStep('${step.key}', this)" class="w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${isDisabled ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75' : getStepColorClasses(currentValue)}">
                         <option value="لم يتم البدء" ${currentValue === 'لم يتم البدء' ? 'selected' : ''}>لم يتم البدء</option>
                         <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
                         <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
                     </select>
+                    ${isDisabled ? '<span class="text-xs text-rose-500 font-bold block mt-1">⚠️ التسليم موقوف من زر تفعيل المشاريع</span>' : ''}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -5104,13 +5140,20 @@ window.openAllProjectsTrackingModal = async function() {
             let stepsCells = '';
             steps.forEach(stepKey => {
                 const currentValue = p[stepKey] || 'لم يتم البدء';
+                let isDisabled = false;
+                let extraTitle = '';
+                if (stepKey === 'step_installation' && (p.delivery_approval || 'stopped').toLowerCase() === 'stopped') {
+                    isDisabled = true;
+                    extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+                }
                 stepsCells += `
                     <td class="p-3 text-center min-w-[140px]">
-                        <select onchange="updateTrackingStep('${stepKey}', this, ${p.id})" class="w-full border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(currentValue)}">
+                        <select ${isDisabled ? 'disabled' : ''} ${extraTitle} onchange="updateTrackingStep('${stepKey}', this, ${p.id})" class="w-full border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${isDisabled ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75' : getStepColorClasses(currentValue)}">
                             <option value="لم يتم البدء" ${currentValue === 'لم يتم البدء' ? 'selected' : ''}>لم يتم البدء</option>
                             <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
                             <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
                         </select>
+                        ${isDisabled ? '<span class="text-[10px] text-rose-500 font-bold block mt-0.5">⚠️ موقوف</span>' : ''}
                     </td>
                 `;
             });

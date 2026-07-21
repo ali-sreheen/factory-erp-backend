@@ -118,6 +118,7 @@ class Project(Base):
     notes = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Active, Completed
     activated_at = Column(DateTime(timezone=True), nullable=True)
+    delivery_approval = Column(String, default="stopped") # stopped, approved
     
     # Tracking fields
     step_design = Column(String, default="لم يتم البدء")
