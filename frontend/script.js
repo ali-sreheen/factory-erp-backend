@@ -778,16 +778,22 @@ async function loadUsers() {
                 <td class="p-4 font-bold text-slate-800">${user.username}</td>
                 <td class="p-4 text-center">${statusLabel}</td>
                 <td class="p-4">
-                    <div class="flex justify-center gap-2">
-                        <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200">
+                    <div class="flex justify-center gap-2 flex-wrap">
+                        <button onclick="openEditUsernameModal(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition text-xs font-bold border border-blue-200" title="تعديل اسم المستخدم">
+                            ✏️ تعديل الاسم
+                        </button>
+                        <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200" title="تغيير كلمة المرور">
                             ⚙️ الحساب
                         </button>
                         ${user.username !== 'admin' ? `
-                        <button onclick="openPermissionsModal(${user.id}, '${user.username}')" class="px-3.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition text-xs font-bold border border-amber-200">
+                        <button onclick="openPermissionsModal(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition text-xs font-bold border border-amber-200">
                             🛡️ الصلاحيات
                         </button>
-                        <button onclick="toggleUserApproval(${user.id})" class="px-3.5 py-1.5 ${isApproved ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'} rounded-xl transition text-xs font-bold border">
+                        <button onclick="toggleUserApproval(${user.id})" class="px-3 py-1.5 ${isApproved ? 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'} rounded-xl transition text-xs font-bold border">
                             ${isApproved ? '🚫 تعطيل' : '✓ تفعيل'}
+                        </button>
+                        <button onclick="confirmDeleteUser(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl transition text-xs font-bold border border-rose-200" title="حذف الحساب">
+                            🗑️ حذف الحساب
                         </button>
                         ` : ''}
                     </div>

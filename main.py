@@ -391,6 +391,38 @@ def toggle_user_approval(
     db.refresh(db_user)
     return {"status": "success", "is_approved": db_user.is_approved}
 
+@app.delete("/api/users/{user_id}")
+def delete_user_account(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to delete user accounts")
+        
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if db_user.username == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete admin account")
+        
+    # Remove references before deleting
+    db.query(models.UserPermission).filter(models.UserPermission.user_id == user_id).delete()
+    db.query(models.Project).filter(models.Project.executive_manager_id == user_id).update({"executive_manager_id": None})
+    try:
+        db.query(models.Transaction).filter(models.Transaction.user_id == user_id).update({"user_id": None})
+    except Exception:
+        pass
+    try:
+        db.query(models.Reservation).filter(models.Reservation.user_id == user_id).update({"user_id": None})
+    except Exception:
+        pass
+        
+    db.delete(db_user)
+    db.commit()
+    return {"message": "User deleted successfully"}
+
 # --- PROTECTED ITEMS ENDPOINTS ---
 
 def check_permission(db: Session, current_user: models.User, category: str):
