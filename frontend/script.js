@@ -5730,6 +5730,12 @@ function doExportManufacturing(project) {
         { wch: 22 }  // AA: ملاحظات
     ];
     
+    ws['!views'] = [{ rightToLeft: true, RTL: true, tabSelected: true }];
+    ws['!RTL'] = true;
+    
+    if (!wb.Workbook) wb.Workbook = {};
+    wb.Workbook.Views = [{ rightToLeft: true, RTL: true }];
+    
     XLSX.utils.book_append_sheet(wb, ws, "جدول التصنيع");
     
     const fileName = `جدول_تصنيع_${project.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('ar-SA').replace(/\//g, '-')}.xlsx`;
