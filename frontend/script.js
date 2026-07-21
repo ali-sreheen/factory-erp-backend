@@ -5341,13 +5341,13 @@ function doExportManufacturing(project) {
     
     // Rows 2-6 (Indices 1-5): Built strictly per user specifications
     // Row 2 (Index 1 - Excel Row 2)
-    // A2:B2 -> "تاريخ الاستلام", C2:E2 -> recvDate, G2:H3 -> "اسم المشروع", I2:K3 -> pName, M2:T5 -> " أمر انتاج "
+    // A2:B2 -> "تاريخ الاستلام", C2:E2 -> recvDate, G2:H3 -> "اسم المشروع", I2:K3 -> pName, M2:T5 -> "Production Order"
     const row2 = Array(27).fill("");
     row2[0] = "تاريخ الاستلام"; // A2
     row2[2] = recvDate; // C2
     row2[6] = "اسم المشروع"; // G2
     row2[8] = pName; // I2
-    row2[12] = " أمر انتاج "; // M2
+    row2[12] = "Production Order"; // M2
     data.push(row2);
     
     // Row 3 (Index 2 - Excel Row 3)
@@ -5361,20 +5361,28 @@ function doExportManufacturing(project) {
     data.push(Array(27).fill(""));
     
     // Row 5 (Index 4 - Excel Row 5)
-    // G5:H5 -> "رقم المشروع", I5:K5 -> pNumber
+    // A5:B5 -> "الموقع", C5:E5 -> pLoc, G5:H5 -> "رقم المشروع", I5:K5 -> pNumber
     const row5 = Array(27).fill("");
+    row5[0] = "الموقع"; // A5
+    row5[2] = pLoc; // C5
     row5[6] = "رقم المشروع"; // G5
     row5[8] = pNumber; // I5
     data.push(row5);
     
     // Row 6 (Index 5 - Excel Row 6)
-    // G6:H6 -> "مسؤول التنفيذ", I6:K6 -> execMgr
+    // A6:B6 -> "مسؤول الموقع", C6:E6 -> contractor, G6:H6 -> "مسؤول التنفيذ", I6:K6 -> execMgr
     const row6 = Array(27).fill("");
+    row6[0] = "مسؤول الموقع"; // A6
+    row6[2] = contractor; // C6
     row6[6] = "مسؤول التنفيذ"; // G6
     row6[8] = execMgr; // I6
     data.push(row6);
     
-    // Row 7 (Index 6): Group Headers
+    // Row 7 & 8 (Indices 6 & 7): Empty spacers
+    data.push(Array(27).fill(""));
+    data.push(Array(27).fill(""));
+    
+    // Row 9 (Index 8 - Excel Row 9): Group Headers
     data.push([
         "", "",
         "قياس الحلق", "", "", "", "", "", "", "", "", "",
@@ -5382,7 +5390,7 @@ function doExportManufacturing(project) {
         "", "", "", "", "", "", ""
     ]);
     
-    // Row 8 (Index 7): Sub Headers
+    // Row 10 (Index 9 - Excel Row 10): Sub Headers
     data.push([
         "الرقم", 
         "العدد", 
@@ -5453,7 +5461,7 @@ function doExportManufacturing(project) {
     }
     
     // Total Row
-    const dataEndRow = 8 + (project.details ? project.details.length : 0);
+    const dataEndRow = 10 + (project.details ? project.details.length : 0);
     const totalRow = Array(27).fill("");
     totalRow[1] = totalQty;
     totalRow[19] = totalQty;
@@ -5481,6 +5489,16 @@ function doExportManufacturing(project) {
         // C3:E3 (Row 2, Cols 2-4) - تاريخ التسليم Value
         { s: { r: 2, c: 2 }, e: { r: 2, c: 4 } },
         
+        // A5:B5 (Row 4, Cols 0-1) - الموقع Label
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } },
+        // C5:E5 (Row 4, Cols 2-4) - الموقع Value
+        { s: { r: 4, c: 2 }, e: { r: 4, c: 4 } },
+        
+        // A6:B6 (Row 5, Cols 0-1) - مسؤول الموقع Label
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } },
+        // C6:E6 (Row 5, Cols 2-4) - مسؤول الموقع Value
+        { s: { r: 5, c: 2 }, e: { r: 5, c: 4 } },
+        
         // G2:H3 (Rows 1-2, Cols 6-7) - اسم المشروع Label
         { s: { r: 1, c: 6 }, e: { r: 2, c: 7 } },
         // I2:K3 (Rows 1-2, Cols 8-10) - اسم المشروع Value
@@ -5496,12 +5514,12 @@ function doExportManufacturing(project) {
         // I6:K6 (Row 5, Cols 8-10) - مسؤول التنفيذ Value
         { s: { r: 5, c: 8 }, e: { r: 5, c: 10 } },
         
-        // M2:T5 (Rows 1-4, Cols 12-19) - أمر انتاج Title (Size 20 Bold)
+        // M2:T5 (Rows 1-4, Cols 12-19) - Production Order Title (Size 20 Bold)
         { s: { r: 1, c: 12 }, e: { r: 4, c: 19 } },
         
-        // Group Headers Row 7 (Index 6)
-        { s: { r: 6, c: 2 }, e: { r: 6, c: 11 } }, // قياس الحلق (C to L)
-        { s: { r: 6, c: 12 }, e: { r: 6, c: 19 } }  // قياس الدرفة (M to T)
+        // Group Headers Row 9 (Index 8)
+        { s: { r: 8, c: 2 }, e: { r: 8, c: 11 } }, // قياس الحلق (C to L)
+        { s: { r: 8, c: 12 }, e: { r: 8, c: 19 } }  // قياس الدرفة (M to T)
     ];
     
     // Add Footer merges below table
@@ -5629,6 +5647,10 @@ function doExportManufacturing(project) {
     styleRange(1, 1, 2, 4, styleInfoVal);     // C2:E2 -> recvDate
     styleRange(2, 2, 0, 1, styleInfoLabel);   // A3:B3 -> "تاريخ التسليم"
     styleRange(2, 2, 2, 4, styleInfoVal);     // C3:E3 -> delivDate
+    styleRange(4, 4, 0, 1, styleInfoLabel);   // A5:B5 -> "الموقع"
+    styleRange(4, 4, 2, 4, styleInfoVal);     // C5:E5 -> pLoc
+    styleRange(5, 5, 0, 1, styleInfoLabel);   // A6:B6 -> "مسؤول الموقع"
+    styleRange(5, 5, 2, 4, styleInfoVal);     // C6:E6 -> contractor
     
     styleRange(1, 2, 6, 7, styleInfoLabel);   // G2:H3 -> "اسم المشروع"
     styleRange(1, 2, 8, 10, styleInfoVal);    // I2:K3 -> pName
@@ -5637,11 +5659,11 @@ function doExportManufacturing(project) {
     styleRange(5, 5, 6, 7, styleInfoLabel);   // G6:H6 -> "مسؤول التنفيذ"
     styleRange(5, 5, 8, 10, styleInfoVal);    // I6:K6 -> execMgr
     
-    styleRange(1, 4, 12, 19, styleTitle20);   // M2:T5 -> " أمر انتاج " (Size 20 Bold)
+    styleRange(1, 4, 12, 19, styleTitle20);   // M2:T5 -> "Production Order" (Size 20 Bold)
     
-    // 5. Row 7 Group Headers (Row index 6)
+    // 5. Row 9 Group Headers (Row index 8)
     for (let c = 0; c <= 26; c++) {
-        const ref = XLSX.utils.encode_cell({ r: 6, c });
+        const ref = XLSX.utils.encode_cell({ r: 8, c });
         if (!ws[ref]) ws[ref] = { t: 's', v: '' };
         if (c >= 2 && c <= 19) {
             ws[ref].s = styleGroupHeader;
@@ -5650,15 +5672,15 @@ function doExportManufacturing(project) {
         }
     }
     
-    // 6. Row 8 Sub Headers (Row index 7)
+    // 6. Row 10 Sub Headers (Row index 9)
     for (let c = 0; c <= 26; c++) {
-        const ref = XLSX.utils.encode_cell({ r: 7, c });
+        const ref = XLSX.utils.encode_cell({ r: 9, c });
         if (!ws[ref]) ws[ref] = { t: 's', v: '' };
         ws[ref].s = styleSubHeader;
     }
     
-    // 7. Data Rows (Row index 8 to dataEndRow - 1)
-    for (let r = 8; r < dataEndRow; r++) {
+    // 7. Data Rows (Row index 10 to dataEndRow - 1)
+    for (let r = 10; r < dataEndRow; r++) {
         for (let c = 0; c <= 26; c++) {
             const ref = XLSX.utils.encode_cell({ r, c });
             if (!ws[ref]) ws[ref] = { t: 's', v: '' };
