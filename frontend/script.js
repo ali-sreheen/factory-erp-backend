@@ -2360,12 +2360,14 @@ window.switchProjectsTab = function(tabName) {
     const lblProjectsMainAction = document.getElementById('lblProjectsMainAction');
     const tabProjectsTable = document.getElementById('tabProjectsTable');
     const tabContractorsList = document.getElementById('tabContractorsList');
+    const subTitleEl = document.getElementById('projectsViewSubTitle');
     
     if (tabName === 'contractors') {
         if (projectsTableContainer) projectsTableContainer.classList.add('hidden');
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.remove('hidden');
         if (projectActionButtons) projectActionButtons.classList.add('hidden');
         if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مقاول جديد';
+        if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المقاولين والموردين المسجلين في النظام.';
         
         if (tabContractorsList) {
             tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
@@ -2380,6 +2382,7 @@ window.switchProjectsTab = function(tabName) {
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.add('hidden');
         if (projectActionButtons) projectActionButtons.classList.remove('hidden');
         if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مشروع جديد';
+        if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المشاريع المسجلة في النظام.';
         
         if (tabProjectsTable) {
             tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';

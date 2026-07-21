@@ -512,26 +512,27 @@
     <!-- ================= PROJECTS MAIN VIEW ================= -->
             <div id="projectsView" class="hidden space-y-6 animate-fade-in">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-5">
-                    <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-4 flex-wrap">
                         <button onclick="showModuleSelectorView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center" title="رجوع للقائمة الرئيسية">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                         </button>
                         <div>
                             <h2 class="text-3xl font-extrabold text-slate-900">إدارة المشاريع</h2>
-                            <p class="text-slate-500 text-sm mt-0.5">قائمة بجميع المشاريع المسجلة في النظام.</p>
+                            <p class="text-slate-500 text-sm mt-0.5" id="projectsViewSubTitle">قائمة بجميع المشاريع المسجلة في النظام.</p>
                         </div>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
-                        <!-- Navigation Tabs on the far left -->
-                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                            <button id="tabContractorsList" onclick="switchProjectsTab('contractors')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900">
-                                قائمة المقاولين
-                            </button>
+
+                        <!-- Fixed Navigation Tabs on the Right side -->
+                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 mr-2 sm:mr-4">
                             <button id="tabProjectsTable" onclick="switchProjectsTab('projects')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow">
                                 جدول المشاريع
                             </button>
+                            <button id="tabContractorsList" onclick="switchProjectsTab('contractors')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900">
+                                قائمة المقاولين
+                            </button>
                         </div>
+                    </div>
 
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
                         <!-- Action buttons for Projects (hidden when in Contractors tab) -->
                         <div id="projectActionButtons" class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                             <button id="btnFireDoors" onclick="openFireDoorsModal()" class="w-full sm:w-auto bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm hidden">
@@ -2158,7 +2159,7 @@
         <span id="toastMessage">تمت العملية بنجاح</span>
     </div>
 
-    <script src="script.js?v=112"></script>
+    <script src="script.js?v=113"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
