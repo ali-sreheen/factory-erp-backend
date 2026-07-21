@@ -108,13 +108,10 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    # المرفقات والملفات المرفوعة
+    # المرفقات والملفات المرفوعة من مجلد السيرفر مباشرة
     location /uploads/ {
-        proxy_pass http://127.0.0.1:8000/uploads/;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        alias $PROJECT_DIR/uploads/;
+        autoindex off;
     }
     
     # توجيه الـ Docs الخاص بالـ API
