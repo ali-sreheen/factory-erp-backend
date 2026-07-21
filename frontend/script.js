@@ -3629,9 +3629,16 @@ async function openProjectTracking(projectId) {
             
             let isDisabled = false;
             let extraTitle = '';
-            if (step.key === 'step_installation' && (currentTrackingProjectData.delivery_approval || 'stopped').toLowerCase() === 'stopped') {
-                isDisabled = true;
-                extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+            let statusSubText = '';
+            if (step.key === 'step_installation') {
+                const isApproved = (currentTrackingProjectData.delivery_approval || 'stopped').toLowerCase() === 'approved';
+                if (!isApproved) {
+                    isDisabled = true;
+                    extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+                    statusSubText = '<span class="text-xs text-rose-500 font-bold block mt-1">⚠️ التسليم موقوف</span>';
+                } else {
+                    statusSubText = '<span class="text-xs text-emerald-600 font-bold block mt-1">✓ تمت الموافقة على التسليم</span>';
+                }
             }
             
             tr.innerHTML = `
@@ -3642,7 +3649,7 @@ async function openProjectTracking(projectId) {
                         <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
                         <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
                     </select>
-                    ${isDisabled ? '<span class="text-xs text-rose-500 font-bold block mt-1">⚠️ التسليم موقوف من زر تفعيل المشاريع</span>' : ''}
+                    ${statusSubText}
                 </td>
             `;
             tbody.appendChild(tr);
@@ -5142,9 +5149,16 @@ window.openAllProjectsTrackingModal = async function() {
                 const currentValue = p[stepKey] || 'لم يتم البدء';
                 let isDisabled = false;
                 let extraTitle = '';
-                if (stepKey === 'step_installation' && (p.delivery_approval || 'stopped').toLowerCase() === 'stopped') {
-                    isDisabled = true;
-                    extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+                let statusSubText = '';
+                if (stepKey === 'step_installation') {
+                    const isApproved = (p.delivery_approval || 'stopped').toLowerCase() === 'approved';
+                    if (!isApproved) {
+                        isDisabled = true;
+                        extraTitle = 'title="التسليم موقوف من قبل الإدارة، لا يمكن تعديل هذه الخطوة"';
+                        statusSubText = '<span class="text-[10px] text-rose-500 font-bold block mt-0.5">⚠️ التسليم موقوف</span>';
+                    } else {
+                        statusSubText = '<span class="text-[10px] text-emerald-600 font-bold block mt-0.5">✓ تمت الموافقة</span>';
+                    }
                 }
                 stepsCells += `
                     <td class="p-3 text-center min-w-[140px]">
@@ -5153,7 +5167,7 @@ window.openAllProjectsTrackingModal = async function() {
                             <option value="جاري العمل" ${currentValue === 'جاري العمل' ? 'selected' : ''}>جاري العمل</option>
                             <option value="تم الانتهاء" ${currentValue === 'تم الانتهاء' ? 'selected' : ''}>تم الانتهاء</option>
                         </select>
-                        ${isDisabled ? '<span class="text-[10px] text-rose-500 font-bold block mt-0.5">⚠️ موقوف</span>' : ''}
+                        ${statusSubText}
                     </td>
                 `;
             });
