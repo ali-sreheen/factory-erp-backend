@@ -2335,6 +2335,7 @@ function showProjectsView() {
 }
 
 let currentEditingProjectId = null;
+let currentEditingProjectStatus = "pending";
 
 function openProjectWizard() {
     const _pView = document.getElementById('purchasingView');
@@ -2343,6 +2344,7 @@ function openProjectWizard() {
     if(_prdView) _prdView.classList.add('hidden');
 
     currentEditingProjectId = null;
+    currentEditingProjectStatus = "pending";
     const title = document.getElementById('wizardTitle');
     if (title) title.textContent = 'إضافة مشروع جديد';
     
@@ -2449,7 +2451,7 @@ function goToWizardStep(stepNumber) {
     document.getElementById(`wizardStep${stepNumber}`).classList.remove('hidden');
     
     const progressLine = document.getElementById('wizardProgressLine');
-    const progressMap = { 1: '0%', 2: '33.33%', 3: '66.66%', 4: '100%' };
+    const progressMap = { 1: '0%', 2: '50%', 3: '100%' };
     progressLine.style.width = progressMap[stepNumber];
     
     document.querySelectorAll('.wizard-step-indicator').forEach(el => {
@@ -3127,7 +3129,7 @@ if (projectWizardForm) {
                 manufacturing_type: document.getElementById('pwManufacturingType') ? document.getElementById('pwManufacturingType').value : null,
                 installation_type: document.getElementById('pwInstallationType') ? document.getElementById('pwInstallationType').value : null,
                 notes: document.getElementById('pwNotes') ? document.getElementById('pwNotes').value : null,
-                status: document.querySelector('input[name="pwStatus"]:checked').value
+                status: (currentEditingProjectId && currentEditingProjectStatus) ? currentEditingProjectStatus : "pending"
             };
             
             if (payload.executive_manager_id) {
@@ -3355,10 +3357,13 @@ window.editProject = async function(projectId) {
         if(document.getElementById('pwInstallationType')) document.getElementById('pwInstallationType').value = p.installation_type || '';
         if(document.getElementById('pwNotes')) document.getElementById('pwNotes').value = p.notes || '';
         
+        currentEditingProjectStatus = p.status || "pending";
         const statusRadios = document.querySelectorAll('input[name="pwStatus"]');
-        statusRadios.forEach(r => {
-            if (r.value === p.status) r.checked = true;
-        });
+        if (statusRadios && statusRadios.length > 0) {
+            statusRadios.forEach(r => {
+                if (r.value === p.status) r.checked = true;
+            });
+        }
         
         // Fill details
         const tbody = document.getElementById('projectDetailsTableBody');
