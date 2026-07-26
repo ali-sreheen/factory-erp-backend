@@ -2336,6 +2336,7 @@ function showProjectsView() {
     departmentDetailView.classList.add('hidden');
     adminView.classList.add('hidden');
     const pdView = document.getElementById('projectDetailView');
+    if (pdView) pdView.classList.add('hidden');
     applyPermissionsToUI();
     switchProjectsTab(currentProjectsTab || 'projects');
     loadProjects();
