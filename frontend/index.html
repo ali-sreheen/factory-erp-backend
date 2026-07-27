@@ -264,59 +264,6 @@
                             </div>
                         </form>
                     </div>
-
-                <!-- Holidays Pie Chart & Stats Section -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mt-6">
-                    <h4 class="text-xl font-bold text-slate-800 mb-6 text-right">رصيد الإجازات والعطل</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                        <!-- Pie Chart Canvas -->
-                        <div class="flex justify-center items-center relative cursor-pointer" onclick="toggleVacationDetailsTable()" title="اضغط لعرض تفاصيل الإجازات">
-                            <div class="w-56 h-56">
-                                <canvas id="userHolidaysChart"></canvas>
-                            </div>
-                        </div>
-                        <!-- Legend & Info -->
-                        <div class="space-y-4 text-right">
-                            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                <div class="flex justify-between items-center">
-                                    <span id="userHolidaysTotal" class="text-lg font-extrabold text-slate-900">0</span>
-                                    <span class="text-xs font-bold text-slate-500">إجمالي العطل المسموحة:</span>
-                                </div>
-                            </div>
-                            <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-                                <div class="flex justify-between items-center">
-                                    <span id="userHolidaysRemaining" class="text-lg font-extrabold text-emerald-700">0</span>
-                                    <span class="text-xs font-bold text-emerald-600">رصيد العطل المتبقي:</span>
-                                </div>
-                            </div>
-                            <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                                <div class="flex justify-between items-center">
-                                    <span id="userHolidaysTaken" class="text-lg font-extrabold text-rose-700">0</span>
-                                    <span class="text-xs font-bold text-rose-600">العطل التي تم أخذها:</span>
-                                </div>
-                            </div>
-                            <p class="text-[10px] text-slate-400 text-center font-bold">💡 انقر على المخطط الدائري لعرض تفاصيل التواريخ والملاحظات</p>
-                        </div>
-                    </div>
-
-                    <!-- Clickable Vacation Days List (Underneath) -->
-                    <div id="userVacationsListSection" class="hidden mt-8 pt-6 border-t border-slate-200 animate-fade-in text-right">
-                        <h5 class="text-sm font-extrabold text-slate-800 mb-4">تفاصيل أيام الإجازات المأخوذة</h5>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-xs">
-                                <thead class="bg-slate-50 text-slate-600 border-b">
-                                    <tr>
-                                        <th class="p-3 font-bold">تاريخ الإجازة</th>
-                                        <th class="p-3 font-bold">الملاحظات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="userVacationsTableBody">
-                                    <!-- Dynamically filled -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
             </div>
 
                 <!-- HR Forms Tab -->
@@ -356,6 +303,59 @@
                                 <p class="text-slate-500 text-xs leading-relaxed">إرسال استفسار أو تساؤل خاص بالعمل إلى الموارد البشرية.</p>
                             </div>
                             <div class="mt-6 flex justify-end text-xs font-bold text-indigo-600">إرسال الاستفسار ←</div>
+                        </div>
+                    </div>
+
+                    <!-- Holidays Pie Chart & Stats Section -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mt-8">
+                        <h4 class="text-xl font-bold text-slate-800 mb-6 text-right">رصيد الإجازات والعطل</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                            <!-- Pie Chart Canvas -->
+                            <div class="flex justify-center items-center relative cursor-pointer" onclick="toggleVacationDetailsTable()" title="اضغط لعرض تفاصيل الإجازات">
+                                <div class="w-56 h-56">
+                                    <canvas id="userHolidaysChart"></canvas>
+                                </div>
+                            </div>
+                            <!-- Legend & Info -->
+                            <div class="space-y-4 text-right">
+                                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <div class="flex justify-between items-center">
+                                        <span id="userHolidaysTotal" class="text-lg font-extrabold text-slate-900">0</span>
+                                        <span class="text-xs font-bold text-slate-500">إجمالي العطل المسموحة:</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                                    <div class="flex justify-between items-center">
+                                        <span id="userHolidaysRemaining" class="text-lg font-extrabold text-emerald-700">0</span>
+                                        <span class="text-xs font-bold text-emerald-600">رصيد العطل المتبقي:</span>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                                    <div class="flex justify-between items-center">
+                                        <span id="userHolidaysTaken" class="text-lg font-extrabold text-rose-700">0</span>
+                                        <span class="text-xs font-bold text-rose-600">العطل التي تم أخذها:</span>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-400 text-center font-bold">💡 انقر على المخطط الدائري لعرض تفاصيل التواريخ والملاحظات</p>
+                            </div>
+                        </div>
+
+                        <!-- Clickable Vacation Days List (Underneath) -->
+                        <div id="userVacationsListSection" class="hidden mt-8 pt-6 border-t border-slate-200 animate-fade-in text-right">
+                            <h5 class="text-sm font-extrabold text-slate-800 mb-4">تفاصيل أيام الإجازات المأخوذة</h5>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-xs">
+                                    <thead class="bg-slate-50 text-slate-600 border-b">
+                                        <tr>
+                                            <th class="p-3 font-bold">تاريخ الإجازة</th>
+                                            <th class="p-3 font-bold">الملاحظات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="userVacationsTableBody">
+                                        <!-- Dynamically filled -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

@@ -6301,17 +6301,6 @@ async function loadHrProfile() {
         avatarInput.disabled = true;
         if (avatarLabel) avatarLabel.classList.add('hidden');
         if (saveBtn) saveBtn.classList.add('hidden');
-
-        // Load vacations and draw chart
-        try {
-            const vacRes = await authFetch(`/api/users/${user.id}/vacations`);
-            if (vacRes.ok) {
-                const vacations = await vacRes.json();
-                renderUserHolidaysChart(user.allowed_holidays || 21, vacations);
-            }
-        } catch (e) {
-            console.error('[DEBUG] Failed to load vacations for chart', e);
-        }
     } catch (err) {
         console.error(err);
         showToast('خطأ أثناء تحميل الملف الشخصي: ' + err.message, 'bg-rose-500', '✗');
@@ -6517,6 +6506,21 @@ async function loadHrRequests() {
             `;
             tbody.appendChild(row);
         });
+
+        // Load vacations and draw chart
+        try {
+            const userRes = await authFetch('/api/users/me');
+            if (userRes.ok) {
+                const user = await userRes.json();
+                const vacRes = await authFetch(`/api/users/${user.id}/vacations`);
+                if (vacRes.ok) {
+                    const vacations = await vacRes.json();
+                    renderUserHolidaysChart(user.allowed_holidays || 21, vacations);
+                }
+            }
+        } catch (e) {
+            console.error('[DEBUG] Failed to load vacations for chart inside loadHrRequests', e);
+        }
     } catch (err) {
         console.error(err);
     }
@@ -7021,9 +7025,9 @@ function renderUserHolidaysChart(allowedHolidays, takenVacations) {
     }
 
     // Skip drawing the chart if the section is hidden (Chart.js cannot size properly)
-    const profileSection = document.getElementById('hrProfileSection');
-    if (profileSection && profileSection.classList.contains('hidden')) {
-        console.log('[DEBUG] Skipping Chart.js render because hrProfileSection is hidden');
+    const formsSection = document.getElementById('hrFormsSection');
+    if (formsSection && formsSection.classList.contains('hidden')) {
+        console.log('[DEBUG] Skipping Chart.js render because hrFormsSection is hidden');
         return;
     }
 
