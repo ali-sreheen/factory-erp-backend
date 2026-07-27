@@ -6190,6 +6190,8 @@ async function showHRView() {
     document.getElementById('hrFormsSection').classList.remove('block');
     document.getElementById('hrAttendanceSection').classList.add('hidden');
     document.getElementById('hrAttendanceSection').classList.remove('block');
+    document.getElementById('hrSalarySection').classList.add('hidden');
+    document.getElementById('hrSalarySection').classList.remove('block');
 
     // Load Data
     await loadHrProfile();
@@ -6241,6 +6243,8 @@ function handleHrBackNavigation() {
         document.getElementById('hrFormsSection').classList.remove('block');
         document.getElementById('hrAttendanceSection').classList.add('hidden');
         document.getElementById('hrAttendanceSection').classList.remove('block');
+        document.getElementById('hrSalarySection').classList.add('hidden');
+        document.getElementById('hrSalarySection').classList.remove('block');
     }
 }
 
