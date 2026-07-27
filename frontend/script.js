@@ -7283,14 +7283,14 @@ async function submitLoanRequest(event) {
         return;
     }
 
+    const formData = new FormData();
+    formData.append('request_type', 'سلفة');
+    formData.append('reason', `طلب سلفة بقيمة ${amount} دينار - ملاحظات: ${notesVal}`);
+
     try {
         const res = await authFetch('/api/hr/requests/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                request_type: 'سلفة',
-                reason: `طلب سلفة بقيمة ${amount} دينار - ملاحظات: ${notesVal}`
-            })
+            body: formData
         });
 
         if (!res.ok) throw new Error('Failed to submit loan request');
