@@ -718,6 +718,49 @@ def delete_employee_vacation_day(db: Session, vacation_day_id: int):
         return True
     return False
 
+def get_employee_salaries(db: Session, user_id: int):
+    return db.query(models.EmployeeSalary).filter(models.EmployeeSalary.user_id == user_id).order_by(models.EmployeeSalary.month.desc()).all()
+
+def add_or_update_employee_salary(db: Session, user_id: int, salary_data: schemas.EmployeeSalaryCreate):
+    total = salary_data.basic_salary + salary_data.overtime - salary_data.social_security_deduction - salary_data.other_deductions - salary_data.loans
+    
+    db_sal = db.query(models.EmployeeSalary).filter(
+        models.EmployeeSalary.user_id == user_id,
+        models.EmployeeSalary.month == salary_data.month
+    ).first()
+    
+    if db_sal:
+        db_sal.basic_salary = salary_data.basic_salary
+        db_sal.social_security_deduction = salary_data.social_security_deduction
+        db_sal.other_deductions = salary_data.other_deductions
+        db_sal.loans = salary_data.loans
+        db_sal.overtime = salary_data.overtime
+        db_sal.total = total
+    else:
+        db_sal = models.EmployeeSalary(
+            user_id=user_id,
+            month=salary_data.month,
+            basic_salary=salary_data.basic_salary,
+            social_security_deduction=salary_data.social_security_deduction,
+            other_deductions=salary_data.other_deductions,
+            loans=salary_data.loans,
+            overtime=salary_data.overtime,
+            total=total
+        )
+        db.add(db_sal)
+    
+    db.commit()
+    db.refresh(db_sal)
+    return db_sal
+
+def delete_employee_salary(db: Session, salary_id: int):
+    db_sal = db.query(models.EmployeeSalary).filter(models.EmployeeSalary.id == salary_id).first()
+    if db_sal:
+        db.delete(db_sal)
+        db.commit()
+        return True
+    return False
+
 def get_employee_vacation_days(db: Session, user_id: int):
     return db.query(models.EmployeeVacationDay).filter(models.EmployeeVacationDay.user_id == user_id).order_by(models.EmployeeVacationDay.vacation_date.desc()).all()
 

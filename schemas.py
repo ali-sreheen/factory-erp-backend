@@ -55,6 +55,26 @@ class EmployeeVacationDayResponse(EmployeeVacationDayBase):
         from_attributes = True
         orm_mode = True
 
+class EmployeeSalaryBase(BaseModel):
+    month: str
+    basic_salary: float
+    social_security_deduction: float
+    other_deductions: float
+    loans: float
+    overtime: float
+
+class EmployeeSalaryCreate(EmployeeSalaryBase):
+    pass
+
+class EmployeeSalaryResponse(EmployeeSalaryBase):
+    id: int
+    user_id: int
+    total: float
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
+
 class UserPermissionBase(BaseModel):
     department_name: str
     can_edit: int

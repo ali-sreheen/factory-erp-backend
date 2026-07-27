@@ -29,6 +29,7 @@ class User(Base):
     hr_requests = relationship("HRRequest", back_populates="user", cascade="all, delete-orphan")
     attendance_records = relationship("AttendanceRecord", back_populates="user", cascade="all, delete-orphan")
     vacation_days = relationship("EmployeeVacationDay", back_populates="user", cascade="all, delete-orphan")
+    salaries = relationship("EmployeeSalary", back_populates="user", cascade="all, delete-orphan")
 
 class Department(Base):
     __tablename__ = "departments"
@@ -291,5 +292,22 @@ class EmployeeVacationDay(Base):
     notes = Column(String, nullable=True)
 
     user = relationship("User", back_populates="vacation_days")
+
+
+class EmployeeSalary(Base):
+    __tablename__ = "employee_salaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    month = Column(String, nullable=False) # "YYYY-MM"
+    basic_salary = Column(Float, default=0.0)
+    social_security_deduction = Column(Float, default=0.0)
+    other_deductions = Column(Float, default=0.0)
+    loans = Column(Float, default=0.0)
+    overtime = Column(Float, default=0.0)
+    total = Column(Float, default=0.0)
+
+    user = relationship("User", back_populates="salaries")
+
 
 

@@ -6205,7 +6205,7 @@ function enterHrSubSection(section) {
     document.getElementById('hrMainMenuSection').classList.remove('grid');
 
     // Show selected section
-    const sections = ['profile', 'forms', 'attendance'];
+    const sections = ['profile', 'forms', 'attendance', 'salary'];
     sections.forEach(s => {
         const el = document.getElementById('hr' + s.charAt(0).toUpperCase() + s.slice(1) + 'Section');
         if (el) {
@@ -6221,6 +6221,8 @@ function enterHrSubSection(section) {
 
     if (section === 'profile') {
         loadHrProfile();
+    } else if (section === 'salary') {
+        loadHrSalary();
     }
 }
 
@@ -6924,6 +6926,15 @@ function showEmployeeEditForm(userId) {
 
     // Load vacation days list for admin view
     loadEmpVacationsForAdmin(emp.id);
+
+    // Reset and load salaries
+    document.getElementById('addEmpSalaryMonth').value = '';
+    document.getElementById('addEmpSalaryBasic').value = '';
+    document.getElementById('addEmpSalarySocial').value = '';
+    document.getElementById('addEmpSalaryOther').value = '';
+    document.getElementById('addEmpSalaryLoans').value = '';
+    document.getElementById('addEmpSalaryOvertime').value = '';
+    loadEmpSalariesForAdmin(emp.id);
 }
 
 function previewEditEmpAvatar(input) {
@@ -7147,6 +7158,252 @@ async function deleteVacationDayByAdmin(vacationId, userId) {
     } catch (err) {
         console.error(err);
         showToast('خطأ في حذف يوم العطلة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// --- USER SALARIES LOGIC (FRONTEND) ---
+let cachedUserSalariesList = [];
+
+async function loadHrSalary() {
+    try {
+        const userRes = await authFetch('/api/users/me');
+        if (!userRes.ok) throw new Error('Failed to load current user');
+        const user = await userRes.json();
+
+        const res = await authFetch(`/api/users/${user.id}/salaries`);
+        if (!res.ok) throw new Error('Failed to load salaries list');
+        const salaries = await res.json();
+        cachedUserSalariesList = salaries;
+
+        // Current Date / Month calculation
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const curMonthStr = `${curYear}-${curMonth}`;
+
+        // Find current month salary record
+        const curSal = salaries.find(s => s.month === curMonthStr);
+
+        document.getElementById('salaryCurrentMonthName').innerText = `شهر: ${curMonthStr}`;
+        if (curSal) {
+            document.getElementById('salaryBasicVal').innerText = `${curSal.basic_salary.toFixed(2)} دينار`;
+            document.getElementById('salaryOvertimeVal').innerText = `${curSal.overtime.toFixed(2)} دينار`;
+            document.getElementById('salarySocialSecurityVal').innerText = `${curSal.social_security_deduction.toFixed(2)} دينار`;
+            document.getElementById('salaryLoansVal').innerText = `${curSal.loans.toFixed(2)} دينار`;
+            document.getElementById('salaryOtherDeductionsVal').innerText = `${curSal.other_deductions.toFixed(2)} دينار`;
+            document.getElementById('salaryTotalVal').innerText = `${curSal.total.toFixed(2)} دينار`;
+        } else {
+            // No current month record, set default values based on basic salary (if any) or 0
+            const basic = user.salary ? parseFloat(user.salary.replace(/[^0-9.]/g, '')) || 0 : 0;
+            document.getElementById('salaryBasicVal').innerText = `${basic.toFixed(2)} دينار`;
+            document.getElementById('salaryOvertimeVal').innerText = `0.00 دينار`;
+            document.getElementById('salarySocialSecurityVal').innerText = `0.00 دينار`;
+            document.getElementById('salaryLoansVal').innerText = `0.00 دينار`;
+            document.getElementById('salaryOtherDeductionsVal').innerText = `0.00 دينار`;
+            document.getElementById('salaryTotalVal').innerText = `${basic.toFixed(2)} دينار`;
+        }
+
+        // Render previous month salary records table
+        const tbody = document.getElementById('userSalariesTableBody');
+        tbody.innerHTML = '';
+
+        if (salaries.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-bold">لا يوجد سجل رواتب سابق بعد</td></tr>`;
+        } else {
+            salaries.forEach(sal => {
+                const totalDeductions = sal.social_security_deduction + sal.other_deductions + sal.loans;
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-slate-50 transition cursor-pointer';
+                row.onclick = () => showSalaryDetails(sal.month);
+                row.innerHTML = `
+                    <td class="p-4 font-semibold text-slate-800">${sal.month}</td>
+                    <td class="p-4 text-slate-650 text-slate-600">${sal.basic_salary.toFixed(2)} دينار</td>
+                    <td class="p-4 text-rose-650 text-rose-600">-${totalDeductions.toFixed(2)} دينار</td>
+                    <td class="p-4 text-emerald-650 text-emerald-600">+${sal.overtime.toFixed(2)} دينار</td>
+                    <td class="p-4 font-bold text-emerald-750 text-emerald-700">${sal.total.toFixed(2)} دينار</td>
+                    <td class="p-4 text-center">
+                        <button class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold transition text-[10px]">
+                            👁 عرض التفاصيل
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل الرواتب: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// --- SALARY DETAILS MODAL ---
+function showSalaryDetails(month) {
+    const sal = cachedUserSalariesList.find(s => s.month === month);
+    if (!sal) return;
+
+    document.getElementById('salaryDetailsMonthName').innerText = sal.month;
+    document.getElementById('detailSalaryBasic').innerText = `${sal.basic_salary.toFixed(2)} دينار`;
+    document.getElementById('detailSalaryOvertime').innerText = `+${sal.overtime.toFixed(2)} دينار`;
+    document.getElementById('detailSalarySocial').innerText = `-${sal.social_security_deduction.toFixed(2)} دينار`;
+    document.getElementById('detailSalaryLoans').innerText = `-${sal.loans.toFixed(2)} دينار`;
+    document.getElementById('detailSalaryOther').innerText = `-${sal.other_deductions.toFixed(2)} دينار`;
+    document.getElementById('detailSalaryTotal').innerText = `${sal.total.toFixed(2)} دينار`;
+
+    document.getElementById('hrSalaryDetailsModal').classList.remove('hidden');
+}
+
+function closeSalaryDetailsModal() {
+    document.getElementById('hrSalaryDetailsModal').classList.add('hidden');
+}
+
+// --- LOAN REQUESTS (FRONTEND) ---
+function openLoanRequestModal() {
+    document.getElementById('loanAmountInput').value = '';
+    document.getElementById('loanNotesInput').value = '';
+    document.getElementById('hrLoanRequestModal').classList.remove('hidden');
+}
+
+function closeLoanRequestModal() {
+    document.getElementById('hrLoanRequestModal').classList.add('hidden');
+}
+
+async function submitLoanRequest(event) {
+    event.preventDefault();
+    const amountVal = document.getElementById('loanAmountInput').value;
+    const notesVal = document.getElementById('loanNotesInput').value;
+
+    const amount = parseFloat(amountVal);
+    if (isNaN(amount) || amount <= 0) {
+        showToast('يرجى إدخال مبلغ صحيح', 'bg-rose-500', '✗');
+        return;
+    }
+
+    if (amount > 100) {
+        showToast('الحد الأقصى للسلفة هو 100 دينار فقط', 'bg-rose-500', '✗');
+        return;
+    }
+
+    try {
+        const res = await authFetch('/api/hr/requests/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                request_type: 'سلفة',
+                reason: `طلب سلفة بقيمة ${amount} دينار - ملاحظات: ${notesVal}`
+            })
+        });
+
+        if (!res.ok) throw new Error('Failed to submit loan request');
+        showToast('تم تقديم طلب السلفة بنجاح وهو بانتظار موافقة شؤون الموظفين', 'bg-emerald-500', '✓');
+        closeLoanRequestModal();
+        
+        if (typeof loadHrRequests === 'function') {
+            loadHrRequests();
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تقديم طلب السلفة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+// --- ADMIN SALARY MANAGEMENT ---
+async function loadEmpSalariesForAdmin(userId) {
+    try {
+        const res = await authFetch(`/api/users/${userId}/salaries`);
+        if (!res.ok) throw new Error('Failed to load employee salaries list');
+        const salaries = await res.json();
+
+        const tbody = document.getElementById('editEmpSalariesTableBody');
+        tbody.innerHTML = '';
+
+        if (salaries.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">لا توجد سجلات رواتب مسجلة لهذا الموظف بعد</td></tr>`;
+            return;
+        }
+
+        salaries.forEach(sal => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition text-right';
+            row.innerHTML = `
+                <td class="p-2 font-semibold text-slate-800">${sal.month}</td>
+                <td class="p-2">${sal.basic_salary.toFixed(2)} دينار</td>
+                <td class="p-2 text-rose-600">-${sal.social_security_deduction.toFixed(2)}</td>
+                <td class="p-2 text-rose-600">-${sal.other_deductions.toFixed(2)}</td>
+                <td class="p-2 text-rose-600">-${sal.loans.toFixed(2)}</td>
+                <td class="p-2 text-emerald-600">+${sal.overtime.toFixed(2)}</td>
+                <td class="p-2 font-bold text-emerald-700">${sal.total.toFixed(2)}</td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="deleteEmployeeSalaryByAdmin(${sal.id}, ${userId})" class="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200 transition text-[9px] font-bold">
+                        حذف
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل رواتب الموظف: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function saveEmployeeSalaryByAdmin() {
+    const userId = document.getElementById('editEmpUserId').value;
+    const month = document.getElementById('addEmpSalaryMonth').value;
+    const basic = parseFloat(document.getElementById('addEmpSalaryBasic').value) || 0;
+    const social = parseFloat(document.getElementById('addEmpSalarySocial').value) || 0;
+    const other = parseFloat(document.getElementById('addEmpSalaryOther').value) || 0;
+    const loans = parseFloat(document.getElementById('addEmpSalaryLoans').value) || 0;
+    const overtime = parseFloat(document.getElementById('addEmpSalaryOvertime').value) || 0;
+
+    if (!month) {
+        showToast('يرجى تحديد الشهر أولاً', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    try {
+        const res = await authFetch(`/api/users/${userId}/salaries`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                month: month,
+                basic_salary: basic,
+                social_security_deduction: social,
+                other_deductions: other,
+                loans: loans,
+                overtime: overtime
+            })
+        });
+
+        if (!res.ok) throw new Error('Failed to save salary record');
+        showToast('تم حفظ سجل الراتب بنجاح', 'bg-emerald-500', '✓');
+        
+        document.getElementById('addEmpSalaryBasic').value = '';
+        document.getElementById('addEmpSalarySocial').value = '';
+        document.getElementById('addEmpSalaryOther').value = '';
+        document.getElementById('addEmpSalaryLoans').value = '';
+        document.getElementById('addEmpSalaryOvertime').value = '';
+
+        await loadEmpSalariesForAdmin(userId);
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء حفظ الراتب: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function deleteEmployeeSalaryByAdmin(salaryId, userId) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف سجل الراتب لهذا الشهر؟')) return;
+
+    try {
+        const res = await authFetch(`/api/users/salaries/${salaryId}`, {
+            method: 'DELETE'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete salary record');
+        showToast('تم حذف سجل الراتب بنجاح', 'bg-emerald-500', '✓');
+        await loadEmpSalariesForAdmin(userId);
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء حذف الراتب: ' + err.message, 'bg-rose-500', '✗');
     }
 }
 

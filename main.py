@@ -1943,8 +1943,40 @@ def delete_user_vacation(
     if not success:
         raise HTTPException(status_code=404, detail="يوم الإجازة غير موجود")
     return {"status": "success", "message": "تم حذف يوم الإجازة بنجاح"}
+@app.get("/api/users/{user_id}/salaries", response_model=List[schemas.EmployeeSalaryResponse])
+def get_user_salaries(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
+    if not is_hr and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="غير مصرح بعرض رواتب هذا الموظف")
+    return crud.get_employee_salaries(db, user_id=user_id)
 
+@app.post("/api/users/{user_id}/salaries", response_model=schemas.EmployeeSalaryResponse)
+def add_or_update_user_salary(
+    user_id: int,
+    salary: schemas.EmployeeSalaryCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="غير مصرح بتعديل رواتب الموظفين")
+    return crud.add_or_update_employee_salary(db, user_id=user_id, salary_data=salary)
 
+@app.delete("/api/users/salaries/{salary_id}")
+def delete_user_salary(
+    salary_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="غير مصرح بحذف رواتب الموظفين")
+    success = crud.delete_employee_salary(db, salary_id=salary_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="سجل الراتب غير موجود")
+    return {"status": "success", "message": "تم حذف سجل الراتب بنجاح"}
 
 @app.post("/api/hr/requests/", response_model=schemas.HRRequestResponse)
 def create_request(
@@ -2017,8 +2049,12 @@ def change_request_status(
     is_direct_manager = (requester_manager_id is not None) and (current_user.id == requester_manager_id)
     is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
     
-    if not is_direct_manager and not is_hr:
-        raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل حالة هذا الطلب")
+    if db_req.request_type == "سلفة":
+        if not is_hr:
+            raise HTTPException(status_code=403, detail="الموافقة على السلفة من صلاحيات مدير شؤون الموظفين فقط")
+    else:
+        if not is_direct_manager and not is_hr:
+            raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل حالة هذا الطلب")
         
     target_status = payload.status # 'موافق' or 'مرفوض'
     
