@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str] = None
     salary: Optional[str] = None
     manager_id: Optional[int] = None
+    allowed_holidays: Optional[int] = 21
     manager: Optional['UserResponse'] = None
 
     class Config:
@@ -37,6 +38,22 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
     salary: Optional[str] = None
     manager_id: Optional[int] = None
+    allowed_holidays: Optional[int] = 21
+
+class EmployeeVacationDayBase(BaseModel):
+    vacation_date: str
+    notes: Optional[str] = None
+
+class EmployeeVacationDayCreate(EmployeeVacationDayBase):
+    pass
+
+class EmployeeVacationDayResponse(EmployeeVacationDayBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
 
 class UserPermissionBase(BaseModel):
     department_name: str

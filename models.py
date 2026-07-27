@@ -19,6 +19,7 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     salary = Column(String, nullable=True)
     manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    allowed_holidays = Column(Integer, default=21, nullable=True)
 
     manager = relationship("User", remote_side=[id], backref="subordinates")
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
@@ -27,6 +28,7 @@ class User(Base):
     created_tasks = relationship("ProjectTask", foreign_keys="[ProjectTask.created_by]", back_populates="creator")
     hr_requests = relationship("HRRequest", back_populates="user", cascade="all, delete-orphan")
     attendance_records = relationship("AttendanceRecord", back_populates="user", cascade="all, delete-orphan")
+    vacation_days = relationship("EmployeeVacationDay", back_populates="user", cascade="all, delete-orphan")
 
 class Department(Base):
     __tablename__ = "departments"
@@ -279,4 +281,15 @@ class AttendanceRecord(Base):
     status = Column(String, default="حاضر", nullable=False) # "حاضر", "غائب", "إجازة", etc.
 
     user = relationship("User", back_populates="attendance_records")
+
+class EmployeeVacationDay(Base):
+    __tablename__ = "employee_vacation_days"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    vacation_date = Column(String, nullable=False) # "YYYY-MM-DD"
+    notes = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="vacation_days")
+
 

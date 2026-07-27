@@ -677,7 +677,7 @@ def update_user_profile(db: Session, user_id: int, full_name: str, job_title: st
         return db_user
     return None
 
-def update_user_profile_admin(db: Session, user_id: int, full_name: str, job_title: str, employment_id: str, department: str, salary: str = None, manager_id: int = None, avatar_url: str = None):
+def update_user_profile_admin(db: Session, user_id: int, full_name: str, job_title: str, employment_id: str, department: str, salary: str = None, manager_id: int = None, allowed_holidays: int = 21, avatar_url: str = None):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user:
         db_user.full_name = full_name
@@ -685,6 +685,7 @@ def update_user_profile_admin(db: Session, user_id: int, full_name: str, job_tit
         db_user.employment_id = employment_id
         db_user.department = department
         db_user.salary = salary
+        db_user.allowed_holidays = allowed_holidays
         
         # Handle zero or negative manager_id as None (no manager)
         if manager_id is not None and manager_id <= 0:
@@ -697,6 +698,29 @@ def update_user_profile_admin(db: Session, user_id: int, full_name: str, job_tit
         db.refresh(db_user)
         return db_user
     return None
+
+def add_employee_vacation_day(db: Session, user_id: int, vacation_date: str, notes: str = None):
+    db_vac = models.EmployeeVacationDay(
+        user_id=user_id,
+        vacation_date=vacation_date,
+        notes=notes
+    )
+    db.add(db_vac)
+    db.commit()
+    db.refresh(db_vac)
+    return db_vac
+
+def delete_employee_vacation_day(db: Session, vacation_day_id: int):
+    db_vac = db.query(models.EmployeeVacationDay).filter(models.EmployeeVacationDay.id == vacation_day_id).first()
+    if db_vac:
+        db.delete(db_vac)
+        db.commit()
+        return True
+    return False
+
+def get_employee_vacation_days(db: Session, user_id: int):
+    return db.query(models.EmployeeVacationDay).filter(models.EmployeeVacationDay.user_id == user_id).order_by(models.EmployeeVacationDay.vacation_date.desc()).all()
+
 
 
 def create_hr_request(db: Session, user_id: int, request_type: str, reason: str, start_date: str = None, end_date: str = None, start_time: str = None, end_time: str = None, attachment_url: str = None):

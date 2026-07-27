@@ -368,6 +368,7 @@ def list_users_basic(
             "avatar_url": u.avatar_url,
             "manager_id": u.manager_id,
             "manager": u.manager,
+            "allowed_holidays": u.allowed_holidays,
             "salary": u.salary if (is_hr or u.id == current_user.id) else None
         }
         result.append(u_dict)
@@ -1870,6 +1871,7 @@ def update_employee_profile_admin(
     department: str = Form(...),
     salary: Optional[str] = Form(None),
     manager_id: Optional[int] = Form(None),
+    allowed_holidays: Optional[int] = Form(21),
     avatar: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
@@ -1902,8 +1904,46 @@ def update_employee_profile_admin(
         department=department,
         salary=salary,
         manager_id=manager_id,
+        allowed_holidays=allowed_holidays,
         avatar_url=avatar_url
     )
+
+@app.get("/api/users/{user_id}/vacations", response_model=List[schemas.EmployeeVacationDayResponse])
+def get_user_vacations(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Allowed for the user themselves or HR/Admin
+    is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
+    if not is_hr and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="غير مصرح بعرض إجازات هذا الموظف")
+    return crud.get_employee_vacation_days(db, user_id=user_id)
+
+@app.post("/api/users/{user_id}/vacations", response_model=schemas.EmployeeVacationDayResponse)
+def add_user_vacation(
+    user_id: int,
+    vacation: schemas.EmployeeVacationDayCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="غير مصرح بإضافة إجازات للموظفين")
+    return crud.add_employee_vacation_day(db, user_id=user_id, vacation_date=vacation.vacation_date, notes=vacation.notes)
+
+@app.delete("/api/users/vacations/{vacation_day_id}")
+def delete_user_vacation(
+    vacation_day_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="غير مصرح بحذف إجازات الموظفين")
+    success = crud.delete_employee_vacation_day(db, vacation_day_id=vacation_day_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="يوم الإجازة غير موجود")
+    return {"status": "success", "message": "تم حذف يوم الإجازة بنجاح"}
+
 
 
 @app.post("/api/hr/requests/", response_model=schemas.HRRequestResponse)

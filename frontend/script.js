@@ -624,6 +624,7 @@ function handleDetailBackNavigation() {
 let globalDepartments = [];
 let globalItems = [];
 let userPermissionsList = [];
+let holidaysChartInstance = null;
 
 async function fetchDepartmentCounts() {
     try {
@@ -6294,6 +6295,17 @@ async function loadHrProfile() {
         avatarInput.disabled = true;
         if (avatarLabel) avatarLabel.classList.add('hidden');
         if (saveBtn) saveBtn.classList.add('hidden');
+
+        // Load vacations and draw chart
+        try {
+            const vacRes = await authFetch(`/api/users/${user.id}/vacations`);
+            if (vacRes.ok) {
+                const vacations = await vacRes.json();
+                renderUserHolidaysChart(user.allowed_holidays || 21, vacations);
+            }
+        } catch (e) {
+            console.error('[DEBUG] Failed to load vacations for chart', e);
+        }
     } catch (err) {
         console.error(err);
         showToast('خطأ أثناء تحميل الملف الشخصي: ' + err.message, 'bg-rose-500', '✗');
@@ -6874,6 +6886,11 @@ function showEmployeeEditForm(userId) {
     document.getElementById('editEmpEmploymentId').value = emp.employment_id || '';
     document.getElementById('editEmpDepartment').value = emp.department || '';
     document.getElementById('editEmpSalary').value = emp.salary || '';
+    document.getElementById('editEmpAllowedHolidays').value = emp.allowed_holidays !== undefined && emp.allowed_holidays !== null ? emp.allowed_holidays : 21;
+
+    // Reset vacation inputs
+    document.getElementById('addEmpVacationDate').value = '';
+    document.getElementById('addEmpVacationNotes').value = '';
 
     // Handle avatar preview
     const previewImg = document.getElementById('editEmpAvatarPreview');
@@ -6904,6 +6921,9 @@ function showEmployeeEditForm(userId) {
             select.appendChild(opt);
         }
     });
+
+    // Load vacation days list for admin view
+    loadEmpVacationsForAdmin(emp.id);
 }
 
 function previewEditEmpAvatar(input) {
@@ -6929,6 +6949,7 @@ async function saveHrEmployeeByAdmin(event) {
     formData.append('employment_id', document.getElementById('editEmpEmploymentId').value);
     formData.append('department', document.getElementById('editEmpDepartment').value);
     formData.append('salary', document.getElementById('editEmpSalary').value);
+    formData.append('allowed_holidays', document.getElementById('editEmpAllowedHolidays').value);
     
     const mgrVal = document.getElementById('editEmpManagerSelect').value;
     formData.append('manager_id', mgrVal);
@@ -6952,5 +6973,171 @@ async function saveHrEmployeeByAdmin(event) {
         showToast('خطأ في حفظ التغييرات: ' + err.message, 'bg-rose-500', '✗');
     }
 }
+
+// --- USER HOLIDAYS CHART & DETAILS ---
+function renderUserHolidaysChart(allowedHolidays, takenVacations) {
+    const total = parseInt(allowedHolidays) || 21;
+    const taken = takenVacations.length;
+    let remaining = total - taken;
+    if (remaining < 0) remaining = 0;
+
+    // Update Text Stats
+    document.getElementById('userHolidaysTotal').innerText = total;
+    document.getElementById('userHolidaysRemaining').innerText = remaining;
+    document.getElementById('userHolidaysTaken').innerText = taken;
+
+    // Update Detailed list (hidden by default)
+    document.getElementById('userVacationsListSection').classList.add('hidden');
+    const tbody = document.getElementById('userVacationsTableBody');
+    tbody.innerHTML = '';
+    
+    if (takenVacations.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400 font-bold">لا يوجد أيام عطل مسجلة بعد</td></tr>`;
+    } else {
+        takenVacations.forEach(vac => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition';
+            row.innerHTML = `
+                <td class="p-3 font-semibold text-slate-800">${vac.vacation_date}</td>
+                <td class="p-3 text-slate-600">${vac.notes || '-'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // Render Pie Chart
+    const ctx = document.getElementById('userHolidaysChart').getContext('2d');
+    
+    if (holidaysChartInstance) {
+        holidaysChartInstance.destroy();
+    }
+
+    holidaysChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['عطل متبقية', 'عطل تم أخذها'],
+            datasets: [{
+                data: [remaining, taken],
+                backgroundColor: ['#10b981', '#f43f5e'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false // We use our custom legend in HTML
+                },
+                tooltip: {
+                    rtl: true,
+                    titleFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
+                    bodyFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            return `${label}: ${value} يوم`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function toggleVacationDetailsTable() {
+    const el = document.getElementById('userVacationsListSection');
+    if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+// --- ADMIN VACATIONS MANAGEMENT LIST ---
+async function loadEmpVacationsForAdmin(userId) {
+    try {
+        const res = await authFetch(`/api/users/${userId}/vacations`);
+        if (!res.ok) throw new Error('Failed to load vacations list');
+        const vacations = await res.ok ? await res.json() : [];
+
+        const tbody = document.getElementById('editEmpVacationsTableBody');
+        tbody.innerHTML = '';
+
+        if (vacations.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">لا توجد عطل مسجلة للموظف بعد</td></tr>`;
+            return;
+        }
+
+        vacations.forEach(vac => {
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition';
+            row.innerHTML = `
+                <td class="p-2 font-semibold text-slate-800">${vac.vacation_date}</td>
+                <td class="p-2 text-slate-600">${vac.notes || '-'}</td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="deleteVacationDayByAdmin(${vac.id}, ${userId})" class="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200 transition text-[9px] font-bold">
+                        حذف
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل عطل الموظف: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function addVacationDayByAdmin() {
+    const userId = document.getElementById('editEmpUserId').value;
+    const dateInput = document.getElementById('addEmpVacationDate');
+    const notesInput = document.getElementById('addEmpVacationNotes');
+
+    const vacationDate = dateInput.value;
+    const notes = notesInput.value;
+
+    if (!vacationDate) {
+        showToast('يرجى تحديد تاريخ يوم العطلة أولاً', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    try {
+        const res = await authFetch(`/api/users/${userId}/vacations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vacation_date: vacationDate, notes: notes })
+        });
+        if (!res.ok) throw new Error('Failed to add vacation day');
+        
+        showToast('تمت إضافة يوم العطلة بنجاح', 'bg-emerald-500', '✓');
+        dateInput.value = '';
+        notesInput.value = '';
+        await loadEmpVacationsForAdmin(userId);
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في إضافة يوم العطلة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function deleteVacationDayByAdmin(vacationId, userId) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف يوم العطلة هذا للموظف؟')) return;
+
+    try {
+        const res = await authFetch(`/api/users/vacations/${vacationId}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Failed to delete vacation day');
+
+        showToast('تم حذف يوم العطلة بنجاح', 'bg-emerald-500', '✓');
+        await loadEmpVacationsForAdmin(userId);
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في حذف يوم العطلة: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
 
 
