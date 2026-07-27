@@ -7005,46 +7005,57 @@ function renderUserHolidaysChart(allowedHolidays, takenVacations) {
         });
     }
 
-    // Render Pie Chart
-    const ctx = document.getElementById('userHolidaysChart').getContext('2d');
-    
-    if (holidaysChartInstance) {
-        holidaysChartInstance.destroy();
+    // Skip drawing the chart if the section is hidden (Chart.js cannot size properly)
+    const profileSection = document.getElementById('hrProfileSection');
+    if (profileSection && profileSection.classList.contains('hidden')) {
+        console.log('[DEBUG] Skipping Chart.js render because hrProfileSection is hidden');
+        return;
     }
 
-    holidaysChartInstance = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: ['عطل متبقية', 'عطل تم أخذها'],
-            datasets: [{
-                data: [remaining, taken],
-                backgroundColor: ['#10b981', '#f43f5e'],
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false // We use our custom legend in HTML
-                },
-                tooltip: {
-                    rtl: true,
-                    titleFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
-                    bodyFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            return `${label}: ${value} يوم`;
+    // Render Pie Chart with a slight delay to allow layout to calculate dimensions
+    setTimeout(() => {
+        const canvas = document.getElementById('userHolidaysChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        if (holidaysChartInstance) {
+            holidaysChartInstance.destroy();
+        }
+
+        holidaysChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['عطل متبقية', 'عطل تم أخذها'],
+                datasets: [{
+                    data: [remaining, taken],
+                    backgroundColor: ['#10b981', '#f43f5e'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false // We use our custom legend in HTML
+                    },
+                    tooltip: {
+                        rtl: true,
+                        titleFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
+                        bodyFont: { family: 'Outfit, Cairo, sans-serif', size: 12 },
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                return `${label}: ${value} يوم`;
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+    }, 50);
 }
 
 function toggleVacationDetailsTable() {
