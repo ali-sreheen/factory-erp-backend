@@ -183,6 +183,9 @@
                         <button id="hrAdminRequestsBtn" onclick="openHrAdminRequestsModal()" class="hidden bg-indigo-650 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md flex items-center gap-2">
                             🛡️ طلبات الموظفين
                         </button>
+                        <button id="hrAdminEmployeesBtn" onclick="openHrAdminEmployeesModal()" class="hidden bg-slate-650 bg-slate-600 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md flex items-center gap-2">
+                            📁 ملفات الموظفين
+                        </button>
                     </div>
                 </div>
 
@@ -1982,6 +1985,95 @@
             </div>
         </div>
     </div>
+
+    <!-- Admin Manage Employees Modal (ملفات الموظفين) -->
+    <div id="hrAdminEmployeesModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl transform transition-all overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="bg-slate-900 text-white p-5 flex justify-between items-center shrink-0">
+                <h3 id="hrAdminEmployeesTitle" class="text-xl font-bold">ملفات الموظفين</h3>
+                <button type="button" onclick="closeHrAdminEmployeesModal()" class="text-white hover:text-slate-200 transition">✕</button>
+            </div>
+            
+            <!-- Employee List View -->
+            <div id="hrEmployeesListView" class="p-6 overflow-y-auto flex-1">
+                <table class="w-full text-right border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 border-b">
+                            <th class="p-3 font-bold">الصورة</th>
+                            <th class="p-3 font-bold">الاسم</th>
+                            <th class="p-3 font-bold">اسم المستخدم</th>
+                            <th class="p-3 font-bold">المسمى الوظيفي</th>
+                            <th class="p-3 font-bold">القسم</th>
+                            <th class="p-3 font-bold text-center">الراتب</th>
+                            <th class="p-3 font-bold text-center">المسؤول المباشر</th>
+                            <th class="p-3 font-bold text-center">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hrAdminEmployeesTableBody">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Employee Edit Form View -->
+            <div id="hrEmployeeEditView" class="hidden p-6 overflow-y-auto flex-1 bg-slate-50">
+                <form id="hrAdminEmployeeEditForm" onsubmit="saveHrEmployeeByAdmin(event)">
+                    <input type="hidden" id="editEmpUserId" />
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            <div class="md:col-span-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-l border-slate-100 pb-6 md:pb-0 md:pl-6">
+                                <div class="relative w-32 h-32 rounded-full overflow-hidden bg-slate-100 border-4 border-slate-200 flex items-center justify-center mb-4 group">
+                                    <img id="editEmpAvatarPreview" src="" alt="avatar" class="w-full h-full object-cover hidden" />
+                                    <div id="editEmpAvatarPlaceholder" class="text-4xl text-slate-400">👤</div>
+                                </div>
+                                <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 transition">
+                                    تغيير الصورة
+                                    <input type="file" id="editEmpAvatarInput" accept="image/*" class="hidden" onchange="previewEditEmpAvatar(this)" />
+                                </label>
+                            </div>
+                            <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-5 text-right">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">الاسم بالكامل</label>
+                                    <input type="text" id="editEmpFullName" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="أدخل اسم الموظف">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">المسمى الوظيفي</label>
+                                    <input type="text" id="editEmpJobTitle" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: مهندس إنتاج">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">رقم التعيين</label>
+                                    <input type="text" id="editEmpEmploymentId" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: EMP-104">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">القسم</label>
+                                    <input type="text" id="editEmpDepartment" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: قسم التصنيع">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">الراتب</label>
+                                    <input type="text" id="editEmpSalary" required class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="مثال: 800 دينار">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-2">المسؤول المباشر</label>
+                                    <select id="editEmpManagerSelect" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-right">
+                                        <!-- Will be filled dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button type="button" onclick="showEmployeesList()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl transition">إلغاء ورجوع</button>
+                        <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition shadow-md">حفظ التغييرات</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-150 shrink-0">
+                <button onclick="closeHrAdminEmployeesModal()" class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl transition">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Create Purchase Request Modal -->
     <div id="purchaseRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">

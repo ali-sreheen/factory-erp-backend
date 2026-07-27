@@ -677,6 +677,28 @@ def update_user_profile(db: Session, user_id: int, full_name: str, job_title: st
         return db_user
     return None
 
+def update_user_profile_admin(db: Session, user_id: int, full_name: str, job_title: str, employment_id: str, department: str, salary: str = None, manager_id: int = None, avatar_url: str = None):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        db_user.full_name = full_name
+        db_user.job_title = job_title
+        db_user.employment_id = employment_id
+        db_user.department = department
+        db_user.salary = salary
+        
+        # Handle zero or negative manager_id as None (no manager)
+        if manager_id is not None and manager_id <= 0:
+            manager_id = None
+        db_user.manager_id = manager_id
+        
+        if avatar_url:
+            db_user.avatar_url = avatar_url
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    return None
+
+
 def create_hr_request(db: Session, user_id: int, request_type: str, reason: str, start_date: str = None, end_date: str = None, start_time: str = None, end_time: str = None, attachment_url: str = None):
     db_req = models.HRRequest(
         user_id=user_id,

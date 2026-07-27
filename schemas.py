@@ -19,6 +19,9 @@ class UserResponse(BaseModel):
     employment_id: Optional[str] = None
     department: Optional[str] = None
     avatar_url: Optional[str] = None
+    salary: Optional[str] = None
+    manager_id: Optional[int] = None
+    manager: Optional['UserResponse'] = None
 
     class Config:
         from_attributes = True
@@ -32,6 +35,8 @@ class UserUpdate(BaseModel):
     employment_id: Optional[str] = None
     department: Optional[str] = None
     avatar_url: Optional[str] = None
+    salary: Optional[str] = None
+    manager_id: Optional[int] = None
 
 class UserPermissionBase(BaseModel):
     department_name: str
@@ -462,3 +467,5 @@ class AttendanceRecordResponse(AttendanceRecordBase):
     class Config:
         from_attributes = True
 
+
+UserResponse.update_forward_refs()

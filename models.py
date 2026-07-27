@@ -17,7 +17,10 @@ class User(Base):
     employment_id = Column(String, nullable=True)
     department = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    salary = Column(String, nullable=True)
+    manager_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    manager = relationship("User", remote_side=[id], backref="subordinates")
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")
     managed_projects = relationship("Project", foreign_keys="[Project.executive_manager_id]", back_populates="executive_manager")
     assigned_tasks = relationship("ProjectTask", foreign_keys="[ProjectTask.assigned_to]", back_populates="assignee")

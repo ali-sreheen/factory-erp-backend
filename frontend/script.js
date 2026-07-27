@@ -6143,12 +6143,39 @@ async function showHRView() {
     // Check permissions
     const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
     
+    // Load users to check if manager
+    let isManager = false;
+    try {
+        const usersRes = await authFetch('/api/users/basic');
+        if (usersRes.ok) {
+            const allUsers = await usersRes.json();
+            const me = allUsers.find(u => u.username === currentUsername);
+            const myId = me ? me.id : null;
+            if (myId) {
+                isManager = allUsers.some(u => u.manager_id === myId);
+                // Cache user object globally
+                window.currentUserObject = me;
+            }
+        }
+    } catch(e) {
+        console.error('[DEBUG] Failed checking manager status', e);
+    }
+    
     const adminBtn = document.getElementById('hrAdminRequestsBtn');
     if (adminBtn) {
-        if (hasHrMgmt) {
+        if (hasHrMgmt || isManager) {
             adminBtn.classList.remove('hidden');
         } else {
             adminBtn.classList.add('hidden');
+        }
+    }
+
+    const adminEmpBtn = document.getElementById('hrAdminEmployeesBtn');
+    if (adminEmpBtn) {
+        if (hasHrMgmt) {
+            adminEmpBtn.classList.remove('hidden');
+        } else {
+            adminEmpBtn.classList.add('hidden');
         }
     }
 
@@ -6251,9 +6278,7 @@ async function loadHrProfile() {
             placeholder.classList.remove('hidden');
         }
 
-        // Apply read-only restriction based on permission
-        const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
-
+        // Personal profile is always read-only. Editing is done via Employee Files.
         const nameInput = document.getElementById('hrProfileName');
         const jobTitleInput = document.getElementById('hrProfileJobTitle');
         const empIdInput = document.getElementById('hrProfileEmpId');
@@ -6262,23 +6287,13 @@ async function loadHrProfile() {
         const avatarLabel = document.getElementById('hrProfileAvatarLabel');
         const saveBtn = document.getElementById('hrProfileSaveBtn');
 
-        if (hasHrMgmt) {
-            nameInput.disabled = false;
-            jobTitleInput.disabled = false;
-            empIdInput.disabled = false;
-            deptInput.disabled = false;
-            avatarInput.disabled = false;
-            if (avatarLabel) avatarLabel.classList.remove('hidden');
-            if (saveBtn) saveBtn.classList.remove('hidden');
-        } else {
-            nameInput.disabled = true;
-            jobTitleInput.disabled = true;
-            empIdInput.disabled = true;
-            deptInput.disabled = true;
-            avatarInput.disabled = true;
-            if (avatarLabel) avatarLabel.classList.add('hidden');
-            if (saveBtn) saveBtn.classList.add('hidden');
-        }
+        nameInput.disabled = true;
+        jobTitleInput.disabled = true;
+        empIdInput.disabled = true;
+        deptInput.disabled = true;
+        avatarInput.disabled = true;
+        if (avatarLabel) avatarLabel.classList.add('hidden');
+        if (saveBtn) saveBtn.classList.add('hidden');
     } catch (err) {
         console.error(err);
         showToast('خطأ أثناء تحميل الملف الشخصي: ' + err.message, 'bg-rose-500', '✗');
@@ -6626,6 +6641,9 @@ async function loadHrAdminRequests() {
             return;
         }
 
+        const currentUsername = localStorage.getItem('username');
+        const hasHrMgmt = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'hr_management' && (p.can_edit == 1 || p.can_edit === true));
+
         list.forEach(req => {
             const employeeName = req.user ? (req.user.full_name || req.user.username) : 'غير معروف';
             
@@ -6642,21 +6660,88 @@ async function loadHrAdminRequests() {
             }
 
             let statusClass = 'bg-slate-50 text-slate-700 border-slate-200';
-            if (req.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            if (req.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+            if (req.status === 'موافق') {
+                statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            } else if (req.status === 'مرفوض') {
+                statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+            } else if (req.status.includes('تمت الموافقة من قبل المدير المباشر')) {
+                statusClass = 'bg-amber-50 text-amber-700 border-amber-200';
+            } else if (req.status.includes('بانتظار موافقة المدير المباشر') || req.status === 'قيد الانتظار') {
+                statusClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            }
+
+            // Determine if viewer is direct manager
+            const requester = req.user;
+            const requesterManagerId = requester ? requester.manager_id : null;
+            const isDirectManager = requesterManagerId && window.currentUserObject && (window.currentUserObject.id === requesterManagerId);
 
             let actionsHtml = '-';
-            if (req.status === 'قيد الانتظار') {
-                actionsHtml = `
-                    <div class="flex justify-center gap-1.5">
-                        <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
-                            ✓ موافقة
-                        </button>
-                        <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
-                            ✗ رفض
-                        </button>
-                    </div>
-                `;
+            
+            const isHierarchical = req.request_type === 'مغادرة' || req.request_type === 'اجازة';
+
+            if (req.status === 'قيد الانتظار' || req.status.includes('بانتظار موافقة')) {
+                if (isHierarchical && requesterManagerId) {
+                    if (isDirectManager) {
+                        actionsHtml = `
+                            <div class="flex justify-center gap-1.5">
+                                <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
+                                    ✓ موافقة المدير
+                                </button>
+                                <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
+                                    ✗ رفض
+                                </button>
+                            </div>
+                        `;
+                    } else if (hasHrMgmt) {
+                        actionsHtml = `
+                            <div class="flex justify-center gap-1.5 flex-col items-center">
+                                <span class="text-slate-400 text-[10px] font-bold mb-1">بانتظار المدير المباشر</span>
+                                <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition w-full">
+                                    ✗ رفض مبكر
+                                </button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // No manager, or not hierarchical request
+                    if (hasHrMgmt) {
+                        actionsHtml = `
+                            <div class="flex justify-center gap-1.5">
+                                <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
+                                    ✓ موافقة شؤون الموظفين
+                                </button>
+                                <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
+                                    ✗ رفض
+                                </button>
+                            </div>
+                        `;
+                    } else if (isDirectManager) {
+                        // Let manager approve/forward if they want, or show simple actions
+                        actionsHtml = `
+                            <div class="flex justify-center gap-1.5">
+                                <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
+                                    ✓ موافقة المدير
+                                </button>
+                                <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
+                                    ✗ رفض
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } else if (req.status === 'تمت الموافقة من قبل المدير المباشر وبانتظار الموافقة من شؤون الموظفين') {
+                if (hasHrMgmt) {
+                    actionsHtml = `
+                        <div class="flex justify-center gap-1.5">
+                            <button onclick="changeRequestStatus(${req.id}, 'موافق')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[10px] font-bold border border-emerald-200 transition">
+                                ✓ موافقة نهائية
+                            </button>
+                            <button onclick="changeRequestStatus(${req.id}, 'مرفوض')" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition">
+                                ✗ رفض
+                            </button>
+                        </div>
+                    `;
+                }
             }
 
             const row = document.createElement('tr');
@@ -6688,7 +6773,10 @@ async function changeRequestStatus(reqId, status) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: status })
         });
-        if (!res.ok) throw new Error('Failed to update request status');
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to update request status');
+        }
         showToast('تم تحديث حالة الطلب بنجاح', 'bg-emerald-500', '✓');
         await loadHrAdminRequests();
         await loadHrRequests();
@@ -6697,4 +6785,172 @@ async function changeRequestStatus(reqId, status) {
         showToast('خطأ في تحديث حالة الطلب: ' + err.message, 'bg-rose-500', '✗');
     }
 }
+
+// --- EMPLOYEE FILES MANAGEMENT DIALOG ---
+let cachedEmployeesList = [];
+
+async function openHrAdminEmployeesModal() {
+    document.getElementById('hrAdminEmployeesModal').classList.remove('hidden');
+    showEmployeesList();
+    await loadHrAdminEmployees();
+}
+
+function closeHrAdminEmployeesModal() {
+    document.getElementById('hrAdminEmployeesModal').classList.add('hidden');
+}
+
+function showEmployeesList() {
+    document.getElementById('hrEmployeesListView').classList.remove('hidden');
+    document.getElementById('hrEmployeeEditView').classList.add('hidden');
+    document.getElementById('hrAdminEmployeesTitle').innerText = 'ملفات الموظفين';
+}
+
+async function loadHrAdminEmployees() {
+    try {
+        const res = await authFetch('/api/users/basic');
+        if (!res.ok) throw new Error('Failed to load employees list');
+        cachedEmployeesList = await res.json();
+
+        const tbody = document.getElementById('hrAdminEmployeesTableBody');
+        tbody.innerHTML = '';
+
+        if (cachedEmployeesList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">لا يوجد موظفون بعد</td></tr>`;
+            return;
+        }
+
+        cachedEmployeesList.forEach(emp => {
+            let avatarCell = `<div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</div>`;
+            if (emp.avatar_url) {
+                avatarCell = `<img src="${emp.avatar_url}" class="w-8 h-8 rounded-full object-cover" />`;
+            }
+
+            // Find manager name
+            let managerName = 'بدون';
+            if (emp.manager_id) {
+                const mgr = cachedEmployeesList.find(u => u.id === emp.manager_id);
+                if (mgr) {
+                    managerName = mgr.full_name || mgr.username;
+                }
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'border-b hover:bg-slate-50 transition text-right';
+            row.innerHTML = `
+                <td class="p-3">${avatarCell}</td>
+                <td class="p-3 font-bold text-slate-800">${emp.full_name || '-'}</td>
+                <td class="p-3 text-slate-500 font-semibold">${emp.username}</td>
+                <td class="p-3 text-slate-700">${emp.job_title || '-'}</td>
+                <td class="p-3 text-slate-700">${emp.department || '-'}</td>
+                <td class="p-3 text-center text-emerald-700 font-bold">${emp.salary || '-'}</td>
+                <td class="p-3 text-center font-semibold text-indigo-600">${managerName}</td>
+                <td class="p-3 text-center">
+                    <button onclick="showEmployeeEditForm(${emp.id})" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-bold border border-indigo-200 transition text-[10px]">
+                        ⚙ تعديل الملف
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء تحميل ملفات الموظفين: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+function showEmployeeEditForm(userId) {
+    const emp = cachedEmployeesList.find(u => u.id === userId);
+    if (!emp) return;
+
+    document.getElementById('hrEmployeesListView').classList.add('hidden');
+    document.getElementById('hrEmployeeEditView').classList.remove('hidden');
+    document.getElementById('hrAdminEmployeesTitle').innerText = `تعديل ملف الموظف: ${emp.full_name || emp.username}`;
+
+    // Populate Fields
+    document.getElementById('editEmpUserId').value = emp.id;
+    document.getElementById('editEmpFullName').value = emp.full_name || '';
+    document.getElementById('editEmpJobTitle').value = emp.job_title || '';
+    document.getElementById('editEmpEmploymentId').value = emp.employment_id || '';
+    document.getElementById('editEmpDepartment').value = emp.department || '';
+    document.getElementById('editEmpSalary').value = emp.salary || '';
+
+    // Handle avatar preview
+    const previewImg = document.getElementById('editEmpAvatarPreview');
+    const placeholder = document.getElementById('editEmpAvatarPlaceholder');
+    if (emp.avatar_url) {
+        previewImg.src = emp.avatar_url;
+        previewImg.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    } else {
+        previewImg.src = '';
+        previewImg.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+    }
+
+    // Populate direct manager dropdown
+    const select = document.getElementById('editEmpManagerSelect');
+    select.innerHTML = '<option value="0">بدون</option>';
+
+    cachedEmployeesList.forEach(u => {
+        // Exclude the user being edited from the manager selection list
+        if (u.id !== userId) {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.innerText = u.full_name ? `${u.full_name} (${u.username})` : u.username;
+            if (u.id === emp.manager_id) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        }
+    });
+}
+
+function previewEditEmpAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewImg = document.getElementById('editEmpAvatarPreview');
+            const placeholder = document.getElementById('editEmpAvatarPlaceholder');
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function saveHrEmployeeByAdmin(event) {
+    event.preventDefault();
+    const userId = document.getElementById('editEmpUserId').value;
+    const formData = new FormData();
+    formData.append('full_name', document.getElementById('editEmpFullName').value);
+    formData.append('job_title', document.getElementById('editEmpJobTitle').value);
+    formData.append('employment_id', document.getElementById('editEmpEmploymentId').value);
+    formData.append('department', document.getElementById('editEmpDepartment').value);
+    formData.append('salary', document.getElementById('editEmpSalary').value);
+    
+    const mgrVal = document.getElementById('editEmpManagerSelect').value;
+    formData.append('manager_id', mgrVal);
+
+    const avatarInput = document.getElementById('editEmpAvatarInput');
+    if (avatarInput.files && avatarInput.files[0]) {
+        formData.append('avatar', avatarInput.files[0]);
+    }
+
+    try {
+        const res = await authFetch(`/api/users/${userId}/profile-admin`, {
+            method: 'PUT',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to save employee profile changes');
+        showToast('تم حفظ تعديلات الموظف بنجاح', 'bg-emerald-500', '✓');
+        showEmployeesList();
+        await loadHrAdminEmployees();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ في حفظ التغييرات: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
 

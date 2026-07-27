@@ -348,7 +348,30 @@ def list_users_basic(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     users = crud.get_all_users(db)
-    return users
+    is_hr = current_user.username == "admin" or user_has_hr_management(current_user, db)
+    
+    # We return copies or modify in-place (since SQLAlchemy objects, we can detach or modify carefully, or construct response model manually).
+    # Since SQLAlchemy models are returned, modifying u.salary on a transient/copy basis is fine, but to avoid committing None back to DB,
+    # let's map them or set transient values. Pydantic will serialize whatever is in u.salary. Let's just create a list of dicts/schemas or
+    # set attributes without committing.
+    result = []
+    for u in users:
+        # Create a dictionary from the model or construct UserResponse
+        u_dict = {
+            "id": u.id,
+            "username": u.username,
+            "is_approved": u.is_approved,
+            "full_name": u.full_name,
+            "job_title": u.job_title,
+            "employment_id": u.employment_id,
+            "department": u.department,
+            "avatar_url": u.avatar_url,
+            "manager_id": u.manager_id,
+            "manager": u.manager,
+            "salary": u.salary if (is_hr or u.id == current_user.id) else None
+        }
+        result.append(u_dict)
+    return result
 
 @app.put("/api/users/{user_id}", response_model=schemas.UserResponse)
 def update_user_credentials(
@@ -1812,6 +1835,9 @@ def update_my_profile(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="لا يمكن للموظفين تعديل ملفهم الشخصي مباشرة. يرجى التواصل مع إدارة شؤون الموظفين.")
+        
     avatar_url = None
     if avatar and avatar.filename:
         ext = os.path.splitext(avatar.filename)[1]
@@ -1834,6 +1860,51 @@ def update_my_profile(
         department=department,
         avatar_url=avatar_url
     )
+
+@app.put("/api/users/{user_id}/profile-admin", response_model=schemas.UserResponse)
+def update_employee_profile_admin(
+    user_id: int,
+    full_name: str = Form(...),
+    job_title: str = Form(...),
+    employment_id: str = Form(...),
+    department: str = Form(...),
+    salary: Optional[str] = Form(None),
+    manager_id: Optional[int] = Form(None),
+    avatar: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if not (current_user.username == 'admin' or user_has_hr_management(current_user, db)):
+        raise HTTPException(status_code=403, detail="غير مصرح بتعديل ملفات الموظفين")
+        
+    avatar_url = None
+    if avatar and avatar.filename:
+        ext = os.path.splitext(avatar.filename)[1]
+        fname = f"avatar_{uuid.uuid4()}{ext}"
+        fpath = os.path.join(UPLOAD_DIR, fname)
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(avatar.file, buffer)
+        avatar_url = f"/uploads/{fname}"
+    
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+        
+    if not avatar_url:
+        avatar_url = db_user.avatar_url
+        
+    return crud.update_user_profile_admin(
+        db=db,
+        user_id=user_id,
+        full_name=full_name,
+        job_title=job_title,
+        employment_id=employment_id,
+        department=department,
+        salary=salary,
+        manager_id=manager_id,
+        avatar_url=avatar_url
+    )
+
 
 @app.post("/api/hr/requests/", response_model=schemas.HRRequestResponse)
 def create_request(
@@ -1873,9 +1944,21 @@ def get_my_requests(db: Session = Depends(get_db), current_user: models.User = D
 
 @app.get("/api/hr/requests/all", response_model=List[schemas.HRRequestResponse])
 def get_all_requests(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    if not user_has_hr_management(current_user, db):
-        raise HTTPException(status_code=403, detail="Not authorized to manage employee requests")
-    return crud.get_all_hr_requests(db)
+    is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
+    
+    # Check if they are a manager to anyone
+    subordinates_count = db.query(models.User).filter(models.User.manager_id == current_user.id).count()
+    is_manager = subordinates_count > 0
+    
+    if not is_hr and not is_manager:
+        raise HTTPException(status_code=403, detail="غير مصرح لك بإدارة طلبات الموظفين")
+        
+    all_reqs = crud.get_all_hr_requests(db)
+    if is_hr:
+        return all_reqs
+    else:
+        # Only return requests of subordinates
+        return [r for r in all_reqs if r.user and r.user.manager_id == current_user.id]
 
 @app.put("/api/hr/requests/{request_id}/status", response_model=schemas.HRRequestResponse)
 def change_request_status(
@@ -1884,12 +1967,56 @@ def change_request_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if not user_has_hr_management(current_user, db):
-        raise HTTPException(status_code=403, detail="Not authorized to manage employee requests")
-    updated = crud.update_hr_request_status(db, request_id, payload.status)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Request not found")
-    return updated
+    db_req = db.query(models.HRRequest).filter(models.HRRequest.id == request_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="الطلب غير موجود")
+        
+    requester = db_req.user
+    requester_manager_id = requester.manager_id if requester else None
+    
+    is_direct_manager = (requester_manager_id is not None) and (current_user.id == requester_manager_id)
+    is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
+    
+    if not is_direct_manager and not is_hr:
+        raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل حالة هذا الطلب")
+        
+    target_status = payload.status # 'موافق' or 'مرفوض'
+    
+    # Only "مغادرة" (departure) or "اجازة" (leave/vacation) require hierarchical approval.
+    # Other request types can be approved directly by HR.
+    is_hierarchical = db_req.request_type in ["مغادرة", "اجازة"]
+    
+    if target_status == 'مرفوض':
+        # Any party can reject, which puts the status to 'مرفوض'
+        db_req.status = 'مرفوض'
+    elif target_status == 'موافق':
+        if is_hierarchical and requester_manager_id is not None:
+            # Requesters with a direct manager must get direct manager's approval first
+            if is_direct_manager:
+                db_req.status = 'تمت الموافقة من قبل المدير المباشر وبانتظار الموافقة من شؤون الموظفين'
+            elif is_hr:
+                # HR can only approve if direct manager has already approved
+                if db_req.status == 'تمت الموافقة من قبل المدير المباشر وبانتظار الموافقة من شؤون الموظفين':
+                    db_req.status = 'موافق'
+                else:
+                    raise HTTPException(status_code=400, detail="يجب الحصول على موافقة المدير المباشر أولاً")
+        else:
+            # Requesters with no manager, or non-hierarchical requests: HR can approve directly
+            if is_hr:
+                db_req.status = 'موافق'
+            else:
+                # If a direct manager approved a non-hierarchical or no-manager request, just set it to approved by manager
+                if is_direct_manager:
+                    db_req.status = 'تمت الموافقة من قبل المدير المباشر وبانتظار الموافقة من شؤون الموظفين'
+                else:
+                    raise HTTPException(status_code=400, detail="لا توجد صلاحية للموافقة")
+    else:
+        db_req.status = target_status
+        
+    db.commit()
+    db.refresh(db_req)
+    return db_req
+
 
 @app.post("/api/hr/attendance/log", response_model=schemas.AttendanceRecordResponse)
 def log_my_attendance(
