@@ -2089,6 +2089,45 @@ def change_request_status(
     else:
         db_req.status = target_status
         
+    if db_req.status == 'موافق' and db_req.request_type == 'سلفة':
+        now_str = datetime.now().strftime("%Y-%m")
+        loan_amount = 0.0
+        match = re.search(r"(\d+(?:\.\d+)?)", db_req.reason or "")
+        if match:
+            loan_amount = float(match.group(1))
+
+        emp_sal = db.query(models.EmployeeSalary).filter(
+            models.EmployeeSalary.user_id == db_req.user_id,
+            models.EmployeeSalary.month == now_str
+        ).first()
+
+        basic_val = 0.0
+        if requester and requester.salary:
+            try:
+                basic_val = float(re.sub(r"[^\d.]", "", requester.salary))
+            except Exception:
+                basic_val = 0.0
+
+        social_sec = round(basic_val * 0.075, 2)
+
+        if emp_sal:
+            emp_sal.loans = (emp_sal.loans or 0.0) + loan_amount
+            emp_sal.social_security_deduction = emp_sal.social_security_deduction or social_sec
+            emp_sal.total = (emp_sal.basic_salary or basic_val) + (emp_sal.overtime or 0.0) - (emp_sal.social_security_deduction or social_sec) - emp_sal.loans - (emp_sal.other_deductions or 0.0)
+        else:
+            tot = basic_val + 0.0 - social_sec - loan_amount - 0.0
+            new_sal = models.EmployeeSalary(
+                user_id=db_req.user_id,
+                month=now_str,
+                basic_salary=basic_val,
+                social_security_deduction=social_sec,
+                other_deductions=0.0,
+                loans=loan_amount,
+                overtime=0.0,
+                total=tot
+            )
+            db.add(new_sal)
+
     db.commit()
     db.refresh(db_req)
     return db_req

@@ -6471,12 +6471,15 @@ async function loadHrRequests() {
         const tbody = document.getElementById('hrMyRequestsTableBody');
         tbody.innerHTML = '';
         
-        if (list.length === 0) {
+        // Exclude loan requests ('سلفة') from Forms & Requests section
+        const formsList = list.filter(req => req.request_type !== 'سلفة');
+
+        if (formsList.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">لا يوجد طلبات سابقة بعد</td></tr>`;
             return;
         }
 
-        list.forEach(req => {
+        formsList.forEach(req => {
             let details = req.reason;
             if (req.request_type === 'مغادرة') {
                 details += ` <span class="text-slate-400 text-[10px]">(${req.start_date} | ${req.start_time} - ${req.end_time})</span>`;
@@ -7183,33 +7186,84 @@ async function loadHrSalary() {
         const salaries = await res.json();
         cachedUserSalariesList = salaries;
 
+        // Fetch user's loan requests
+        let loanRequests = [];
+        try {
+            const reqRes = await authFetch('/api/hr/requests/me');
+            if (reqRes.ok) {
+                const allReqs = await reqRes.json();
+                loanRequests = allReqs.filter(r => r.request_type === 'سلفة');
+            }
+        } catch (e) {
+            console.error('Failed to load loan requests', e);
+        }
+
+        // Render Loan Requests Table inside Salary Section
+        const loansTbody = document.getElementById('userLoansTableBody');
+        if (loansTbody) {
+            loansTbody.innerHTML = '';
+            if (loanRequests.length === 0) {
+                loansTbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 font-bold">لا يوجد طلبات سلف مسجلة</td></tr>`;
+            } else {
+                loanRequests.forEach(l => {
+                    let statusClass = 'bg-slate-50 text-slate-700 border-slate-200';
+                    if (l.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    if (l.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+
+                    const row = document.createElement('tr');
+                    row.className = 'border-b hover:bg-slate-50 transition';
+                    row.innerHTML = `
+                        <td class="p-4 text-slate-500 font-semibold">${new Date(l.request_date).toLocaleDateString()}</td>
+                        <td class="p-4 font-bold text-slate-800">${l.reason}</td>
+                        <td class="p-4 text-center">
+                            <span class="inline-block px-2.5 py-1 ${statusClass} rounded-full text-xs font-bold border">${l.status}</span>
+                        </td>
+                    `;
+                    loansTbody.appendChild(row);
+                });
+            }
+        }
+
         // Current Date / Month calculation
         const now = new Date();
         const curYear = now.getFullYear();
         const curMonth = String(now.getMonth() + 1).padStart(2, '0');
         const curMonthStr = `${curYear}-${curMonth}`;
 
-        // Find current month salary record
+        // Calculate sum of approved loans for current month
+        let approvedLoansThisMonth = 0;
+        loanRequests.forEach(l => {
+            if (l.status === 'موافق') {
+                const reqDate = new Date(l.request_date);
+                const reqMonthStr = `${reqDate.getFullYear()}-${String(reqDate.getMonth() + 1).padStart(2, '0')}`;
+                if (reqMonthStr === curMonthStr) {
+                    const match = (l.reason || '').match(/(\d+(?:\.\d+)?)/);
+                    if (match) {
+                        approvedLoansThisMonth += parseFloat(match[1]);
+                    }
+                }
+            }
+        });
+
+        // Find current month salary record in DB if any
         const curSal = salaries.find(s => s.month === curMonthStr);
 
         document.getElementById('salaryCurrentMonthName').innerText = `شهر: ${curMonthStr}`;
-        if (curSal) {
-            document.getElementById('salaryBasicVal').innerText = `${curSal.basic_salary.toFixed(2)} دينار`;
-            document.getElementById('salaryOvertimeVal').innerText = `${curSal.overtime.toFixed(2)} دينار`;
-            document.getElementById('salarySocialSecurityVal').innerText = `${curSal.social_security_deduction.toFixed(2)} دينار`;
-            document.getElementById('salaryLoansVal').innerText = `${curSal.loans.toFixed(2)} دينار`;
-            document.getElementById('salaryOtherDeductionsVal').innerText = `${curSal.other_deductions.toFixed(2)} دينار`;
-            document.getElementById('salaryTotalVal').innerText = `${curSal.total.toFixed(2)} دينار`;
-        } else {
-            // No current month record, set default values based on basic salary (if any) or 0
-            const basic = user.salary ? parseFloat(user.salary.replace(/[^0-9.]/g, '')) || 0 : 0;
-            document.getElementById('salaryBasicVal').innerText = `${basic.toFixed(2)} دينار`;
-            document.getElementById('salaryOvertimeVal').innerText = `0.00 دينار`;
-            document.getElementById('salarySocialSecurityVal').innerText = `0.00 دينار`;
-            document.getElementById('salaryLoansVal').innerText = `0.00 دينار`;
-            document.getElementById('salaryOtherDeductionsVal').innerText = `0.00 دينار`;
-            document.getElementById('salaryTotalVal').innerText = `${basic.toFixed(2)} دينار`;
-        }
+
+        const basic = curSal ? curSal.basic_salary : (user.salary ? parseFloat(user.salary.replace(/[^0-9.]/g, '')) || 0 : 0);
+        const socialSecurity = curSal ? curSal.social_security_deduction : Math.round(basic * 0.075 * 100) / 100;
+        const loansVal = curSal ? Math.max(curSal.loans, approvedLoansThisMonth) : approvedLoansThisMonth;
+        const overtime = curSal ? curSal.overtime : 0;
+        const otherDeductions = curSal ? curSal.other_deductions : 0;
+
+        const totalNet = basic + overtime - socialSecurity - loansVal - otherDeductions;
+
+        document.getElementById('salaryBasicVal').innerText = `${basic.toFixed(2)} دينار`;
+        document.getElementById('salaryOvertimeVal').innerText = `${overtime.toFixed(2)} دينار`;
+        document.getElementById('salarySocialSecurityVal').innerText = `${socialSecurity.toFixed(2)} دينار`;
+        document.getElementById('salaryLoansVal').innerText = `${loansVal.toFixed(2)} دينار`;
+        document.getElementById('salaryOtherDeductionsVal').innerText = `${otherDeductions.toFixed(2)} دينار`;
+        document.getElementById('salaryTotalVal').innerText = `${totalNet.toFixed(2)} دينار`;
 
         // Render previous month salary records table
         const tbody = document.getElementById('userSalariesTableBody');
@@ -7358,7 +7412,10 @@ async function saveEmployeeSalaryByAdmin() {
     const userId = document.getElementById('editEmpUserId').value;
     const month = document.getElementById('addEmpSalaryMonth').value;
     const basic = parseFloat(document.getElementById('addEmpSalaryBasic').value) || 0;
-    const social = parseFloat(document.getElementById('addEmpSalarySocial').value) || 0;
+    let social = parseFloat(document.getElementById('addEmpSalarySocial').value) || 0;
+    if (!social && basic > 0) {
+        social = Math.round(basic * 0.075 * 100) / 100;
+    }
     const other = parseFloat(document.getElementById('addEmpSalaryOther').value) || 0;
     const loans = parseFloat(document.getElementById('addEmpSalaryLoans').value) || 0;
     const overtime = parseFloat(document.getElementById('addEmpSalaryOvertime').value) || 0;

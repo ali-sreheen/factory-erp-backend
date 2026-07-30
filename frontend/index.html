@@ -436,10 +436,10 @@
                 <div id="hrSalarySection" class="hidden space-y-6">
                     <!-- Current Month Salary Card & Request Loan Button -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Current Month Salary Details Card -->
+                        <!-- Expected Salary Details Card -->
                         <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between text-right">
                             <div>
-                                <h3 class="text-lg font-bold text-slate-900 mb-1">تفاصيل راتب الشهر الحالي</h3>
+                                <h3 class="text-lg font-bold text-slate-900 mb-1">الراتب المتوقع</h3>
                                 <p id="salaryCurrentMonthName" class="text-xs text-slate-500 mb-6">شهر: -</p>
                                 
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -452,11 +452,11 @@
                                         <p id="salaryOvertimeVal" class="text-sm font-extrabold text-slate-800">- دينار</p>
                                     </div>
                                     <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100/50">
-                                        <p class="text-[10px] text-rose-500 font-bold mb-1">خصم الضمان</p>
+                                        <p class="text-[10px] text-rose-500 font-bold mb-1">خصم الضمان (7.5%)</p>
                                         <p id="salarySocialSecurityVal" class="text-sm font-extrabold text-rose-600">- دينار</p>
                                     </div>
                                     <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100/50">
-                                        <p class="text-[10px] text-rose-500 font-bold mb-1">سلف مستردة</p>
+                                        <p class="text-[10px] text-rose-500 font-bold mb-1">سلف</p>
                                         <p id="salaryLoansVal" class="text-sm font-extrabold text-rose-600">- دينار</p>
                                     </div>
                                     <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100/50">
@@ -464,7 +464,7 @@
                                         <p id="salaryOtherDeductionsVal" class="text-sm font-extrabold text-rose-600">- دينار</p>
                                     </div>
                                     <div class="bg-emerald-50 p-3.5 rounded-xl border border-emerald-100">
-                                        <p class="text-[10px] text-emerald-600 font-bold mb-1">صافي الراتب المستحق</p>
+                                        <p class="text-[10px] text-emerald-600 font-bold mb-1">صافي الراتب المستحق المتوقع</p>
                                         <p id="salaryTotalVal" class="text-sm font-extrabold text-emerald-700">- دينار</p>
                                     </div>
                                 </div>
@@ -484,6 +484,28 @@
                             <button onclick="openLoanRequestModal()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2">
                                 💸 طلب سلفة جديدة
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Loan Requests History Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6 text-right">
+                        <div class="p-5 border-b border-slate-150">
+                            <h3 class="font-bold text-slate-900 text-lg">سجل طلبات السلف</h3>
+                            <p class="text-xs text-slate-500">سجل بطلبات السلف المقدمة وتطور حالاتها.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse text-xs">
+                                <thead class="bg-slate-50 text-slate-600 border-b">
+                                    <tr>
+                                        <th class="p-4 font-bold">تاريخ الطلب</th>
+                                        <th class="p-4 font-bold">تفاصيل ومبلغ السلفة</th>
+                                        <th class="p-4 font-bold text-center">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userLoansTableBody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
