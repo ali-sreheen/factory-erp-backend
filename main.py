@@ -248,10 +248,19 @@ try:
                     item.sku = f"{dept_id % 100:02d}{subdept_id % 100:02d}{seq % 1000:03d}"
                 db_seed.commit()
                 print("Migration complete!")
+    try:
+        from sqlalchemy import text
+        try:
+            db_seed.execute(text("SELECT is_fire_rated FROM project_options LIMIT 1"))
+        except Exception:
+            db_seed.rollback()
+            print("Running migration: adding is_fire_rated column to project_options...")
+            db_seed.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT 0"))
+            db_seed.commit()
     except Exception as e:
         db_seed.rollback()
-        print(f"Global migration error: {e}")
-        
+        print(f"Migration error for project_options: {e}")
+
     crud.seed_admin_user(db_seed)
 finally:
     db_seed.close()
