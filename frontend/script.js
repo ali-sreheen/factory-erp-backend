@@ -6833,8 +6833,24 @@ async function changeRequestStatus(reqId, status) {
     }
 }
 
-async function deleteHrRequest(reqId) {
-    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الطلب نهائياً؟')) return;
+let pendingDeleteReqId = null;
+
+function deleteHrRequest(reqId) {
+    pendingDeleteReqId = reqId;
+    const modal = document.getElementById('hrConfirmDeleteModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeHrConfirmDeleteModal() {
+    pendingDeleteReqId = null;
+    const modal = document.getElementById('hrConfirmDeleteModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function executeHrRequestDeletion() {
+    if (!pendingDeleteReqId) return;
+    const reqId = pendingDeleteReqId;
+    closeHrConfirmDeleteModal();
 
     try {
         const res = await authFetch(`/api/hr/requests/${reqId}`, {
