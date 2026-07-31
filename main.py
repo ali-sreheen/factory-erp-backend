@@ -213,53 +213,51 @@ try:
 finally:
     db_session.close()
 
-# Seed Admin User on application startup
 db_seed = SessionLocal()
 try:
+    from sqlalchemy import text
     try:
-        from sqlalchemy import text
+        db_seed.execute(text("SELECT is_fire_rated FROM project_options LIMIT 1"))
+    except Exception:
+        db_seed.rollback()
+        print("Running migration: adding is_fire_rated column to project_options...")
         try:
-            db_seed.execute(text("SELECT sku FROM items LIMIT 1"))
-        except Exception as e:
-            db_seed.rollback()
-            print("Running migration: adding sku column to items...")
-            db_seed.execute(text("ALTER TABLE items ADD COLUMN sku VARCHAR(7)"))
-            db_seed.commit()
-            
-            try:
-                db_seed.execute(text("CREATE UNIQUE INDEX ix_items_sku ON items (sku)"))
-                db_seed.commit()
-            except Exception:
-                db_seed.rollback()
-            
-            import models
-            items = db_seed.query(models.Item).filter(models.Item.sku == None).all()
-            if items:
-                print(f"Migrating {len(items)} items to have SKU...")
-                depts = {d.name: d.id for d in db_seed.query(models.Department).all()}
-                subdepts = {s.name: s.id for s in db_seed.query(models.SubDepartment).all()}
-                seq_counters = {}
-                for item in items:
-                    dept_id = depts.get(item.category, 0)
-                    subdept_id = subdepts.get(item.subcategory, 0) if item.subcategory else 0
-                    key = (dept_id, subdept_id)
-                    seq_counters[key] = seq_counters.get(key, 0) + 1
-                    seq = seq_counters[key]
-                    item.sku = f"{dept_id % 100:02d}{subdept_id % 100:02d}{seq % 1000:03d}"
-                db_seed.commit()
-                print("Migration complete!")
-    try:
-        from sqlalchemy import text
-        try:
-            db_seed.execute(text("SELECT is_fire_rated FROM project_options LIMIT 1"))
-        except Exception:
-            db_seed.rollback()
-            print("Running migration: adding is_fire_rated column to project_options...")
             db_seed.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT 0"))
             db_seed.commit()
+        except Exception as ex:
+            db_seed.rollback()
+            print(f"Error adding is_fire_rated column: {ex}")
+
+    try:
+        db_seed.execute(text("SELECT sku FROM items LIMIT 1"))
     except Exception as e:
         db_seed.rollback()
-        print(f"Migration error for project_options: {e}")
+        print("Running migration: adding sku column to items...")
+        db_seed.execute(text("ALTER TABLE items ADD COLUMN sku VARCHAR(7)"))
+        db_seed.commit()
+        
+        try:
+            db_seed.execute(text("CREATE UNIQUE INDEX ix_items_sku ON items (sku)"))
+            db_seed.commit()
+        except Exception:
+            db_seed.rollback()
+        
+        import models
+        items = db_seed.query(models.Item).filter(models.Item.sku == None).all()
+        if items:
+            print(f"Migrating {len(items)} items to have SKU...")
+            depts = {d.name: d.id for d in db_seed.query(models.Department).all()}
+            subdepts = {s.name: s.id for s in db_seed.query(models.SubDepartment).all()}
+            seq_counters = {}
+            for item in items:
+                dept_id = depts.get(item.category, 0)
+                subdept_id = subdepts.get(item.subcategory, 0) if item.subcategory else 0
+                key = (dept_id, subdept_id)
+                seq_counters[key] = seq_counters.get(key, 0) + 1
+                seq = seq_counters[key]
+                item.sku = f"{dept_id % 100:02d}{subdept_id % 100:02d}{seq % 1000:03d}"
+            db_seed.commit()
+            print("Migration complete!")
 
     crud.seed_admin_user(db_seed)
 finally:
