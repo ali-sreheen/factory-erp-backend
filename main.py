@@ -137,7 +137,7 @@ def check_and_update_db_schema(db_engine):
         if "is_fire_rated" not in columns:
             try:
                 with db_engine.begin() as conn:
-                    conn.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT 0"))
+                    conn.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT FALSE"))
             except Exception as e:
                 pass
 
@@ -224,7 +224,7 @@ try:
         db_seed.rollback()
         print("Running migration: adding is_fire_rated column to project_options...")
         try:
-            db_seed.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT 0"))
+            db_seed.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT FALSE"))
             db_seed.commit()
         except Exception as ex:
             db_seed.rollback()
