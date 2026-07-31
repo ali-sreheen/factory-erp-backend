@@ -131,6 +131,16 @@ def check_and_update_db_schema(db_engine):
                 pass
 
 
+    # Check project_options table for is_fire_rated
+    if "project_options" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("project_options")]
+        if "is_fire_rated" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE project_options ADD COLUMN is_fire_rated BOOLEAN NOT NULL DEFAULT 0"))
+            except Exception as e:
+                pass
+
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
