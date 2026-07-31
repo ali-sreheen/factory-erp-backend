@@ -6799,8 +6799,14 @@ async function changeRequestStatus(reqId, status) {
             body: JSON.stringify({ status: status })
         });
         if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.detail || 'Failed to update request status');
+            let detail = 'فشل في تحديث حالة الطلب';
+            try {
+                const errData = await res.json();
+                if (errData && errData.detail) detail = errData.detail;
+            } catch (e) {
+                // Ignore JSON parse error if response is HTML/plain text
+            }
+            throw new Error(detail);
         }
         showToast('تم تحديث حالة الطلب بنجاح', 'bg-emerald-500', '✓');
         await loadHrAdminRequests();
