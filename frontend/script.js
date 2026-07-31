@@ -781,9 +781,6 @@ async function loadUsers() {
                 <td class="p-4 text-center">${statusLabel}</td>
                 <td class="p-4">
                     <div class="flex justify-center gap-2 flex-wrap">
-                        <button onclick="openEditUsernameModal(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl transition text-xs font-bold border border-blue-200" title="تعديل اسم المستخدم">
-                            ✏️ تعديل الاسم
-                        </button>
                         <button onclick="openEditUserModal(${user.id}, '${user.username}')" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition text-xs font-bold border border-indigo-200" title="تغيير كلمة المرور">
                             ⚙️ الحساب
                         </button>
@@ -2122,16 +2119,6 @@ async function openPermissionsModal(userId, username) {
                             <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                         </label>
                     </div>
-                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
-                        <div>
-                            <p class="font-bold text-slate-800 text-sm">إدارة الموظفين</p>
-                            <p class="text-xs text-slate-500">منح صلاحية إدارة واعتماد طلبات الموظفين</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" ${hrMgmtCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'hr_management', this.checked)" class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-                        </label>
-                    </div>
                 </div>
             </div>
         `;
@@ -2237,8 +2224,30 @@ async function openPermissionsModal(userId, username) {
                 </div>
             </div>
         `;
+
+        // Section 4: HR System (نظام شؤون الموظفين)
+        let hrHtml = `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-3">
+                <h4 class="font-bold text-sm text-indigo-700 border-b pb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5 5 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    نظام شؤون الموظفين
+                </h4>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-2.5 border border-slate-100 rounded-xl bg-white">
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm">إدارة واعتماد طلبات الموظفين</p>
+                            <p class="text-xs text-slate-500">منح صلاحية إدارة وإقرار والتحكم بطلبات وإجازات الموظفين</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${hrMgmtCanEdit ? 'checked' : ''} onchange="togglePermission(${userId}, 'hr_management', this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        `;
         
-        permissionsList.innerHTML = systemsHtml + inventoryHtml + projectHtml + purchasingHtml;
+        permissionsList.innerHTML = systemsHtml + inventoryHtml + projectHtml + purchasingHtml + hrHtml;
         
     } catch (err) {
         permissionsList.innerHTML = `<p class="text-rose-500 text-sm">${err.message}</p>`;
