@@ -4725,7 +4725,9 @@ window.submitMoveItemForm = async (e) => {
 
 // ------------- PROJECT OPTIONS MANAGEMENT -------------
 
-window.openAddOptionModal = function(type) {
+// ------------- PROJECT OPTIONS MANAGEMENT -------------
+
+window.openAddOptionModal = async function(type) {
     let title = 'إضافة خيار جديد';
     if (type === 'lock') title = 'إضافة خيار زرفيل جديد';
     else if (type === 'hinge') title = 'إضافة خيار فصالة جديد';
@@ -4738,10 +4740,71 @@ window.openAddOptionModal = function(type) {
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = '';
     document.getElementById('optFormSku').value = '';
+    document.getElementById('optFormFireRated').checked = false;
+
+    const storeContainer = document.getElementById('optStoreItemContainer');
+    const customContainer = document.getElementById('optCustomNameContainer');
+    const fireContainer = document.getElementById('optFireRatedContainer');
+    const itemSelect = document.getElementById('optFormItemSelect');
+
+    if (type === 'lock' || type === 'hinge') {
+        storeContainer.classList.remove('hidden');
+        fireContainer.classList.remove('hidden');
+        customContainer.classList.add('hidden');
+
+        itemSelect.innerHTML = '<option value="">جاري تحميل أصناف المخزن...</option>';
+
+        try {
+            // Load store items from accessories department
+            const response = await authFetch(`${API_URL}/?category=${encodeURIComponent('قسم الاكسسوارات')}`);
+            if (response.ok) {
+                const items = await response.json();
+                // Subcategory filter: for lock -> 'الزرفيل' / 'زرفيل' / 'أقفال', for hinge -> 'فصالات' / 'فصالة'
+                const targetSub = type === 'lock' ? 'الزرفيل' : 'الفصالات';
+                const filtered = items.filter(it => {
+                    const sub = (it.subcategory || '').trim().toLowerCase();
+                    if (type === 'lock') return sub.includes('زرفيل') || sub.includes('قفل') || sub.includes('lock');
+                    if (type === 'hinge') return sub.includes('فصال') || sub.includes('hinge');
+                    return true;
+                });
+                const displayItems = filtered.length > 0 ? filtered : items;
+
+                itemSelect.innerHTML = '<option value="">-- اختر الصنف من المخزن --</option>';
+                displayItems.forEach(item => {
+                    const optEl = document.createElement('option');
+                    optEl.value = item.name;
+                    optEl.dataset.sku = item.sku || '';
+                    optEl.textContent = `${item.name} (${item.sku || 'بدون رمز'})`;
+                    itemSelect.appendChild(optEl);
+                });
+            } else {
+                itemSelect.innerHTML = '<option value="">-- فشل تحميل الأصناف --</option>';
+            }
+        } catch (err) {
+            console.error('Error fetching accessories items:', err);
+            itemSelect.innerHTML = '<option value="">-- خطأ أثناء جلب الأصناف --</option>';
+        }
+    } else {
+        storeContainer.classList.add('hidden');
+        fireContainer.classList.add('hidden');
+        customContainer.classList.remove('hidden');
+    }
+
     document.getElementById('projectOptionModal').classList.remove('hidden');
 };
 
-window.openEditOptionModal = function(id, type) {
+window.handleOptionItemSelect = function(selectEl) {
+    const selectedOpt = selectEl.options[selectEl.selectedIndex];
+    if (selectedOpt && selectedOpt.value) {
+        document.getElementById('optFormName').value = selectedOpt.value;
+        document.getElementById('optFormSku').value = selectedOpt.dataset.sku || '';
+    } else {
+        document.getElementById('optFormName').value = '';
+        document.getElementById('optFormSku').value = '';
+    }
+};
+
+window.openEditOptionModal = async function(id, type) {
     let list = [];
     if (type === 'lock') list = dbLockOptions;
     else if (type === 'hinge') list = dbHingeOptions;
@@ -4764,6 +4827,25 @@ window.openEditOptionModal = function(id, type) {
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = opt.name;
     document.getElementById('optFormSku').value = opt.sku || '';
+    document.getElementById('optFormFireRated').checked = opt.is_fire_rated === true || opt.is_fire_rated == 1;
+
+    const storeContainer = document.getElementById('optStoreItemContainer');
+    const customContainer = document.getElementById('optCustomNameContainer');
+    const fireContainer = document.getElementById('optFireRatedContainer');
+    const itemSelect = document.getElementById('optFormItemSelect');
+
+    if (type === 'lock' || type === 'hinge') {
+        storeContainer.classList.remove('hidden');
+        fireContainer.classList.remove('hidden');
+        customContainer.classList.add('hidden');
+
+        itemSelect.innerHTML = `<option value="${opt.name}" selected>${opt.name} (${opt.sku || 'بدون رمز'})</option>`;
+    } else {
+        storeContainer.classList.add('hidden');
+        fireContainer.classList.add('hidden');
+        customContainer.classList.remove('hidden');
+    }
+
     document.getElementById('projectOptionModal').classList.remove('hidden');
 };
 
@@ -4775,18 +4857,27 @@ window.handleOptionFormSubmit = async function(e) {
     e.preventDefault();
     const id = document.getElementById('optFormId').value;
     const type = document.getElementById('optFormType').value;
-    const name = document.getElementById('optFormName').value.trim();
+    let name = document.getElementById('optFormName').value.trim();
     const sku = document.getElementById('optFormSku').value.trim();
+    const isFireRated = document.getElementById('optFormFireRated').checked;
+
+    if (type === 'lock' || type === 'hinge') {
+        const itemSelect = document.getElementById('optFormItemSelect');
+        if (itemSelect && itemSelect.value) {
+            name = itemSelect.value;
+        }
+    }
 
     if (!name) {
-        showToast('الرجاء إدخال الاسم', 'bg-rose-500', '✗');
+        showToast('الرجاء اختيار الصنف أو إدخال الاسم', 'bg-rose-500', '✗');
         return;
     }
 
     const payload = {
         option_type: type,
         name: name,
-        sku: sku || null
+        sku: sku || null,
+        is_fire_rated: isFireRated
     };
 
     let url = `${API_HOST}/api/project-options/`;
@@ -4853,11 +4944,16 @@ window.renderProjectOptionsAdmin = function() {
     if (lockTbody) {
         lockTbody.innerHTML = '';
         dbLockOptions.forEach(opt => {
+            const isFire = opt.is_fire_rated === true || opt.is_fire_rated == 1;
+            const fireBadge = isFire 
+                ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">🔥 مقاوم للحريق</span>' 
+                : '<span class="text-slate-400 text-xs">عادي</span>';
             const tr = document.createElement('tr');
             tr.className = 'border-b hover:bg-slate-50 transition';
             tr.innerHTML = `
                 <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
                 <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+                <td class="p-4 text-center">${fireBadge}</td>
                 <td class="p-4 text-center">
                     <div class="flex justify-center gap-2">
                         <button onclick="openEditOptionModal(${opt.id}, 'lock')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>
@@ -4872,11 +4968,16 @@ window.renderProjectOptionsAdmin = function() {
     if (hingeTbody) {
         hingeTbody.innerHTML = '';
         dbHingeOptions.forEach(opt => {
+            const isFire = opt.is_fire_rated === true || opt.is_fire_rated == 1;
+            const fireBadge = isFire 
+                ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">🔥 مقاوم للحريق</span>' 
+                : '<span class="text-slate-400 text-xs">عادي</span>';
             const tr = document.createElement('tr');
             tr.className = 'border-b hover:bg-slate-50 transition';
             tr.innerHTML = `
                 <td class="p-4 font-semibold text-slate-800">${opt.name}</td>
                 <td class="p-4 text-slate-500 font-mono">${opt.sku || '---'}</td>
+                <td class="p-4 text-center">${fireBadge}</td>
                 <td class="p-4 text-center">
                     <div class="flex justify-center gap-2">
                         <button onclick="openEditOptionModal(${opt.id}, 'hinge')" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition text-xs font-bold border border-indigo-100">تعديل</button>

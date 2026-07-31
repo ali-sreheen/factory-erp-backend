@@ -570,11 +570,12 @@ def create_project_option(db: Session, option: schemas.ProjectOptionCreate):
     db.refresh(db_opt)
     return db_opt
 
-def update_project_option(db: Session, option_id: int, name: str, sku: str = None):
+def update_project_option(db: Session, option_id: int, name: str, sku: str = None, is_fire_rated: bool = False):
     db_opt = db.query(models.ProjectOption).filter(models.ProjectOption.id == option_id).first()
     if db_opt:
         db_opt.name = name
         db_opt.sku = sku if sku else None
+        db_opt.is_fire_rated = is_fire_rated
         db.commit()
         db.refresh(db_opt)
         return db_opt

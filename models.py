@@ -246,6 +246,7 @@ class ProjectOption(Base):
     option_type = Column(String, index=True, nullable=False) # "lock" or "hinge"
     name = Column(String, index=True, nullable=False)
     sku = Column(String(7), nullable=True)
+    is_fire_rated = Column(Boolean, default=False, nullable=False)
 
 class SheetSize(Base):
     __tablename__ = "sheet_sizes"

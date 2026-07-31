@@ -437,9 +437,10 @@ class PurchaseRequestResponse(PurchaseRequestBase):
         from_attributes = True
 
 class ProjectOptionBase(BaseModel):
-    option_type: Literal["lock", "hinge"]
+    option_type: str
     name: str
     sku: Optional[str] = None
+    is_fire_rated: bool = False
 
 class ProjectOptionCreate(ProjectOptionBase):
     pass

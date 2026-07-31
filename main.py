@@ -1515,7 +1515,7 @@ def update_project_option(
 ):
     if current_user.username != "admin":
         raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل خيارات")
-    db_opt = crud.update_project_option(db, option_id, option_update.name, option_update.sku)
+    db_opt = crud.update_project_option(db, option_id, option_update.name, option_update.sku, option_update.is_fire_rated)
     if not db_opt:
         raise HTTPException(status_code=404, detail="Option not found")
     return db_opt
