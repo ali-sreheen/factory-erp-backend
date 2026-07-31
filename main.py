@@ -214,15 +214,7 @@ def seed_default_departments(db: Session):
                 db.add(db_sub)
             db.commit()
 
-# Seed default departments, project options, and sheet sizes when starting up
-db_session = SessionLocal()
-try:
-    seed_default_departments(db_session)
-    crud.seed_default_project_options(db_session)
-    crud.seed_default_sheet_sizes(db_session)
-finally:
-    db_session.close()
-
+# Run schema migrations first
 db_seed = SessionLocal()
 try:
     from sqlalchemy import text
@@ -272,6 +264,15 @@ try:
     crud.seed_admin_user(db_seed)
 finally:
     db_seed.close()
+
+# Seed default departments, project options, and sheet sizes when starting up
+db_session = SessionLocal()
+try:
+    seed_default_departments(db_session)
+    crud.seed_default_project_options(db_session)
+    crud.seed_default_sheet_sizes(db_session)
+finally:
+    db_session.close()
 
 def get_base_dir():
     if getattr(sys, 'frozen', False):
