@@ -6496,6 +6496,11 @@ async function loadHrRequests() {
             if (req.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
             if (req.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
 
+            let actionCell = '-';
+            if (req.status === 'قيد الانتظار') {
+                actionCell = `<button onclick="deleteHrRequest(${req.id})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition">🗑 حذف</button>`;
+            }
+
             const row = document.createElement('tr');
             row.className = 'border-b hover:bg-slate-50 transition';
             row.innerHTML = `
@@ -6506,6 +6511,7 @@ async function loadHrRequests() {
                 <td class="p-4 text-center">
                     <span class="inline-block px-2.5 py-1 ${statusClass} rounded-full text-xs font-bold border">${req.status}</span>
                 </td>
+                <td class="p-4 text-center">${actionCell}</td>
             `;
             tbody.appendChild(row);
         });
@@ -6769,6 +6775,15 @@ async function loadHrAdminRequests() {
                 }
             }
 
+            if (hasHrMgmt) {
+                const deleteBtn = `<button onclick="deleteHrRequest(${req.id})" class="px-2.5 py-1 bg-slate-100 text-rose-700 hover:bg-rose-100 rounded-lg text-[10px] font-bold border border-rose-200 transition" title="حذف الطلب نهائياً">🗑 حذف</button>`;
+                if (actionsHtml.includes('</div>')) {
+                    actionsHtml = actionsHtml.replace('</div>', `${deleteBtn}</div>`);
+                } else {
+                    actionsHtml = `<div class="flex justify-center gap-1.5">${deleteBtn}</div>`;
+                }
+            }
+
             const row = document.createElement('tr');
             row.className = 'border-b hover:bg-slate-50 transition text-right';
             row.innerHTML = `
@@ -6811,9 +6826,36 @@ async function changeRequestStatus(reqId, status) {
         showToast('تم تحديث حالة الطلب بنجاح', 'bg-emerald-500', '✓');
         await loadHrAdminRequests();
         await loadHrRequests();
+        await loadHrSalary();
     } catch (err) {
         console.error(err);
         showToast('خطأ في تحديث حالة الطلب: ' + err.message, 'bg-rose-500', '✗');
+    }
+}
+
+async function deleteHrRequest(reqId) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الطلب نهائياً؟')) return;
+
+    try {
+        const res = await authFetch(`/api/hr/requests/${reqId}`, {
+            method: 'DELETE'
+        });
+        if (!res.ok) {
+            let detail = 'فشل في حذف الطلب';
+            try {
+                const errData = await res.json();
+                if (errData && errData.detail) detail = errData.detail;
+            } catch (e) {}
+            throw new Error(detail);
+        }
+        showToast('تم حذف الطلب بنجاح', 'bg-emerald-500', '✓');
+        
+        if (typeof loadHrRequests === 'function') await loadHrRequests();
+        if (typeof loadHrSalary === 'function') await loadHrSalary();
+        if (typeof loadHrAdminRequests === 'function') await loadHrAdminRequests();
+    } catch (err) {
+        console.error(err);
+        showToast('خطأ أثناء حذف الطلب: ' + err.message, 'bg-rose-500', '✗');
     }
 }
 
@@ -7209,12 +7251,17 @@ async function loadHrSalary() {
         if (loansTbody) {
             loansTbody.innerHTML = '';
             if (loanRequests.length === 0) {
-                loansTbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400 font-bold">لا يوجد طلبات سلف مسجلة</td></tr>`;
+                loansTbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-bold">لا يوجد طلبات سلف مسجلة</td></tr>`;
             } else {
                 loanRequests.forEach(l => {
                     let statusClass = 'bg-slate-50 text-slate-700 border-slate-200';
                     if (l.status === 'موافق') statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                     if (l.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+
+                    let actionCell = '-';
+                    if (l.status === 'قيد الانتظار') {
+                        actionCell = `<button onclick="deleteHrRequest(${l.id})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition">🗑 حذف</button>`;
+                    }
 
                     const row = document.createElement('tr');
                     row.className = 'border-b hover:bg-slate-50 transition';
@@ -7224,6 +7271,7 @@ async function loadHrSalary() {
                         <td class="p-4 text-center">
                             <span class="inline-block px-2.5 py-1 ${statusClass} rounded-full text-xs font-bold border">${l.status}</span>
                         </td>
+                        <td class="p-4 text-center">${actionCell}</td>
                     `;
                     loansTbody.appendChild(row);
                 });

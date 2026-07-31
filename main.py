@@ -2157,6 +2157,29 @@ def get_my_attendance(db: Session = Depends(get_db), current_user: models.User =
     return crud.get_user_attendance(db, current_user.id)
 
 
+@app.delete("/api/hr/requests/{request_id}")
+def delete_hr_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_req = db.query(models.HRRequest).filter(models.HRRequest.id == request_id).first()
+    if not db_req:
+        raise HTTPException(status_code=404, detail="الطلب غير موجود")
+        
+    is_hr = current_user.username == 'admin' or user_has_hr_management(current_user, db)
+    is_owner = db_req.user_id == current_user.id
+    
+    if is_owner:
+        if db_req.status != 'قيد الانتظار' and not is_hr:
+            raise HTTPException(status_code=400, detail="يمكنك حذف الطلب فقط عندما يكون في حالة قيد الانتظار")
+    elif not is_hr:
+        raise HTTPException(status_code=403, detail="غير مصرح لك بحذف هذا الطلب")
+
+    db.delete(db_req)
+    db.commit()
+    return {"message": "تم حذف الطلب بنجاح"}
+
 # Serve frontend files
 def get_frontend_dir():
     if getattr(sys, 'frozen', False):
