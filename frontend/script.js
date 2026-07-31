@@ -6497,7 +6497,7 @@ async function loadHrRequests() {
             if (req.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
 
             let actionCell = '-';
-            if (req.status === 'قيد الانتظار') {
+            if (req.status !== 'موافق' && req.status !== 'مرفوض') {
                 actionCell = `<button onclick="deleteHrRequest(${req.id})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition">🗑 حذف</button>`;
             }
 
@@ -7259,7 +7259,7 @@ async function loadHrSalary() {
                     if (l.status === 'مرفوض') statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
 
                     let actionCell = '-';
-                    if (l.status === 'قيد الانتظار') {
+                    if (l.status !== 'موافق' && l.status !== 'مرفوض') {
                         actionCell = `<button onclick="deleteHrRequest(${l.id})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition">🗑 حذف</button>`;
                     }
 
