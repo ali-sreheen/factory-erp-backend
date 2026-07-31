@@ -3004,6 +3004,7 @@ function addProjectDetailRow() {
                         const rowSelects = row.querySelectorAll('select');
                         if (rowSelects[5]) {
                             rowSelects[5].value = currentDefaultDoorType;
+                            autoCalculateLeafSizes(rowSelects[5]);
                         }
                     }
                 });
@@ -4954,10 +4955,13 @@ window.autoCalculateLeafSizes = function(element) {
 
     const widthInput = tr.querySelector('input[placeholder="عرض"]');
     const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
-    const doorTypeSelect = tr.querySelector('select:nth-of-type(6)') || Array.from(tr.querySelectorAll('select')).find(s => {
-        const text = s.innerHTML.toLowerCase();
-        return text.includes('single') || text.includes('double') || text.includes('leaf');
-    });
+    const selects = Array.from(tr.querySelectorAll('select'));
+    const doorTypeSelect = selects.find(s => {
+        const val = (s.value || '').toLowerCase();
+        const html = (s.innerHTML || '').toLowerCase();
+        return val.includes('leaf') || html.includes('single leaf') || html.includes('double leaf');
+    }) || selects[5];
+
     const leafSize1Input = tr.querySelector('input[placeholder="قياس الدرفة"]');
     const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
 
@@ -5003,10 +5007,13 @@ window.onLeafSize1Input = function(leaf1Input) {
 
     const widthInput = tr.querySelector('input[placeholder="عرض"]');
     const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
-    const doorTypeSelect = Array.from(tr.querySelectorAll('select')).find(s => {
-        const text = s.innerHTML.toLowerCase();
-        return text.includes('single') || text.includes('double') || text.includes('leaf');
-    });
+    const selects = Array.from(tr.querySelectorAll('select'));
+    const doorTypeSelect = selects.find(s => {
+        const val = (s.value || '').toLowerCase();
+        const html = (s.innerHTML || '').toLowerCase();
+        return val.includes('leaf') || html.includes('single leaf') || html.includes('double leaf');
+    }) || selects[5];
+
     const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
 
     if (!leafSize2Input) return;
