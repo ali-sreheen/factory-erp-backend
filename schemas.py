@@ -276,6 +276,8 @@ class ProjectDetailBase(BaseModel):
     architrave: Optional[str] = None
     architrave_2: Optional[str] = None
     under_tile: Optional[str] = None
+    leaf_size: Optional[str] = None
+    leaf_size_2: Optional[str] = None
     specifications: Optional[str] = None
     notes: Optional[str] = None
 

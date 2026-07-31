@@ -2822,7 +2822,7 @@ function addProjectDetailRow() {
     tr.innerHTML = `
         <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم" value="${nextDoorNumber}"></td>
         <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض"></td>
+        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض" oninput="autoCalculateLeafSizes(this)"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
         <td class="p-2">
@@ -2857,10 +2857,12 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2">
-            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+            <select class="w-full px-2 py-1 border rounded bg-white text-sm" onchange="autoCalculateLeafSizes(this)">
                 ${doorTypeSelectOpts}
             </select>
         </td>
+        <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" readonly oninput="onLeafSize1Input(this)"></td>
+        <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" readonly></td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
                 ${specSelectOpts}
@@ -2875,7 +2877,7 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this)" value="${currentDefaultArchitrave || ''}"></td>
+        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);" value="${currentDefaultArchitrave || ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط" value="${currentDefaultUnderTile || ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
@@ -3235,6 +3237,8 @@ async function viewProjectDetails(id) {
                     <td class="p-3 font-bold text-slate-700">${d.hinges_count || '4'}</td>
                     <td class="p-3">${d.profile_type || '-'}</td>
                     <td class="p-3">${d.door_type || '-'}</td>
+                    <td class="p-3 font-semibold text-indigo-700">${d.leaf_size || '-'}</td>
+                    <td class="p-3 font-semibold text-indigo-700">${d.leaf_size_2 || '-'}</td>
                     <td class="p-3">${d.specifications || '-'}</td>
                     <td class="p-3 font-semibold text-slate-700">${d.leaf_thickness || '4.5'}</td>
                     <td class="p-3 text-center">${d.qashatah === 'YES' ? 'نعم' : 'لا'}</td>
@@ -3359,16 +3363,18 @@ if (projectWizardForm) {
                     hinges_count: isNaN(hingesCountVal) ? 4 : hingesCountVal,
                     profile_type: inputs[9].value || null,
                     door_type: inputs[10].value || null,
-                    specifications: inputs[11].value || null,
-                    leaf_thickness: inputs[12].value || "4.5",
-                    qashatah: inputs[13].checked ? 'YES' : 'NO',
-                    fire_resistance: inputs[14].checked ? 'Yes' : 'No',
-                    architrave: inputs[15].value || null,
-                    architrave_2: inputs[16].value || null,
-                    under_tile: inputs[17].value || null,
-                    window_details: inputs[18].value || null,
-                    raddad: inputs[19].checked ? 'YES' : 'NO',
-                    notes: inputs[20].value || null
+                    leaf_size: inputs[11].value || null,
+                    leaf_size_2: inputs[12].value || null,
+                    specifications: inputs[13].value || null,
+                    leaf_thickness: inputs[14].value || "4.5",
+                    qashatah: inputs[15].checked ? 'YES' : 'NO',
+                    fire_resistance: inputs[16].checked ? 'Yes' : 'No',
+                    architrave: inputs[17].value || null,
+                    architrave_2: inputs[18].value || null,
+                    under_tile: inputs[19].value || null,
+                    window_details: inputs[20].value || null,
+                    raddad: inputs[21].checked ? 'YES' : 'NO',
+                    notes: inputs[22].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -3724,7 +3730,7 @@ window.editProject = async function(projectId) {
                 tr.innerHTML = `
                     <td class="p-2"><input type="text" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center font-bold" value="${d.door_number || ''}"></td>
                     <td class="p-2"><input type="number" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.quantity !== null && d.quantity !== undefined ? d.quantity : 1}"></td>
-                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}" oninput="autoCalculateLeafSizes(this)"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
                     <td class="p-2">
@@ -3759,10 +3765,12 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="autoCalculateLeafSizes(this)">
                             ${doorTypeSelectOpts}
                         </select>
                     </td>
+                    <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" value="${d.leaf_size || ''}" readonly oninput="onLeafSize1Input(this)"></td>
+                    <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" value="${d.leaf_size_2 || ''}" readonly></td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
                             ${specSelectOpts}
@@ -3777,7 +3785,7 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'Yes' || d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this)"></td>
+                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
@@ -4937,6 +4945,86 @@ window.autoCalculateArchitrave2 = function(input) {
         architrave2Input.value = (val + 2.2).toFixed(1);
     } else {
         architrave2Input.value = '';
+    }
+};
+
+window.autoCalculateLeafSizes = function(element) {
+    const tr = element.closest('tr');
+    if (!tr) return;
+
+    const widthInput = tr.querySelector('input[placeholder="عرض"]');
+    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
+    const doorTypeSelect = tr.querySelector('select:nth-of-type(6)') || Array.from(tr.querySelectorAll('select')).find(s => {
+        const text = s.innerHTML.toLowerCase();
+        return text.includes('single') || text.includes('double') || text.includes('leaf');
+    });
+    const leafSize1Input = tr.querySelector('input[placeholder="قياس الدرفة"]');
+    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
+
+    if (!leafSize1Input || !leafSize2Input) return;
+
+    const width = parseFloat(widthInput ? widthInput.value : '');
+    const architrave = parseFloat(architraveInput ? architraveInput.value : '0') || 0;
+    const doorType = doorTypeSelect ? doorTypeSelect.value : '';
+
+    const isDouble = doorType.toLowerCase().includes('double');
+
+    if (isDouble) {
+        leafSize1Input.removeAttribute('readonly');
+        leafSize1Input.classList.remove('bg-slate-100');
+
+        if (!isNaN(width)) {
+            const leaf1Val = (width - (2 * architrave) - 1.5) / 2;
+            leafSize1Input.value = leaf1Val.toFixed(2);
+            
+            const leaf2Val = (width - (2 * architrave) - 1.5) - leaf1Val;
+            leafSize2Input.value = leaf2Val.toFixed(2);
+        } else {
+            leafSize1Input.value = '';
+            leafSize2Input.value = '';
+        }
+    } else {
+        leafSize1Input.setAttribute('readonly', 'readonly');
+        leafSize1Input.classList.add('bg-slate-100');
+        leafSize2Input.value = '';
+
+        if (!isNaN(width)) {
+            const leaf1Val = width - (2 * architrave) - 0.7;
+            leafSize1Input.value = leaf1Val.toFixed(2);
+        } else {
+            leafSize1Input.value = '';
+        }
+    }
+};
+
+window.onLeafSize1Input = function(leaf1Input) {
+    const tr = leaf1Input.closest('tr');
+    if (!tr) return;
+
+    const widthInput = tr.querySelector('input[placeholder="عرض"]');
+    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
+    const doorTypeSelect = Array.from(tr.querySelectorAll('select')).find(s => {
+        const text = s.innerHTML.toLowerCase();
+        return text.includes('single') || text.includes('double') || text.includes('leaf');
+    });
+    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
+
+    if (!leafSize2Input) return;
+
+    const doorType = doorTypeSelect ? doorTypeSelect.value : '';
+    const isDouble = doorType.toLowerCase().includes('double');
+
+    if (!isDouble) return;
+
+    const width = parseFloat(widthInput ? widthInput.value : '');
+    const architrave = parseFloat(architraveInput ? architraveInput.value : '0') || 0;
+    const leaf1Val = parseFloat(leaf1Input.value);
+
+    if (!isNaN(width) && !isNaN(leaf1Val)) {
+        const leaf2Val = (width - (2 * architrave) - 1.5) - leaf1Val;
+        leafSize2Input.value = leaf2Val.toFixed(2);
+    } else {
+        leafSize2Input.value = '';
     }
 };
 

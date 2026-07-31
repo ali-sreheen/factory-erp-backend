@@ -168,6 +168,8 @@ class ProjectDetail(Base):
     architrave = Column(String, nullable=True)
     architrave_2 = Column(String, nullable=True)
     under_tile = Column(String, nullable=True)
+    leaf_size = Column(String, nullable=True)
+    leaf_size_2 = Column(String, nullable=True)
     specifications = Column(String, nullable=True)
     notes = Column(String, nullable=True)
 
