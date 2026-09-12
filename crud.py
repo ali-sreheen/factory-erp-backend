@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session
+from typing import Optional, List
 import models
 import schemas
 import auth
+
 
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
@@ -829,3 +831,146 @@ def log_attendance(db: Session, user_id: int, record_date: str, check_in: str = 
 def get_user_attendance(db: Session, user_id: int):
     return db.query(models.AttendanceRecord).filter(models.AttendanceRecord.user_id == user_id).order_by(models.AttendanceRecord.record_date.desc()).all()
 
+
+# --- SERVICE JOBS CRUD ---
+
+def create_service_job(db: Session, job: schemas.ServiceJobCreate, user_id: Optional[int] = None):
+    data = job.model_dump()
+    db_job = models.ServiceJob(**data, created_by_id=user_id)
+    db.add(db_job)
+    db.commit()
+    db.refresh(db_job)
+
+    # Automatically ensure client exists in service_clients
+    if db_job.client_name:
+        client = db.query(models.ServiceClient).filter(models.ServiceClient.name == db_job.client_name).first()
+        if not client:
+            new_client = models.ServiceClient(
+                name=db_job.client_name,
+                phone=db_job.client_phone
+            )
+            db.add(new_client)
+            db.commit()
+        elif db_job.client_phone and not client.phone:
+            client.phone = db_job.client_phone
+            db.commit()
+
+    return db_job
+
+
+def get_service_jobs(db: Session, status: Optional[str] = None, client_name: Optional[str] = None):
+    query = db.query(models.ServiceJob)
+    if status:
+        query = query.filter(models.ServiceJob.status == status)
+    if client_name:
+        query = query.filter(models.ServiceJob.client_name == client_name)
+    return query.order_by(models.ServiceJob.id.desc()).all()
+
+
+def get_service_job_by_id(db: Session, job_id: int):
+    return db.query(models.ServiceJob).filter(models.ServiceJob.id == job_id).first()
+
+
+def get_service_job_by_number(db: Session, job_number: str):
+    return db.query(models.ServiceJob).filter(models.ServiceJob.job_number == job_number).first()
+
+
+def update_service_job(db: Session, job_id: int, job_update: schemas.ServiceJobUpdate):
+    db_job = db.query(models.ServiceJob).filter(models.ServiceJob.id == job_id).first()
+    if not db_job:
+        return None
+    update_data = job_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_job, key, value)
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+
+def delete_service_job(db: Session, job_id: int):
+    db_job = db.query(models.ServiceJob).filter(models.ServiceJob.id == job_id).first()
+    if not db_job:
+        return False
+    db.delete(db_job)
+    db.commit()
+    return True
+
+
+def create_service_job_attachment(db: Session, job_id: int, file_name: str, file_url: str):
+    db_att = models.ServiceJobAttachment(
+        job_id=job_id,
+        file_name=file_name,
+        file_url=file_url
+    )
+    db.add(db_att)
+    db.commit()
+    db.refresh(db_att)
+    return db_att
+
+
+def delete_service_job_attachment(db: Session, attachment_id: int):
+    db_att = db.query(models.ServiceJobAttachment).filter(models.ServiceJobAttachment.id == attachment_id).first()
+    if not db_att:
+        return False
+    db.delete(db_att)
+    db.commit()
+    return True
+
+
+# --- SERVICE CLIENTS CRUD ---
+
+def get_service_clients(db: Session):
+    clients = db.query(models.ServiceClient).order_by(models.ServiceClient.name.asc()).all()
+    # Compute jobs count for each client
+    result = []
+    for c in clients:
+        j_count = db.query(func.count(models.ServiceJob.id)).filter(models.ServiceJob.client_name == c.name).scalar() or 0
+        c_dict = {
+            "id": c.id,
+            "name": c.name,
+            "phone": c.phone,
+            "company": c.company,
+            "notes": c.notes,
+            "created_at": c.created_at,
+            "jobs_count": j_count
+        }
+        result.append(c_dict)
+    return result
+
+
+def create_service_client(db: Session, client: schemas.ServiceClientCreate):
+    db_client = models.ServiceClient(**client.model_dump())
+    db.add(db_client)
+    db.commit()
+    db.refresh(db_client)
+    return db_client
+
+
+def update_service_client(db: Session, client_id: int, client_update: schemas.ServiceClientUpdate):
+    db_client = db.query(models.ServiceClient).filter(models.ServiceClient.id == client_id).first()
+    if not db_client:
+        return None
+    old_name = db_client.name
+    update_data = client_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_client, key, value)
+    db.commit()
+    db.refresh(db_client)
+
+    # If client name was updated, optionally update service jobs with the old name
+    if "name" in update_data and update_data["name"] != old_name:
+        db.query(models.ServiceJob).filter(models.ServiceJob.client_name == old_name).update(
+            {models.ServiceJob.client_name: update_data["name"]}
+        )
+        db.commit()
+
+    return db_client
+
+
+def delete_service_client(db: Session, client_id: int):
+    db_client = db.query(models.ServiceClient).filter(models.ServiceClient.id == client_id).first()
+    if not db_client:
+        return False
+    db.delete(db_client)
+    db.commit()
+    return True

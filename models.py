@@ -316,4 +316,66 @@ class EmployeeSalary(Base):
     user = relationship("User", back_populates="salaries")
 
 
+class ServiceJob(Base):
+    __tablename__ = "service_jobs"
 
+    id = Column(Integer, primary_key=True, index=True)
+    job_number = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)
+    client_name = Column(String, index=True, nullable=False)
+    client_phone = Column(String, nullable=True)
+    received_date = Column(DateTime(timezone=True), nullable=True)
+    expected_delivery_date = Column(DateTime(timezone=True), nullable=True)
+    assigned_to = Column(String, nullable=True)
+    status = Column(String, default="قيد التنفيذ") # قيد الانتظار, قيد التنفيذ, مكتمل, تم التسليم
+
+    # Manufacturing Operations
+    op_design = Column(Boolean, default=False)
+    op_laser_cutting = Column(Boolean, default=False)
+    op_bending = Column(Boolean, default=False)
+    op_punching = Column(Boolean, default=False)
+    op_welding = Column(Boolean, default=False)
+    op_painting = Column(Boolean, default=False)
+
+    # Sheet Details
+    sheet_thickness = Column(Float, nullable=True)
+    sheet_ownership = Column(String, nullable=True) # "شركة فراس وطارق الجدع" or "العميل"
+    sheet_type = Column(String, nullable=True) # "مغلفن", "ستانليس ستيل", "اسود", "مدهون"
+    notes = Column(String, nullable=True)
+
+    # Pricing & Technical Specs
+    final_price = Column(Float, default=0.0)
+    tax_inclusive = Column(Boolean, default=True)
+    cutting_length = Column(Float, nullable=True)
+    bends_count = Column(Integer, nullable=True)
+    punch_strokes_count = Column(Integer, nullable=True)
+    expected_duration = Column(String, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    attachments = relationship("ServiceJobAttachment", back_populates="job", cascade="all, delete-orphan")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+
+
+class ServiceJobAttachment(Base):
+    __tablename__ = "service_job_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("service_jobs.id"), nullable=False)
+    file_url = Column(String, nullable=False)
+    file_name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    job = relationship("ServiceJob", back_populates="attachments")
+
+
+class ServiceClient(Base):
+    __tablename__ = "service_clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    phone = Column(String, nullable=True)
+    company = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

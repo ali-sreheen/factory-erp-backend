@@ -2199,7 +2199,160 @@ def delete_hr_request(
     db.commit()
     return {"message": "تم حذف الطلب بنجاح"}
 
+# --- SERVICE JOBS & CLIENTS ENDPOINTS ---
+
+@app.get("/api/service-jobs/", response_model=List[schemas.ServiceJobResponse])
+def get_service_jobs(
+    status: Optional[str] = None,
+    client_name: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.get_service_jobs(db, status=status, client_name=client_name)
+
+@app.get("/api/service-jobs/{job_id}", response_model=schemas.ServiceJobResponse)
+def get_service_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    job = crud.get_service_job_by_id(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    return job
+
+@app.post("/api/service-jobs/", response_model=schemas.ServiceJobResponse)
+def create_service_job(
+    job: schemas.ServiceJobCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    existing = crud.get_service_job_by_number(db, job.job_number)
+    if existing:
+        raise HTTPException(status_code=400, detail="رقم الإنتاج مسجل مسبقاً، الرجاء اختيار رقم آخر")
+    return crud.create_service_job(db, job, user_id=current_user.id)
+
+@app.put("/api/service-jobs/{job_id}", response_model=schemas.ServiceJobResponse)
+def update_service_job(
+    job_id: int,
+    job_update: schemas.ServiceJobUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if job_update.job_number:
+        existing = crud.get_service_job_by_number(db, job_update.job_number)
+        if existing and existing.id != job_id:
+            raise HTTPException(status_code=400, detail="رقم الإنتاج مسجل مسبقاً لعمل آخر")
+    updated = crud.update_service_job(db, job_id, job_update)
+    if not updated:
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    return updated
+
+@app.delete("/api/service-jobs/{job_id}")
+def delete_service_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    success = crud.delete_service_job(db, job_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    return {"message": "تم حذف العمل بنجاح"}
+
+@app.post("/api/service-jobs/{job_id}/attachments/", response_model=schemas.ServiceJobAttachmentResponse)
+def create_service_job_attachment(
+    job_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    job = crud.get_service_job_by_id(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="العمل غير موجود")
+    if file and file.filename:
+        file_ext = os.path.splitext(file.filename)[1]
+        filename = f"service_{uuid.uuid4()}{file_ext}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_url = f"/uploads/{filename}"
+        return crud.create_service_job_attachment(db, job_id, file.filename, file_url)
+    raise HTTPException(status_code=400, detail="الملف غير صالح")
+
+@app.delete("/api/service-jobs/attachments/{attachment_id}")
+def delete_service_job_attachment(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    success = crud.delete_service_job_attachment(db, attachment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="المرفق غير موجود")
+    return {"message": "تم حذف المرفق بنجاح"}
+
+# --- SERVICE CLIENTS ENDPOINTS ---
+
+@app.get("/api/service-clients/", response_model=List[schemas.ServiceClientResponse])
+def get_service_clients(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.get_service_clients(db)
+
+@app.post("/api/service-clients/", response_model=schemas.ServiceClientResponse)
+def create_service_client(
+    client: schemas.ServiceClientCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    existing = db.query(models.ServiceClient).filter(models.ServiceClient.name == client.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="اسم العميل مسجل مسبقاً")
+    db_client = crud.create_service_client(db, client)
+    return {
+        "id": db_client.id,
+        "name": db_client.name,
+        "phone": db_client.phone,
+        "company": db_client.company,
+        "notes": db_client.notes,
+        "created_at": db_client.created_at,
+        "jobs_count": 0
+    }
+
+@app.put("/api/service-clients/{client_id}", response_model=schemas.ServiceClientResponse)
+def update_service_client(
+    client_id: int,
+    client_update: schemas.ServiceClientUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_client = crud.update_service_client(db, client_id, client_update)
+    if not db_client:
+        raise HTTPException(status_code=404, detail="العميل غير موجود")
+    j_count = db.query(func.count(models.ServiceJob.id)).filter(models.ServiceJob.client_name == db_client.name).scalar() or 0
+    return {
+        "id": db_client.id,
+        "name": db_client.name,
+        "phone": db_client.phone,
+        "company": db_client.company,
+        "notes": db_client.notes,
+        "created_at": db_client.created_at,
+        "jobs_count": j_count
+    }
+
+@app.delete("/api/service-clients/{client_id}")
+def delete_service_client(
+    client_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    success = crud.delete_service_client(db, client_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="العميل غير موجود")
+    return {"message": "تم حذف العميل بنجاح"}
+
 # Serve frontend files
+
 def get_frontend_dir():
     if getattr(sys, 'frozen', False):
         # PyInstaller extracts bundled data files to a temporary folder sys._MEIPASS

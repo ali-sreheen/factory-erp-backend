@@ -583,6 +583,13 @@ async function showDepartmentsView(fromHistory = false) {
     
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.add('hidden');
+    const sView = document.getElementById('servicesView');
+    if(sView) sView.classList.add('hidden');
+    const swView = document.getElementById('serviceWizardView');
+    if(swView) swView.classList.add('hidden');
+    const sjdView = document.getElementById('serviceJobDetailView');
+    if(sjdView) sjdView.classList.add('hidden');
+
     departmentsView.classList.remove('hidden');
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');
@@ -4230,6 +4237,13 @@ function showPurchasingView(fromHistory = false) {
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
     document.getElementById('projectDetailView').classList.add('hidden');
+    const sView = document.getElementById('servicesView');
+    if(sView) sView.classList.add('hidden');
+    const swView = document.getElementById('serviceWizardView');
+    if(swView) swView.classList.add('hidden');
+    const sjdView = document.getElementById('serviceJobDetailView');
+    if(sjdView) sjdView.classList.add('hidden');
+
     departmentsView.classList.add('hidden');
     accessoriesSubDeptView.classList.add('hidden');
     departmentDetailView.classList.add('hidden');
@@ -6768,7 +6782,7 @@ async function showHRView(fromHistory = false) {
         'moduleSelectorView', 'departmentsView', 'accessoriesSubDeptView', 
         'departmentDetailView', 'adminView', 'purchasingView', 
         'purchaseRequestDetailView', 'projectsView', 'projectWizardView', 
-        'projectDetailView'
+        'projectDetailView', 'servicesView', 'serviceWizardView', 'serviceJobDetailView'
     ];
     views.forEach(v => {
         const el = document.getElementById(v);

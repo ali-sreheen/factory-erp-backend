@@ -511,4 +511,121 @@ class AttendanceRecordResponse(AttendanceRecordBase):
         from_attributes = True
 
 
+# --- SERVICE JOBS SCHEMAS ---
+
+class ServiceJobAttachmentResponse(BaseModel):
+    id: int
+    job_id: int
+    file_url: str
+    file_name: str
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ServiceJobBase(BaseModel):
+    job_number: str
+    name: str
+    client_name: str
+    client_phone: Optional[str] = None
+    received_date: Optional[datetime] = None
+    expected_delivery_date: Optional[datetime] = None
+    assigned_to: Optional[str] = None
+    status: Optional[str] = "قيد التنفيذ"
+
+    op_design: Optional[bool] = False
+    op_laser_cutting: Optional[bool] = False
+    op_bending: Optional[bool] = False
+    op_punching: Optional[bool] = False
+    op_welding: Optional[bool] = False
+    op_painting: Optional[bool] = False
+
+    sheet_thickness: Optional[float] = None
+    sheet_ownership: Optional[str] = None
+    sheet_type: Optional[str] = None
+    notes: Optional[str] = None
+
+    final_price: Optional[float] = 0.0
+    tax_inclusive: Optional[bool] = True
+    cutting_length: Optional[float] = None
+    bends_count: Optional[int] = None
+    punch_strokes_count: Optional[int] = None
+    expected_duration: Optional[str] = None
+
+
+class ServiceJobCreate(ServiceJobBase):
+    pass
+
+
+class ServiceJobUpdate(BaseModel):
+    job_number: Optional[str] = None
+    name: Optional[str] = None
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    received_date: Optional[datetime] = None
+    expected_delivery_date: Optional[datetime] = None
+    assigned_to: Optional[str] = None
+    status: Optional[str] = None
+
+    op_design: Optional[bool] = None
+    op_laser_cutting: Optional[bool] = None
+    op_bending: Optional[bool] = None
+    op_punching: Optional[bool] = None
+    op_welding: Optional[bool] = None
+    op_painting: Optional[bool] = None
+
+    sheet_thickness: Optional[float] = None
+    sheet_ownership: Optional[str] = None
+    sheet_type: Optional[str] = None
+    notes: Optional[str] = None
+
+    final_price: Optional[float] = None
+    tax_inclusive: Optional[bool] = None
+    cutting_length: Optional[float] = None
+    bends_count: Optional[int] = None
+    punch_strokes_count: Optional[int] = None
+    expected_duration: Optional[str] = None
+
+
+class ServiceJobResponse(ServiceJobBase):
+    id: int
+    created_at: Optional[datetime] = None
+    created_by_id: Optional[int] = None
+    attachments: List[ServiceJobAttachmentResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+# --- SERVICE CLIENTS SCHEMAS ---
+
+class ServiceClientBase(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ServiceClientCreate(ServiceClientBase):
+    pass
+
+
+class ServiceClientUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    company: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ServiceClientResponse(ServiceClientBase):
+    id: int
+    created_at: Optional[datetime] = None
+    jobs_count: Optional[int] = 0
+
+    class Config:
+        from_attributes = True
+
+
 UserResponse.update_forward_refs()
+
