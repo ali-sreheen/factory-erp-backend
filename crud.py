@@ -334,6 +334,25 @@ def generate_stickers_for_project_details(db: Session, project_id: int):
     if not project:
         return
         
+    import re
+    all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
+        models.ProjectDetail.sticker_number != None,
+        models.ProjectDetail.sticker_number != ""
+    ).all()
+    
+    current_max_num = 0
+    for (s_num,) in all_stickers:
+        if s_num:
+            for part in s_num.split(','):
+                try:
+                    digits = re.findall(r'\d+', part)
+                    if digits:
+                        val = int(digits[-1])
+                        if val > current_max_num:
+                            current_max_num = val
+                except Exception:
+                    pass
+
     for d in project.details:
         is_fire = False
         if d.fire_resistance:
@@ -343,28 +362,9 @@ def generate_stickers_for_project_details(db: Session, project_id: int):
         if is_fire and not d.sticker_number:
             qty = d.quantity or 1
             stickers = []
-            import re
-            
-            all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
-                models.ProjectDetail.sticker_number != None,
-                models.ProjectDetail.sticker_number != ""
-            ).all()
-            
-            max_num = 0
-            for (s_num,) in all_stickers:
-                if s_num:
-                    for part in s_num.split(','):
-                        try:
-                            digits = re.findall(r'\d+', part)
-                            if digits:
-                                val = int(digits[-1])
-                                if val > max_num:
-                                    max_num = val
-                        except Exception:
-                            pass
-            start_sticker = max_num + 1
             for i in range(qty):
-                stickers.append(str(start_sticker + i))
+                current_max_num += 1
+                stickers.append(str(current_max_num))
                 
             d.sticker_number = ",".join(stickers)
     db.commit()
@@ -438,6 +438,7 @@ def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectD
                     for i in range(qty):
                         stickers.append(f"{base_sticker}_{i+1}" if qty > 1 else base_sticker)
             else:
+                # Find maximum sticker across all details in the database
                 all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
                     models.ProjectDetail.sticker_number != None,
                     models.ProjectDetail.sticker_number != ""
@@ -455,9 +456,9 @@ def create_project_detail(db: Session, project_id: int, detail: schemas.ProjectD
                                         max_num = val
                             except Exception:
                                 pass
-                start_sticker = max_num + 1
                 for i in range(qty):
-                    stickers.append(str(start_sticker + i))
+                    max_num += 1
+                    stickers.append(str(max_num))
                     
             db_detail.sticker_number = ",".join(stickers)
         else:

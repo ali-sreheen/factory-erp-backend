@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Helper to check and close any open modals
 function closeAnyOpenModal() {
     const modalIds = [
-        'sheetNestingModal', 'projectActivationModal', 'contractorModal',
+        'sheetNestingModal', 'projectActivationModal', 'contractorModal', 'fireDoorsModal',
         'addItemModal', 'txModal', 'logModal', 'editUserModal', 'deleteUserModal',
         'moveItemModal', 'itemDetailsModal', 'addSubDeptModal', 'manageSubDeptsModal',
         'reservationModal', 'transferModal', 'returnModal', 'scrapModal',

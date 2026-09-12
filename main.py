@@ -1373,7 +1373,7 @@ def get_fire_doors(db: Session = Depends(get_db), current_user: models.User = De
             models.ProjectDetail.fire_resistance.like("نعم%"),
             models.ProjectDetail.fire_resistance.like("YES%")
         )
-    ).all()
+    ).order_by(models.ProjectDetail.id.asc()).all()
     
     result = []
     for d in details:
