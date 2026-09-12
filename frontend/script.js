@@ -5151,6 +5151,65 @@ window.submitMoveItemForm = async (e) => {
 
 // ------------- PROJECT OPTIONS MANAGEMENT -------------
 
+async function loadStoreItemsForOptions(type, selectedName = null) {
+    const itemSelect = document.getElementById('optFormItemSelect');
+    if (!itemSelect) return;
+    itemSelect.innerHTML = '<option value="">جاري تحميل أصناف المخزن...</option>';
+
+    try {
+        let items = [];
+        const response = await authFetch(`${API_URL}/`);
+        if (response.ok) {
+            const allItems = await response.json();
+            // Filter by category "إكسسوارات" / "قسم الاكسسوارات" or any accessory item
+            items = allItems.filter(it => {
+                const cat = normalizeArabic(it.category || '');
+                return cat.includes('كسسوار') || cat.includes('accessories');
+            });
+            if (items.length === 0) items = allItems;
+        } else {
+            throw new Error('فشل الاستجابة');
+        }
+
+        const filtered = items.filter(it => {
+            const sub = normalizeArabic(it.subcategory || '');
+            const name = normalizeArabic(it.name || '');
+            if (type === 'lock') return sub.includes('زرفيل') || sub.includes('قفل') || sub.includes('lock') || name.includes('زرفيل') || name.includes('قفل') || name.includes('lock');
+            if (type === 'hinge') return sub.includes('فصال') || sub.includes('hinge') || name.includes('فصال') || name.includes('hinge');
+            return true;
+        });
+
+        const displayItems = filtered.length > 0 ? filtered : items;
+
+        if (displayItems.length > 0) {
+            itemSelect.innerHTML = '<option value="">-- اختر الصنف من المخزن --</option>';
+            displayItems.forEach(item => {
+                const optEl = document.createElement('option');
+                optEl.value = item.name;
+                optEl.dataset.sku = item.sku || '';
+                if (selectedName && (item.name === selectedName || (item.name && selectedName && item.name.trim().toLowerCase() === selectedName.trim().toLowerCase()))) {
+                    optEl.selected = true;
+                }
+                optEl.textContent = `${item.name} ${item.sku ? '(' + item.sku + ')' : '(بدون رمز SKU)'}`;
+                itemSelect.appendChild(optEl);
+            });
+            // If selectedName wasn't in displayItems, append it
+            if (selectedName && !Array.from(itemSelect.options).some(o => o.value === selectedName)) {
+                const optEl = document.createElement('option');
+                optEl.value = selectedName;
+                optEl.selected = true;
+                optEl.textContent = selectedName;
+                itemSelect.appendChild(optEl);
+            }
+        } else {
+            itemSelect.innerHTML = '<option value="">-- لا توجد أصناف في المستودع --</option>';
+        }
+    } catch (err) {
+        console.error('Error fetching accessories items:', err);
+        itemSelect.innerHTML = '<option value="">-- خطأ أثناء جلب الأصناف --</option>';
+    }
+}
+
 window.openAddOptionModal = async function(type) {
     let title = 'إضافة خيار جديد';
     if (type === 'lock') title = 'إضافة خيار زرفيل جديد';
@@ -5169,59 +5228,12 @@ window.openAddOptionModal = async function(type) {
     const storeContainer = document.getElementById('optStoreItemContainer');
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
-    const itemSelect = document.getElementById('optFormItemSelect');
 
     if (type === 'lock' || type === 'hinge') {
         storeContainer.classList.remove('hidden');
         fireContainer.classList.remove('hidden');
         customContainer.classList.add('hidden');
-
-        itemSelect.innerHTML = '<option value="">جاري تحميل أصناف المخزن...</option>';
-
-        try {
-            // Load store items (fetch all or category=إكسسوارات)
-            let items = [];
-            const response = await authFetch(`${API_URL}/`);
-            if (response.ok) {
-                const allItems = await response.json();
-                // Filter by category "إكسسوارات" / "قسم الاكسسوارات" or any accessory item
-                items = allItems.filter(it => {
-                    const cat = normalizeArabic(it.category || '');
-                    return cat.includes('كسسوار') || cat.includes('accessories');
-                });
-                // Fallback to all items if category matching returned none
-                if (items.length === 0) items = allItems;
-            } else {
-                throw new Error('فشل الاستجابة');
-            }
-
-            // Subcategory filter: for lock -> 'الزرفيل' / 'زرفيل' / 'أقفال' / 'lock', for hinge -> 'فصالات' / 'فصالة' / 'hinge'
-            const filtered = items.filter(it => {
-                const sub = normalizeArabic(it.subcategory || '');
-                const name = normalizeArabic(it.name || '');
-                if (type === 'lock') return sub.includes('زرفيل') || sub.includes('قفل') || sub.includes('lock') || name.includes('زرفيل') || name.includes('قفل') || name.includes('lock');
-                if (type === 'hinge') return sub.includes('فصال') || sub.includes('hinge') || name.includes('فصال') || name.includes('hinge');
-                return true;
-            });
-
-            const displayItems = filtered.length > 0 ? filtered : items;
-
-            if (displayItems.length > 0) {
-                itemSelect.innerHTML = '<option value="">-- اختر الصنف من المخزن --</option>';
-                displayItems.forEach(item => {
-                    const optEl = document.createElement('option');
-                    optEl.value = item.name;
-                    optEl.dataset.sku = item.sku || '';
-                    optEl.textContent = `${item.name} ${item.sku ? '(' + item.sku + ')' : '(بدون رمز SKU)'}`;
-                    itemSelect.appendChild(optEl);
-                });
-            } else {
-                itemSelect.innerHTML = '<option value="">-- لا توجد أصناف في المستودع --</option>';
-            }
-        } catch (err) {
-            console.error('Error fetching accessories items:', err);
-            itemSelect.innerHTML = '<option value="">-- خطأ أثناء جلب الأصناف --</option>';
-        }
+        await loadStoreItemsForOptions(type);
     } else {
         storeContainer.classList.add('hidden');
         fireContainer.classList.add('hidden');
@@ -5270,14 +5282,12 @@ window.openEditOptionModal = async function(id, type) {
     const storeContainer = document.getElementById('optStoreItemContainer');
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
-    const itemSelect = document.getElementById('optFormItemSelect');
 
     if (type === 'lock' || type === 'hinge') {
         storeContainer.classList.remove('hidden');
         fireContainer.classList.remove('hidden');
         customContainer.classList.add('hidden');
-
-        itemSelect.innerHTML = `<option value="${opt.name}" selected>${opt.name} (${opt.sku || 'بدون رمز'})</option>`;
+        await loadStoreItemsForOptions(type, opt.name);
     } else {
         storeContainer.classList.add('hidden');
         fireContainer.classList.add('hidden');
