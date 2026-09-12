@@ -5229,15 +5229,16 @@ window.openAddOptionModal = async function(type) {
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
 
+    // Custom name container is always visible so user can customize the display name
+    customContainer.classList.remove('hidden');
+
     if (type === 'lock' || type === 'hinge') {
         storeContainer.classList.remove('hidden');
         fireContainer.classList.remove('hidden');
-        customContainer.classList.add('hidden');
         await loadStoreItemsForOptions(type);
     } else {
         storeContainer.classList.add('hidden');
         fireContainer.classList.add('hidden');
-        customContainer.classList.remove('hidden');
     }
 
     document.getElementById('projectOptionModal').classList.remove('hidden');
@@ -5249,7 +5250,6 @@ window.handleOptionItemSelect = function(selectEl) {
         document.getElementById('optFormName').value = selectedOpt.value;
         document.getElementById('optFormSku').value = selectedOpt.dataset.sku || '';
     } else {
-        document.getElementById('optFormName').value = '';
         document.getElementById('optFormSku').value = '';
     }
 };
@@ -5283,15 +5283,16 @@ window.openEditOptionModal = async function(id, type) {
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
 
+    // Always keep custom name container visible for editing the name
+    customContainer.classList.remove('hidden');
+
     if (type === 'lock' || type === 'hinge') {
         storeContainer.classList.remove('hidden');
         fireContainer.classList.remove('hidden');
-        customContainer.classList.add('hidden');
         await loadStoreItemsForOptions(type, opt.name);
     } else {
         storeContainer.classList.add('hidden');
         fireContainer.classList.add('hidden');
-        customContainer.classList.remove('hidden');
     }
 
     document.getElementById('projectOptionModal').classList.remove('hidden');
@@ -5309,15 +5310,8 @@ window.handleOptionFormSubmit = async function(e) {
     const sku = document.getElementById('optFormSku').value.trim();
     const isFireRated = document.getElementById('optFormFireRated').checked;
 
-    if (type === 'lock' || type === 'hinge') {
-        const itemSelect = document.getElementById('optFormItemSelect');
-        if (itemSelect && itemSelect.value) {
-            name = itemSelect.value;
-        }
-    }
-
     if (!name) {
-        showToast('الرجاء اختيار الصنف أو إدخال الاسم', 'bg-rose-500', '✗');
+        showToast('الرجاء إدخال أو اختيار اسم الخيار', 'bg-rose-500', '✗');
         return;
     }
 
