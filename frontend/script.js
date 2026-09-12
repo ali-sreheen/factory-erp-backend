@@ -90,7 +90,32 @@ document.addEventListener('DOMContentLoaded', () => {
             userMenuDropdown.classList.add('hidden');
         }
     });
+
+    // History and Browser Back/Forward navigation support
+    window.addEventListener('popstate', (e) => {
+        handlePopState(e);
+    });
 });
+
+// Helper to check and close any open modals
+function closeAnyOpenModal() {
+    const modalIds = [
+        'sheetNestingModal', 'projectActivationModal', 'contractorModal',
+        'addItemModal', 'txModal', 'logModal', 'editUserModal', 'deleteUserModal',
+        'moveItemModal', 'itemDetailsModal', 'addSubDeptModal', 'manageSubDeptsModal',
+        'reservationModal', 'transferModal', 'returnModal', 'scrapModal',
+        'hrLeaveRequestModal', 'hrVacationRequestModal', 'hrInquiryRequestModal',
+        'editEmployeeModal', 'hrOfficialLeavesModal'
+    ];
+    for (const id of modalIds) {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+            el.classList.add('hidden');
+            return true;
+        }
+    }
+    return false;
+}
 
 // ----------------- USER MENU DROPDOWN -----------------
 
@@ -201,7 +226,10 @@ async function showAppView(username) {
 
     loadProjectOptions();
     loadSheetSizes();
-    showModuleSelectorView();
+    if (!history.state) {
+        history.replaceState({ view: 'moduleSelector', params: {} }, '', '#/moduleSelector');
+    }
+    showModuleSelectorView(true);
 }
 
 function toggleAuthMode(mode) {
@@ -455,13 +483,85 @@ function setupDescriptionEditAction() {
     };
 }
 
-// ----------------- VIEW ROUTING -----------------
+// ----------------- VIEW ROUTING & HISTORY MANAGEMENT -----------------
 
-async function showDepartmentsView() {
+let isNavigatingHistory = false;
+
+function pushNavigationState(viewName, params = {}, replace = false) {
+    if (isNavigatingHistory) return;
+    const stateObj = { view: viewName, params: params };
+    const hash = '#/' + viewName + (params.id ? `/${params.id}` : (params.dept ? `/${encodeURIComponent(params.dept)}` : ''));
+    if (replace) {
+        history.replaceState(stateObj, '', hash);
+    } else {
+        // Only push if state differs from current state
+        const curState = history.state;
+        if (!curState || curState.view !== viewName || JSON.stringify(curState.params || {}) !== JSON.stringify(params)) {
+            history.pushState(stateObj, '', hash);
+        }
+    }
+}
+
+async function handlePopState(event) {
+    // 1. If any modal is open, close it and do not change views
+    if (closeAnyOpenModal()) {
+        // Re-push current state so back button consumed for modal closure
+        return;
+    }
+
+    const state = event.state;
+    isNavigatingHistory = true;
+    try {
+        if (!state || !state.view || state.view === 'moduleSelector') {
+            showModuleSelectorView(true);
+        } else if (state.view === 'projects') {
+            showProjectsView(true);
+        } else if (state.view === 'projectDetail') {
+            await viewProjectDetails(state.params.id, true);
+        } else if (state.view === 'projectWizard') {
+            openProjectWizard(true);
+        } else if (state.view === 'projectEdit') {
+            await editProject(state.params.id, true);
+        } else if (state.view === 'departments') {
+            await showDepartmentsView(true);
+        } else if (state.view === 'subDeptView') {
+            await enterSubDeptView(state.params.dept, true);
+        } else if (state.view === 'subDeptDetail') {
+            currentDepartment = state.params.dept;
+            await enterSubDepartment(state.params.subDept, true);
+        } else if (state.view === 'deptDetail') {
+            await enterDepartment(state.params.dept, true);
+        } else if (state.view === 'purchasing') {
+            showPurchasingView(true);
+        } else if (state.view === 'purchaseRequestDetail') {
+            await openPurchaseRequestDetails(state.params.id, true);
+        } else if (state.view === 'hr') {
+            await showHRView(true);
+            if (state.params && state.params.section) {
+                enterHrSubSection(state.params.section, true);
+            }
+        } else if (state.view === 'admin') {
+            await showAdminView(true);
+        } else {
+            showModuleSelectorView(true);
+        }
+    } catch (err) {
+        console.error('Error handling popstate navigation:', err);
+    } finally {
+        isNavigatingHistory = false;
+    }
+}
+
+
+async function showDepartmentsView(fromHistory = false) {
     const username = localStorage.getItem('username');
     if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_inventory' && (p.can_edit == 1 || p.can_edit === true))) {
         showToast('غير مصرح لك بالوصول لنظام إدارة المخازن', 'bg-rose-500', '✗');
         return;
+    }
+
+    if (!fromHistory) {
+        pushNavigationState('departments');
     }
 
     const hrView = document.getElementById('hrView');
@@ -485,7 +585,11 @@ async function showDepartmentsView() {
     await fetchDepartmentCounts();
 }
 
-async function enterSubDeptView(deptName) {
+async function enterSubDeptView(deptName, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('subDeptView', { dept: deptName });
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -556,7 +660,11 @@ async function enterSubDeptView(deptName) {
     adminView.classList.add('hidden');
 }
 
-async function enterSubDepartment(subDept) {
+async function enterSubDepartment(subDept, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('subDeptDetail', { dept: currentDepartment, subDept: subDept });
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -584,7 +692,11 @@ async function enterSubDepartment(subDept) {
     await loadItems();
 }
 
-async function enterDepartment(deptName) {
+async function enterDepartment(deptName, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('deptDetail', { dept: deptName });
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -723,7 +835,11 @@ async function fetchDepartmentCounts() {
 
 // ----------------- ADMIN VIEW LOGIC -----------------
 
-async function showAdminView() {
+async function showAdminView(fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('admin');
+    }
+
     const hrView = document.getElementById('hrView');
     if(hrView) hrView.classList.add('hidden');
 
@@ -2303,7 +2419,11 @@ let firstRowDoorTypeChangeCount = 0;
 let firstRowLeafThicknessChangeCount = 0;
 let firstRowSpecChangeCount = 0;
 
-function showModuleSelectorView() {
+function showModuleSelectorView(fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('moduleSelector');
+    }
+
     const hrView = document.getElementById('hrView');
     if(hrView) hrView.classList.add('hidden');
 
@@ -2323,11 +2443,15 @@ function showModuleSelectorView() {
     if(pdView) pdView.classList.add('hidden');
 }
 
-function showProjectsView() {
+function showProjectsView(fromHistory = false) {
     const username = localStorage.getItem('username');
     if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_projects' && (p.can_edit == 1 || p.can_edit === true))) {
         showToast('غير مصرح لك بالوصول لنظام إدارة المشاريع', 'bg-rose-500', '✗');
         return;
+    }
+
+    if (!fromHistory) {
+        pushNavigationState('projects');
     }
 
     const hrView = document.getElementById('hrView');
@@ -2584,7 +2708,11 @@ window.handleContractorSelectChange = function(selectElem) {
     }
 };
 
-function openProjectWizard() {
+function openProjectWizard(fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('projectWizard');
+    }
+
     const _pView = document.getElementById('purchasingView');
     if(_pView) _pView.classList.add('hidden');
     const _prdView = document.getElementById('purchaseRequestDetailView');
@@ -3149,7 +3277,11 @@ async function loadProjects() {
     }
 }
 
-async function viewProjectDetails(id) {
+async function viewProjectDetails(id, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('projectDetail', { id: id });
+    }
+
     document.getElementById('moduleSelectorView').classList.add('hidden');
     document.getElementById('projectsView').classList.add('hidden');
     document.getElementById('projectWizardView').classList.add('hidden');
@@ -3621,7 +3753,10 @@ window.deleteExistingAttachment = async function(attachmentId, element) {
     }
 };
 
-window.editProject = async function(projectId) {
+window.editProject = async function(projectId, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('projectEdit', { id: projectId });
+    }
     try {
         const response = await authFetch(`${PROJECTS_URL}/${projectId}`);
         if (!response.ok) throw new Error('فشل جلب تفاصيل المشروع');
@@ -3998,11 +4133,15 @@ async function updateExpectedDate() {
 const SUPPLIERS_URL = `${API_HOST}/api/suppliers`;
 const PURCHASE_REQUESTS_URL = `${API_HOST}/api/purchase-requests`;
 
-function showPurchasingView() {
+function showPurchasingView(fromHistory = false) {
     const username = localStorage.getItem('username');
     if (username !== 'admin' && !userPermissionsList.some(p => p.department_name === 'system_purchasing' && (p.can_edit == 1 || p.can_edit === true))) {
         showToast('غير مصرح لك بالوصول لنظام إدارة المشتريات', 'bg-rose-500', '✗');
         return;
+    }
+
+    if (!fromHistory) {
+        pushNavigationState('purchasing');
     }
 
     const hrView = document.getElementById('hrView');
@@ -4391,7 +4530,11 @@ async function deletePurchaseRequest(id) {
 }
 
 // --- Purchase Request Details Logic ---
-async function openPurchaseRequestDetails(id) {
+async function openPurchaseRequestDetails(id, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('purchaseRequestDetail', { id: id });
+    }
+
     document.getElementById('purchasingView').classList.add('hidden');
     document.getElementById('purchaseRequestDetailView').classList.remove('hidden');
     document.getElementById('prdTitle').innerText = 'جاري التحميل...';
@@ -6519,12 +6662,16 @@ function doExportManufacturing(project) {
 // ==================== HR SYSTEM FRONTEND ====================
 let hrCurrentSection = 'menu';
 
-async function showHRView() {
+async function showHRView(fromHistory = false) {
     const currentUsername = localStorage.getItem('username');
     const hasHrAccess = currentUsername === 'admin' || userPermissionsList.some(p => p.department_name === 'system_hr' && (p.can_edit == 1 || p.can_edit === true));
     if (!hasHrAccess) {
         showToast('غير مصرح لك بالوصول لنظام إدارة شؤون الموظفين', 'bg-rose-500', '✗');
         return;
+    }
+
+    if (!fromHistory) {
+        pushNavigationState('hr');
     }
 
     const views = [
@@ -6599,7 +6746,10 @@ async function showHRView() {
     await loadHrAttendance();
 }
 
-function enterHrSubSection(section) {
+function enterHrSubSection(section, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('hr', { section: section });
+    }
     hrCurrentSection = section;
     
     // Hide main menu
