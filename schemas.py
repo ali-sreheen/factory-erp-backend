@@ -273,6 +273,9 @@ class ProjectDetailBase(BaseModel):
     raddad: Optional[str] = "NO"
     hinges_count: Optional[int] = 4
     window_details: Optional[str] = None
+    window_width: Optional[str] = None
+    window_height: Optional[str] = None
+    window_position: Optional[str] = None
     architrave: Optional[str] = None
     architrave_2: Optional[str] = None
     under_tile: Optional[str] = None

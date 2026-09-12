@@ -2858,6 +2858,39 @@ function updateStatusStyling(status) {
     }
 }
 
+function toggleWindowInputs(element) {
+    const tr = element.closest('tr');
+    if (!tr) return;
+    const specSelect = tr.querySelector('.pd-spec-select');
+    const widthInput = tr.querySelector('.pd-window-width');
+    const heightInput = tr.querySelector('.pd-window-height');
+    const posSelect = tr.querySelector('.pd-window-position');
+    if (!specSelect || !widthInput || !heightInput || !posSelect) return;
+    
+    const val = (specSelect.value || '').trim().toUpperCase();
+    const isWindowActive = (val === 'VP' || val === 'GMP' || val === 'GMB');
+    
+    if (isWindowActive) {
+        widthInput.disabled = false;
+        heightInput.disabled = false;
+        posSelect.disabled = false;
+        widthInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        heightInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        posSelect.classList.remove('bg-slate-100', 'cursor-not-allowed');
+    } else {
+        widthInput.value = '';
+        heightInput.value = '';
+        posSelect.value = '';
+        widthInput.disabled = true;
+        heightInput.disabled = true;
+        posSelect.disabled = true;
+        widthInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        heightInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        posSelect.classList.add('bg-slate-100', 'cursor-not-allowed');
+    }
+}
+window.toggleWindowInputs = toggleWindowInputs;
+
 let projectDetailsCount = 0;
 function addProjectDetailRow() {
     projectDetailsCount++;
@@ -2952,7 +2985,7 @@ function addProjectDetailRow() {
             <option value="Flush" ${currentDefaultSpec === 'Flush' ? 'selected' : ''}>Flush</option>
             <option value="louver" ${currentDefaultSpec === 'louver' ? 'selected' : ''}>louver</option>
             <option value="VP" ${currentDefaultSpec === 'VP' ? 'selected' : ''}>VP</option>
-            <option value="GMB" ${currentDefaultSpec === 'GMB' ? 'selected' : ''}>GMB</option>
+            <option value="GMP" ${currentDefaultSpec === 'GMP' || currentDefaultSpec === 'GMB' ? 'selected' : ''}>GMP</option>
         `;
     }
 
@@ -3001,7 +3034,7 @@ function addProjectDetailRow() {
         <td class="p-2"><input type="number" step="0.01" class="pd-leaf1-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" readonly oninput="onLeafSize1Input(this)"></td>
         <td class="p-2"><input type="number" step="0.01" class="pd-leaf2-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" readonly></td>
         <td class="p-2">
-            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+            <select class="pd-spec-select w-full px-2 py-1 border rounded bg-white text-sm" onchange="toggleWindowInputs(this)">
                 ${specSelectOpts}
             </select>
         </td>
@@ -3017,7 +3050,15 @@ function addProjectDetailRow() {
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);" value="${currentDefaultArchitrave || ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط" value="${currentDefaultUnderTile || ''}"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الشباك"></td>
+        <td class="p-2"><input type="number" step="0.1" class="pd-window-width w-20 px-2 py-1 border rounded text-center bg-slate-100 cursor-not-allowed" placeholder="العرض" disabled></td>
+        <td class="p-2"><input type="number" step="0.1" class="pd-window-height w-20 px-2 py-1 border rounded text-center bg-slate-100 cursor-not-allowed" placeholder="الارتفاع" disabled></td>
+        <td class="p-2">
+            <select class="pd-window-position w-24 px-2 py-1 border rounded bg-slate-100 text-sm cursor-not-allowed" disabled>
+                <option value="">--</option>
+                <option value="Center">Center</option>
+                <option value="Side">Side</option>
+            </select>
+        </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
@@ -3162,6 +3203,7 @@ function addProjectDetailRow() {
                         const rowSelects = row.querySelectorAll('select');
                         if (rowSelects[6]) {
                             rowSelects[6].value = currentDefaultSpec;
+                            toggleWindowInputs(rowSelects[6]);
                         }
                     }
                 });
@@ -3388,7 +3430,9 @@ async function viewProjectDetails(id, fromHistory = false) {
                     <td class="p-3">${d.architrave || '-'}</td>
                     <td class="p-3">${d.architrave_2 || '-'}</td>
                     <td class="p-3">${d.under_tile || '-'}</td>
-                    <td class="p-3">${d.window_details || '-'}</td>
+                    <td class="p-3 font-semibold text-slate-700">${d.window_width || '-'}</td>
+                    <td class="p-3 font-semibold text-slate-700">${d.window_height || '-'}</td>
+                    <td class="p-3 font-semibold text-slate-700">${d.window_position || '-'}</td>
                     <td class="p-3 text-center">${d.raddad === 'YES' ? 'نعم' : 'لا'}</td>
                     <td class="p-3">${d.notes || '-'}</td>
                 `;
@@ -3517,9 +3561,12 @@ if (projectWizardForm) {
                     architrave: inputs[17].value || null,
                     architrave_2: inputs[18].value || null,
                     under_tile: inputs[19].value || null,
-                    window_details: inputs[20].value || null,
-                    raddad: inputs[21].checked ? 'YES' : 'NO',
-                    notes: inputs[22].value || null
+                    window_width: inputs[20].value || null,
+                    window_height: inputs[21].value || null,
+                    window_position: inputs[22].value || null,
+                    window_details: (inputs[20].value && inputs[21].value) ? `${inputs[20].value}x${inputs[21].value}${inputs[22].value ? ' (' + inputs[22].value + ')' : ''}` : null,
+                    raddad: inputs[23].checked ? 'YES' : 'NO',
+                    notes: inputs[24].value || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -3920,7 +3967,7 @@ window.editProject = async function(projectId, fromHistory = false) {
                     <td class="p-2"><input type="number" step="0.01" class="pd-leaf1-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" value="${d.leaf_size || ''}" readonly oninput="onLeafSize1Input(this)"></td>
                     <td class="p-2"><input type="number" step="0.01" class="pd-leaf2-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" value="${d.leaf_size_2 || ''}" readonly></td>
                     <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <select class="pd-spec-select w-full p-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="toggleWindowInputs(this)">
                             ${specSelectOpts}
                         </select>
                     </td>
@@ -3936,7 +3983,15 @@ window.editProject = async function(projectId, fromHistory = false) {
                     <td class="p-2"><input type="text" class="pd-architrave-input w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="pd-window-width w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" placeholder="العرض" value="${d.window_width || ''}"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="pd-window-height w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" placeholder="الارتفاع" value="${d.window_height || ''}"></td>
+                    <td class="p-2">
+                        <select class="pd-window-position w-24 p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                            <option value="" ${!d.window_position ? 'selected' : ''}>--</option>
+                            <option value="Center" ${d.window_position === 'Center' ? 'selected' : ''}>Center</option>
+                            <option value="Side" ${d.window_position === 'Side' ? 'selected' : ''}>Side</option>
+                        </select>
+                    </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.raddad === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
                     <td class="p-2 text-center">
@@ -3946,6 +4001,8 @@ window.editProject = async function(projectId, fromHistory = false) {
                     </td>
                 `;
                 tbody.appendChild(tr);
+                // Toggle window inputs enabled/disabled based on spec
+                toggleWindowInputs(tr.querySelector('.pd-spec-select') || tr);
                 // If leaf sizes not yet filled or if double leaf, calculate/update
                 if (!d.leaf_size && !d.leaf_size_2) {
                     autoCalculateLeafSizes(tr.querySelector('.pd-width-input') || tr);
