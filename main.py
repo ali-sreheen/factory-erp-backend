@@ -958,6 +958,7 @@ def get_sheet_requirements(project_id: int, db: Session = Depends(get_db), curre
     details_dicts = []
     for detail in project.details:
         details_dicts.append({
+            "door_number": detail.door_number,
             "height": detail.height,
             "width": detail.width,
             "depth": detail.depth,

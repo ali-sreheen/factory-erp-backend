@@ -2831,7 +2831,7 @@ function addProjectDetailRow() {
     tr.innerHTML = `
         <td class="p-2"><input type="text" class="w-16 px-2 py-1 border rounded text-center font-bold" placeholder="رقم" value="${nextDoorNumber}"></td>
         <td class="p-2"><input type="number" class="w-16 px-2 py-1 border rounded text-center" placeholder="العدد" value="1" min="1"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عرض" oninput="autoCalculateLeafSizes(this)"></td>
+        <td class="p-2"><input type="number" step="0.01" class="pd-width-input w-16 px-2 py-1 border rounded text-center" placeholder="عرض" oninput="autoCalculateLeafSizes(this)"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="طول"></td>
         <td class="p-2"><input type="number" step="0.01" class="w-16 px-2 py-1 border rounded text-center" placeholder="عمق"></td>
         <td class="p-2">
@@ -2866,12 +2866,12 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2">
-            <select class="w-full px-2 py-1 border rounded bg-white text-sm" onchange="autoCalculateLeafSizes(this)">
+            <select class="pd-doortype-select w-full px-2 py-1 border rounded bg-white text-sm" onchange="autoCalculateLeafSizes(this)">
                 ${doorTypeSelectOpts}
             </select>
         </td>
-        <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" readonly oninput="onLeafSize1Input(this)"></td>
-        <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" readonly></td>
+        <td class="p-2"><input type="number" step="0.01" class="pd-leaf1-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" readonly oninput="onLeafSize1Input(this)"></td>
+        <td class="p-2"><input type="number" step="0.01" class="pd-leaf2-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" readonly></td>
         <td class="p-2">
             <select class="w-full px-2 py-1 border rounded bg-white text-sm">
                 ${specSelectOpts}
@@ -3289,6 +3289,9 @@ async function viewProjectDetails(id) {
         document.getElementById('sheetLoading').classList.add('hidden');
         document.getElementById('sheetResults').classList.add('hidden');
         document.getElementById('sheetEmpty').classList.add('hidden');
+        const btnPreview = document.getElementById('btnOpenSheetPreview');
+        if (btnPreview) btnPreview.classList.add('hidden');
+        window.currentSheetNestingData = null;
         const resActions = document.getElementById('projectReservationActions');
         if (resActions) resActions.classList.add('hidden');
         
@@ -3740,7 +3743,7 @@ window.editProject = async function(projectId) {
                 tr.innerHTML = `
                     <td class="p-2"><input type="text" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center font-bold" value="${d.door_number || ''}"></td>
                     <td class="p-2"><input type="number" class="w-16 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.quantity !== null && d.quantity !== undefined ? d.quantity : 1}"></td>
-                    <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.width || ''}" oninput="autoCalculateLeafSizes(this)"></td>
+                    <td class="p-2"><input type="number" step="0.1" class="pd-width-input w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" placeholder="عرض" value="${d.width || ''}" oninput="autoCalculateLeafSizes(this)"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.height || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="w-16 px-1 py-2 border border-slate-300 rounded-lg text-sm text-center" value="${d.depth || ''}"></td>
                     <td class="p-2">
@@ -3775,12 +3778,12 @@ window.editProject = async function(projectId) {
                         </select>
                     </td>
                     <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="autoCalculateLeafSizes(this)">
+                        <select class="pd-doortype-select w-full p-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="autoCalculateLeafSizes(this)">
                             ${doorTypeSelectOpts}
                         </select>
                     </td>
-                    <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" value="${d.leaf_size || ''}" readonly oninput="onLeafSize1Input(this)"></td>
-                    <td class="p-2"><input type="number" step="0.01" class="w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" value="${d.leaf_size_2 || ''}" readonly></td>
+                    <td class="p-2"><input type="number" step="0.01" class="pd-leaf1-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة" value="${d.leaf_size || ''}" readonly oninput="onLeafSize1Input(this)"></td>
+                    <td class="p-2"><input type="number" step="0.01" class="pd-leaf2-input w-20 px-2 py-1 border rounded text-center bg-slate-100" placeholder="قياس الدرفة 2" value="${d.leaf_size_2 || ''}" readonly></td>
                     <td class="p-2">
                         <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
                             ${specSelectOpts}
@@ -3795,7 +3798,7 @@ window.editProject = async function(projectId) {
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'Yes' || d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);"></td>
+                    <td class="p-2"><input type="text" class="pd-architrave-input w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.window_details || ''}"></td>
@@ -3808,6 +3811,20 @@ window.editProject = async function(projectId) {
                     </td>
                 `;
                 tbody.appendChild(tr);
+                // If leaf sizes not yet filled or if double leaf, calculate/update
+                if (!d.leaf_size && !d.leaf_size_2) {
+                    autoCalculateLeafSizes(tr.querySelector('.pd-width-input') || tr);
+                } else {
+                    // Update readonly/editability state
+                    const dt = (d.door_type || '').toLowerCase();
+                    if (dt.includes('double') || dt.includes('دبل')) {
+                        const l1 = tr.querySelector('.pd-leaf1-input');
+                        if (l1) {
+                            l1.removeAttribute('readonly');
+                            l1.classList.remove('bg-slate-100');
+                        }
+                    }
+                }
             });
         }
         
@@ -4582,6 +4599,18 @@ async function calculateSheetRequirements() {
             
             document.getElementById('sheetResults').classList.remove('hidden');
             
+            // Store nesting layout data and show preview button
+            window.currentSheetNestingData = data;
+            const btnPreview = document.getElementById('btnOpenSheetPreview');
+            const hasSheets = (data.sheets_1_5 && data.sheets_1_5.length > 0) || (data.sheets_1_2 && data.sheets_1_2.length > 0);
+            if (btnPreview) {
+                if (hasSheets) {
+                    btnPreview.classList.remove('hidden');
+                } else {
+                    btnPreview.classList.add('hidden');
+                }
+            }
+
             // Show reservation actions if authorized
             const resActions = document.getElementById('projectReservationActions');
             if (resActions) {
@@ -4618,10 +4647,172 @@ async function calculateSheetRequirements() {
         showToast(e.message, 'bg-rose-500', '✗');
         document.getElementById('sheetEmpty').classList.remove('hidden');
         document.getElementById('sheetEmpty').textContent = 'حدث خطأ أثناء الحساب.';
+        const btnPreview = document.getElementById('btnOpenSheetPreview');
+        if (btnPreview) btnPreview.classList.add('hidden');
     } finally {
         document.getElementById('sheetLoading').classList.add('hidden');
     }
 }
+
+// ------------- SHEET NESTING PREVIEW MODAL -------------
+let currentActiveSheetTab = '1_5';
+
+window.openSheetNestingPreview = function() {
+    if (!window.currentSheetNestingData) {
+        showToast('يرجى حساب كميات الصاج أولاً', 'bg-amber-500', '!');
+        return;
+    }
+
+    const data = window.currentSheetNestingData;
+    const count1_5 = (data.sheets_1_5 || []).length;
+    const count1_2 = (data.sheets_1_2 || []).length;
+
+    const b1_5 = document.getElementById('badgeSheetCount1_5');
+    const b1_2 = document.getElementById('badgeSheetCount1_2');
+    if (b1_5) b1_5.textContent = `${count1_5} لوح`;
+    if (b1_2) b1_2.textContent = `${count1_2} لوح`;
+
+    // Default to the tab that has sheets
+    if (count1_5 > 0) {
+        switchSheetNestingTab('1_5');
+    } else if (count1_2 > 0) {
+        switchSheetNestingTab('1_2');
+    } else {
+        switchSheetNestingTab('1_5');
+    }
+
+    document.getElementById('sheetNestingModal').classList.remove('hidden');
+};
+
+window.closeSheetNestingPreview = function() {
+    const modal = document.getElementById('sheetNestingModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.switchSheetNestingTab = function(tab) {
+    currentActiveSheetTab = tab;
+    const tab1_5 = document.getElementById('tabSheetNesting1_5');
+    const tab1_2 = document.getElementById('tabSheetNesting1_2');
+
+    if (tab === '1_5') {
+        tab1_5.className = 'pb-3 px-4 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center gap-2 transition';
+        tab1_2.className = 'pb-3 px-4 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 transition';
+    } else {
+        tab1_2.className = 'pb-3 px-4 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center gap-2 transition';
+        tab1_5.className = 'pb-3 px-4 font-bold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 transition';
+    }
+
+    renderSheetNestingContent(tab);
+};
+
+window.renderSheetNestingContent = function(tab) {
+    const container = document.getElementById('sheetNestingContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const data = window.currentSheetNestingData;
+    if (!data) return;
+
+    const sheets = tab === '1_5' ? (data.sheets_1_5 || []) : (data.sheets_1_2 || []);
+
+    if (sheets.length === 0) {
+        container.innerHTML = `
+            <div class="py-16 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="font-bold">لا توجد ألواح مطلوبة لهذه السماكة</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Colors palette for pieces
+    const colors = [
+        { bg: '#ecfdf5', border: '#10b981', text: '#065f46' }, // emerald
+        { bg: '#eff6ff', border: '#3b82f6', text: '#1e40af' }, // blue
+        { bg: '#eef2ff', border: '#6366f1', text: '#3730a3' }, // indigo
+        { bg: '#fdf4ff', border: '#d946ef', text: '#86198f' }, // fuchsia
+        { bg: '#fffbeb', border: '#f59e0b', text: '#92400e' }, // amber
+        { bg: '#f0fdf4', border: '#22c55e', text: '#166534' }, // green
+        { bg: '#f8fafc', border: '#64748b', text: '#1e293b' }, // slate
+        { bg: '#fff1f2', border: '#f43f5e', text: '#9f1239' }  // rose
+    ];
+
+    sheets.forEach((sheet, sheetIdx) => {
+        const sheetCard = document.createElement('div');
+        sheetCard.className = 'bg-white p-5 rounded-2xl border border-slate-200 shadow-sm';
+
+        // Calculate sheet statistics
+        const sheetArea = sheet.width * sheet.height;
+        const usedArea = (sheet.pieces || []).reduce((acc, p) => acc + (p.width * p.height), 0);
+        const utilization = sheetArea > 0 ? Math.round((usedArea / sheetArea) * 100) : 0;
+
+        let piecesSvg = '';
+        (sheet.pieces || []).forEach((piece, pIdx) => {
+            const color = colors[pIdx % colors.length];
+            const fontSize = Math.max(3, Math.min(piece.width / 5, piece.height / 5, 8));
+            const subFontSize = Math.max(2.2, fontSize * 0.7);
+
+            piecesSvg += `
+                <g class="piece-group" transform="translate(${piece.x}, ${piece.y})">
+                    <rect width="${piece.width}" height="${piece.height}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />
+                    <!-- Label: Door Number -->
+                    <text x="${piece.width / 2}" y="${piece.height / 2 - (piece.part_name ? subFontSize * 0.6 : 0)}" font-size="${fontSize}" font-weight="bold" fill="${color.text}" text-anchor="middle" dominant-baseline="central">
+                        ${piece.door_number || 'باب'}
+                    </text>
+                    ${piece.part_name ? `
+                        <text x="${piece.width / 2}" y="${piece.height / 2 + fontSize * 0.9}" font-size="${subFontSize}" fill="${color.text}" opacity="0.85" text-anchor="middle" dominant-baseline="central">
+                            ${piece.part_name} (${piece.width}×${piece.height})
+                        </text>
+                    ` : ''}
+                </g>
+            `;
+        });
+
+        sheetCard.innerHTML = `
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100 flex-wrap gap-2">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white font-black flex items-center justify-center text-sm shadow-sm">${sheet.sheet_index}</span>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-base">لوح صاج قياس ${sheet.size} سم</h4>
+                        <p class="text-xs text-slate-500">سماكة ${tab === '1_5' ? '1.5 ملم' : '1.2 ملم'} • عدد القطع: ${(sheet.pieces || []).length}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs px-3 py-1 bg-slate-100 text-slate-700 rounded-lg font-semibold border border-slate-200">
+                        نسبة استغلال اللوح: <strong class="text-emerald-600 font-bold">${utilization}%</strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- SVG Layout View -->
+            <div class="bg-slate-100/70 p-4 rounded-xl border border-slate-200 overflow-x-auto flex justify-center items-center">
+                <svg viewBox="0 0 ${sheet.width} ${sheet.height}" class="max-w-full max-h-[420px] w-auto h-auto shadow-sm rounded border-2 border-slate-400 bg-white" style="display: block;">
+                    <!-- Sheet border grid / pattern background -->
+                    <rect x="0" y="0" width="${sheet.width}" height="${sheet.height}" fill="#fcfdfe" stroke="#94a3b8" stroke-width="1" />
+                    <!-- Pieces -->
+                    ${piecesSvg}
+                </svg>
+            </div>
+
+            <!-- Pieces List -->
+            <div class="mt-3 pt-2 flex flex-wrap gap-2 text-xs">
+                ${(sheet.pieces || []).map((p, idx) => {
+                    const c = colors[idx % colors.length];
+                    return `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-medium" style="background-color: ${c.bg}; border-color: ${c.border}; color: ${c.text}">
+                            <strong>${p.door_number || 'باب'}</strong>
+                            <span>(${p.part_name || 'قطعة'}: ${p.width}×${p.height} سم)</span>
+                        </span>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        container.appendChild(sheetCard);
+    });
+};
 
 
 
@@ -5063,31 +5254,34 @@ window.autoCalculateLeafSizes = function(element) {
     const tr = element.closest('tr');
     if (!tr) return;
 
-    const widthInput = tr.querySelector('input[placeholder="عرض"]');
-    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
+    // Robust input discovery
+    const widthInput = tr.querySelector('input[placeholder="عرض"]') || tr.querySelector('.pd-width-input') || tr.querySelectorAll('input')[2];
+    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]') || tr.querySelector('.pd-architrave-input') || Array.from(tr.querySelectorAll('input')).find(i => (i.placeholder || '').includes('الكشفة') && !(i.placeholder || '').includes('2'));
+    
     const selects = Array.from(tr.querySelectorAll('select'));
-    const doorTypeSelect = selects.find(s => {
+    const doorTypeSelect = tr.querySelector('.pd-doortype-select') || selects.find(s => {
         const val = (s.value || '').toLowerCase();
         const html = (s.innerHTML || '').toLowerCase();
         return val.includes('leaf') || html.includes('single leaf') || html.includes('double leaf');
     }) || selects[5];
 
-    const leafSize1Input = tr.querySelector('input[placeholder="قياس الدرفة"]');
-    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
+    const leafSize1Input = tr.querySelector('input[placeholder="قياس الدرفة"]') || tr.querySelector('.pd-leaf1-input');
+    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]') || tr.querySelector('.pd-leaf2-input');
 
     if (!leafSize1Input || !leafSize2Input) return;
 
     const width = parseFloat(widthInput ? widthInput.value : '');
     const architrave = parseFloat(architraveInput ? architraveInput.value : '0') || 0;
-    const doorType = doorTypeSelect ? doorTypeSelect.value : '';
+    const doorType = (doorTypeSelect ? (doorTypeSelect.value || '') : '').toLowerCase();
 
-    const isDouble = doorType.toLowerCase().includes('double');
+    // Check if double leaf (supports "double", "double leaf metal", "double leaf wood", "دبل")
+    const isDouble = doorType.includes('double') || doorType.includes('دبل');
 
     if (isDouble) {
         leafSize1Input.removeAttribute('readonly');
         leafSize1Input.classList.remove('bg-slate-100');
 
-        if (!isNaN(width)) {
+        if (!isNaN(width) && width > 0) {
             const leaf1Val = (width - (2 * architrave) - 1.5) / 2;
             leafSize1Input.value = leaf1Val.toFixed(2);
             
@@ -5102,7 +5296,7 @@ window.autoCalculateLeafSizes = function(element) {
         leafSize1Input.classList.add('bg-slate-100');
         leafSize2Input.value = '';
 
-        if (!isNaN(width)) {
+        if (!isNaN(width) && width > 0) {
             const leaf1Val = width - (2 * architrave) - 0.7;
             leafSize1Input.value = leaf1Val.toFixed(2);
         } else {
@@ -5115,21 +5309,22 @@ window.onLeafSize1Input = function(leaf1Input) {
     const tr = leaf1Input.closest('tr');
     if (!tr) return;
 
-    const widthInput = tr.querySelector('input[placeholder="عرض"]');
-    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]');
+    const widthInput = tr.querySelector('input[placeholder="عرض"]') || tr.querySelector('.pd-width-input') || tr.querySelectorAll('input')[2];
+    const architraveInput = tr.querySelector('input[placeholder="الكشفة"]') || tr.querySelector('.pd-architrave-input') || Array.from(tr.querySelectorAll('input')).find(i => (i.placeholder || '').includes('الكشفة') && !(i.placeholder || '').includes('2'));
+    
     const selects = Array.from(tr.querySelectorAll('select'));
-    const doorTypeSelect = selects.find(s => {
+    const doorTypeSelect = tr.querySelector('.pd-doortype-select') || selects.find(s => {
         const val = (s.value || '').toLowerCase();
         const html = (s.innerHTML || '').toLowerCase();
         return val.includes('leaf') || html.includes('single leaf') || html.includes('double leaf');
     }) || selects[5];
 
-    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]');
+    const leafSize2Input = tr.querySelector('input[placeholder="قياس الدرفة 2"]') || tr.querySelector('.pd-leaf2-input');
 
     if (!leafSize2Input) return;
 
-    const doorType = doorTypeSelect ? doorTypeSelect.value : '';
-    const isDouble = doorType.toLowerCase().includes('double');
+    const doorType = (doorTypeSelect ? (doorTypeSelect.value || '') : '').toLowerCase();
+    const isDouble = doorType.includes('double') || doorType.includes('دبل');
 
     if (!isDouble) return;
 

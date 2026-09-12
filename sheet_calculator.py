@@ -23,6 +23,7 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
         width = parse_dimension(detail.get('width', 0))
         depth = parse_dimension(detail.get('depth', 0))
         under_tile = parse_dimension(detail.get('under_tile', 0))
+        door_no = str(detail.get('door_number') or '').strip()
         
         arch_raw = detail.get('architrave')
         architrave = parse_dimension(arch_raw)
@@ -51,9 +52,10 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
             w_halaq = depth + architrave + architrave_2 + 5.9
             if w_halaq > 0:
                 if height > 0:
-                    rects_1_5.extend([(w_halaq, height + under_tile), (w_halaq, height + under_tile)])
+                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم"})
+                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم"})
                 if width > 0:
-                    rects_1_5.append((w_halaq, width))
+                    rects_1_5.append({"w": w_halaq, "h": width, "door_number": door_no, "part_name": "رأس"})
 
             if manufacturing_type != "حلوق فقط":
                 # Rec 4, 5 (1.2mm)
@@ -62,9 +64,9 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
                 w5 = width - 6.1
                 if l4_5 > 0:
                     if w4 > 0:
-                        rects_1_2.append((w4, l4_5))
+                        rects_1_2.append({"w": w4, "h": l4_5, "door_number": door_no, "part_name": "درفة 1"})
                     if w5 > 0:
-                        rects_1_2.append((w5, l4_5))
+                        rects_1_2.append({"w": w5, "h": l4_5, "door_number": door_no, "part_name": "درفة 2"})
 
     # Load sizes from DB
     db_sizes_1_5 = db.query(models.SheetSize).filter(models.SheetSize.thickness == 1.5).all()
@@ -82,12 +84,12 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
 
     def pack_rectangles(rectangles, bin_sizes):
         if not rectangles:
-            return {}
+            return {}, []
 
         # 1. Run baseline packing with all bins (Smallest first) to find a baseline limit K
         packer_base = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
-        for w, h in rectangles:
-            packer_base.add_rect(w, h)
+        for r in rectangles:
+            packer_base.add_rect(r["w"], r["h"], rid=r)
         
         for bin_w, bin_h in bin_sizes:
             for _ in range(500):
@@ -97,7 +99,7 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
         base_used = [b for b in packer_base if len(b) > 0]
         K = len(base_used)
         if K == 0:
-            return {}
+            return {}, []
             
         # 2. Generate combinations of count list
         # Cap max_k to keep combinations below 15,000
@@ -128,10 +130,12 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
         
         # 3. Find the first mixture that successfully packs all rectangles
         optimal_mix = None
+        winning_packer = None
+
         for area, c in combos:
             packer = newPacker(mode=PackingMode.Offline, bin_algo=PackingBin.Global, rotation=False, sort_algo=SORT_AREA)
-            for w, h in rectangles:
-                packer.add_rect(w, h)
+            for r in rectangles:
+                packer.add_rect(r["w"], r["h"], rid=r)
             for i, count in enumerate(c):
                 bin_w, bin_h = bin_sizes[i]
                 for _ in range(count):
@@ -140,6 +144,7 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
             
             if sum(len(b) for b in packer) == len(rectangles):
                 optimal_mix = {f"{int(bin_sizes[i][0])}*{int(bin_sizes[i][1])}": count for i, count in enumerate(c) if count > 0}
+                winning_packer = packer
                 break
                 
         # Fallback to baseline if optimal search failed
@@ -148,14 +153,41 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
             for abin in base_used:
                 size_str = f"{int(abin.width)}*{int(abin.height)}"
                 used_bins[size_str] = used_bins.get(size_str, 0) + 1
-            return used_bins
-            
-        return optimal_mix
+            winning_packer = packer_base
+            optimal_mix = used_bins
 
-    bins_1_5 = pack_rectangles(rects_1_5, sizes_1_5)
-    bins_1_2 = pack_rectangles(rects_1_2, sizes_1_2)
+        # Extract sheets layout
+        sheets_layout = []
+        for b in winning_packer:
+            if len(b) == 0:
+                continue
+            sheet_info = {
+                "sheet_index": len(sheets_layout) + 1,
+                "width": float(b.width),
+                "height": float(b.height),
+                "size": f"{int(b.width)}*{int(b.height)}",
+                "pieces": []
+            }
+            for rect in b:
+                r_data = rect.rid if isinstance(rect.rid, dict) else {}
+                sheet_info["pieces"].append({
+                    "x": round(float(rect.x), 2),
+                    "y": round(float(rect.y), 2),
+                    "width": round(float(rect.width), 2),
+                    "height": round(float(rect.height), 2),
+                    "door_number": r_data.get("door_number", ""),
+                    "part_name": r_data.get("part_name", "")
+                })
+            sheets_layout.append(sheet_info)
+            
+        return optimal_mix, sheets_layout
+
+    bins_1_5, sheets_1_5 = pack_rectangles(rects_1_5, sizes_1_5)
+    bins_1_2, sheets_1_2 = pack_rectangles(rects_1_2, sizes_1_2)
 
     return {
         "thickness_1_5": [{"size": k, "count": v} for k, v in bins_1_5.items()],
-        "thickness_1_2": [{"size": k, "count": v} for k, v in bins_1_2.items()]
+        "thickness_1_2": [{"size": k, "count": v} for k, v in bins_1_2.items()],
+        "sheets_1_5": sheets_1_5,
+        "sheets_1_2": sheets_1_2
     }
