@@ -2125,198 +2125,379 @@
 
             <!-- ================= ADMIN CONTROL PANEL VIEW ================= -->
             <div id="adminView" class="hidden space-y-8 animate-fade-in">
-                <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
-                    <button onclick="showDepartmentsView()" class="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                    </button>
-                    <div>
-                        <h2 class="text-3xl font-extrabold text-slate-900">لوحة تحكم المشرف</h2>
-                        <p class="text-slate-500 text-sm">إدارة حسابات المستخدمين وتعديل كلمات المرور والأسماء.</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-600 text-xs border-b">
-                                    <th class="p-4 font-bold">المعرف</th>
-                                    <th class="p-4 font-bold">اسم المستخدم</th>
-                                    <th class="p-4 font-bold text-center">حالة الحساب</th>
-                                    <th class="p-4 font-bold text-center">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTableBody">
-                                <!-- List of users rendered dynamically -->
-                            </tbody>
-                        </table>
-                        <div id="adminLoading" class="text-center py-12 hidden">
-                            <div class="inline-block w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                            <p class="text-slate-400 text-xs mt-2">جاري تحميل المستخدمين...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Lock Options Section -->
-                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-800">إدارة خيارات الزرفيل (إكسسوارات الأقفال)</h3>
-                                <p class="text-xs text-slate-500">تظهر هذه الخيارات في إضافة وتعديل درفات المشاريع</p>
-                            </div>
-                            <button onclick="openAddOptionModal('lock')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                إضافة خيار
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                        <th class="p-4 font-bold">الاسم</th>
-                                        <th class="p-4 font-bold">الرمز (SKU)</th>
-                                        <th class="p-4 font-bold text-center">مقاومة الحريق</th>
-                                        <th class="p-4 font-bold text-center">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="lockOptionsTableBody">
-                                    <!-- Lock options go here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Hinge Options Section -->
-                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <div>
-                                <h3 class="text-lg font-bold text-slate-800">إدارة خيارات الفصالات (إكسسوارات الفصالات)</h3>
-                                <p class="text-xs text-slate-500">تظهر هذه الخيارات في إضافة وتعديل درفات المشاريع</p>
-                            </div>
-                            <button onclick="openAddOptionModal('hinge')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                إضافة خيار
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                        <th class="p-4 font-bold">الاسم</th>
-                                        <th class="p-4 font-bold">الرمز (SKU)</th>
-                                        <th class="p-4 font-bold text-center">مقاومة الحريق</th>
-                                        <th class="p-4 font-bold text-center">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="hingeOptionsTableBody">
-                                    <!-- Hinge options go here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-                    <!-- Profile Options Section -->
-                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات المقطع</h3>
-                            <button onclick="openAddOptionModal('profile')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                إضافة خيار
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                        <th class="p-4 font-bold">الاسم</th>
-                                        <th class="p-4 font-bold text-center">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="profileOptionsTableBody">
-                                    <!-- Profile options go here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Door Type Options Section -->
-                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات نوع الدرفة</h3>
-                            <button onclick="openAddOptionModal('door_type')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                إضافة خيار
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                        <th class="p-4 font-bold">الاسم</th>
-                                        <th class="p-4 font-bold text-center">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="doorTypeOptionsTableBody">
-                                    <!-- Door Type options go here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Specification Options Section -->
-                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 class="text-lg font-bold text-slate-800">إدارة خيارات المواصفات</h3>
-                            <button onclick="openAddOptionModal('specification')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                إضافة خيار
-                            </button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-right border-collapse text-sm">
-                                <thead>
-                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                        <th class="p-4 font-bold">الاسم</th>
-                                        <th class="p-4 font-bold text-center">الإجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="specOptionsTableBody">
-                                    <!-- Specification options go here -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sheet Sizes Section -->
-                <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col mt-8">
-                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                        <h3 class="text-lg font-bold text-slate-800">إدارة قياسات ألواح الصاج</h3>
-                        <button onclick="openAddSheetSizeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                            إضافة قياس لوح
+                <!-- 0. ADMIN MAIN HUB (Cards Navigation) -->
+                <div id="adminHub" class="space-y-8 animate-fade-in">
+                    <div class="flex items-center gap-4 border-b border-slate-200 pb-5">
+                        <button onclick="showModuleSelectorView()" class="p-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center shadow-sm" title="العودة للشاشة الرئيسية">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
                         </button>
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-slate-900">لوحة تحكم المشرف</h2>
+                            <p class="text-slate-500 text-sm">اختر القسم المطلوب لإدارة المستخدمين، الإكسسوارات، خيارات المشاريع، أو قياسات الصاج في المخزن.</p>
+                        </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-right border-collapse text-sm">
-                            <thead>
-                                <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
-                                    <th class="p-4 font-bold">السماكة (ملم)</th>
-                                    <th class="p-4 font-bold">العرض (سم)</th>
-                                    <th class="p-4 font-bold">الطول (سم)</th>
-                                    <th class="p-4 font-bold">الرمز (SKU)</th>
-                                    <th class="p-4 font-bold text-center">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sheetSizesTableBody">
-                                <!-- Sheet sizes go here -->
-                            </tbody>
-                        </table>
+
+                    <!-- Hub 4 Categories Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- 1. Users Management -->
+                        <div onclick="enterAdminSubSection('users')" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between">
+                            <div class="flex items-start gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition">إدارة المستخدمين</h3>
+                                    <p class="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                                        إدارة حسابات المشرفين والمستخدمين، تعديل كلمات المرور، تعيين صلاحيات الوصول للأقسام، والموافقة على الحسابات الجديدة.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+                                <span>دخول قسم المستخدمين</span>
+                                <span class="group-hover:-translate-x-1 transition-transform">←</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Accessories Management -->
+                        <div onclick="enterAdminSubSection('accessories')" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between">
+                            <div class="flex items-start gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-amber-600 transition">إدارة الإكسسوارات</h3>
+                                    <p class="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                                        إدارة خيارات الزرافيل والفصالات، ربطها بالمستودع ومعرفة رمز SKU تلقائياً، وتحديد مقاومة الحريق.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-600">
+                                <span>دخول قسم الإكسسوارات</span>
+                                <span class="group-hover:-translate-x-1 transition-transform">←</span>
+                            </div>
+                        </div>
+
+                        <!-- 3. Projects Options Management -->
+                        <div onclick="enterAdminSubSection('projects')" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between">
+                            <div class="flex items-start gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-600 transition">إدارة المشاريع</h3>
+                                    <p class="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                                        تخصيص خيارات المقاطع، أنواع الدرفات، والمواصفات الفنية المعتمدة في بنود المشاريع (بدون رموز SKU).
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+                                <span>دخول قسم خيارات المشاريع</span>
+                                <span class="group-hover:-translate-x-1 transition-transform">←</span>
+                            </div>
+                        </div>
+
+                        <!-- 4. Inventory Management -->
+                        <div onclick="enterAdminSubSection('inventory')" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex flex-col justify-between">
+                            <div class="flex items-start gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 group-hover:text-purple-600 transition">إدارة المخزن</h3>
+                                    <p class="text-slate-500 text-xs mt-1.5 leading-relaxed">
+                                        إدارة القياسات القياسية لألواح الصاج (السماكة، العرض، الطول) ورموز التخزين SKU المعتمدة بالمستودع.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
+                                <span>دخول قسم إدارة المخزن</span>
+                                <span class="group-hover:-translate-x-1 transition-transform">←</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. SECTION: USERS MANAGEMENT -->
+                <div id="adminSectionUsers" class="hidden space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-5">
+                        <div class="flex items-center gap-3">
+                            <button onclick="showAdminHub()" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center shadow-sm" title="العودة للوحة تحكم المشرف">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <div class="flex items-center gap-2 text-xs font-bold text-indigo-600 mb-0.5">
+                                    <span onclick="showAdminHub()" class="cursor-pointer hover:underline">لوحة التحكم</span>
+                                    <span>/</span>
+                                    <span class="text-slate-500">إدارة المستخدمين</span>
+                                </div>
+                                <h2 class="text-2xl font-black text-slate-900">إدارة حسابات المستخدمين</h2>
+                                <p class="text-slate-500 text-xs">إدارة حسابات الموظفين والمشرفين، تعديل كلمات المرور، الصلاحيات، وقبول طلبات التسجيل.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                        <th class="p-4 font-bold">المعرف</th>
+                                        <th class="p-4 font-bold">اسم المستخدم</th>
+                                        <th class="p-4 font-bold text-center">حالة الحساب</th>
+                                        <th class="p-4 font-bold text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <!-- List of users rendered dynamically -->
+                                </tbody>
+                            </table>
+                            <div id="adminLoading" class="text-center py-12 hidden">
+                                <div class="inline-block w-6 h-6 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p class="text-slate-400 text-xs mt-2">جاري تحميل المستخدمين...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. SECTION: ACCESSORIES MANAGEMENT -->
+                <div id="adminSectionAccessories" class="hidden space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-5">
+                        <div class="flex items-center gap-3">
+                            <button onclick="showAdminHub()" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center shadow-sm" title="العودة للوحة تحكم المشرف">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <div class="flex items-center gap-2 text-xs font-bold text-amber-600 mb-0.5">
+                                    <span onclick="showAdminHub()" class="cursor-pointer hover:underline">لوحة التحكم</span>
+                                    <span>/</span>
+                                    <span class="text-slate-500">إدارة الإكسسوارات</span>
+                                </div>
+                                <h2 class="text-2xl font-black text-slate-900">إدارة الإكسسوارات (الزرافيل والفصالات)</h2>
+                                <p class="text-slate-500 text-xs">إدارة وتحديد خيارات الزرافيل والفصالات وربطها بالمستودع ورموز SKU ومقاومة الحريق.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- Lock Options Section -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">إدارة خيارات الزرفيل (إكسسوارات الأقفال)</h3>
+                                    <p class="text-xs text-slate-500">تظهر هذه الخيارات في إضافة وتعديل درفات المشاريع</p>
+                                </div>
+                                <button onclick="openAddOptionModal('lock')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة خيار
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                            <th class="p-4 font-bold">الاسم</th>
+                                            <th class="p-4 font-bold">الرمز (SKU)</th>
+                                            <th class="p-4 font-bold text-center">مقاومة الحريق</th>
+                                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lockOptionsTableBody">
+                                        <!-- Lock options go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Hinge Options Section -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">إدارة خيارات الفصالات (إكسسوارات الفصالات)</h3>
+                                    <p class="text-xs text-slate-500">تظهر هذه الخيارات في إضافة وتعديل درفات المشاريع</p>
+                                </div>
+                                <button onclick="openAddOptionModal('hinge')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة خيار
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                            <th class="p-4 font-bold">الاسم</th>
+                                            <th class="p-4 font-bold">الرمز (SKU)</th>
+                                            <th class="p-4 font-bold text-center">مقاومة الحريق</th>
+                                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hingeOptionsTableBody">
+                                        <!-- Hinge options go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. SECTION: PROJECTS OPTIONS MANAGEMENT -->
+                <div id="adminSectionProjects" class="hidden space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-5">
+                        <div class="flex items-center gap-3">
+                            <button onclick="showAdminHub()" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center shadow-sm" title="العودة للوحة تحكم المشرف">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <div class="flex items-center gap-2 text-xs font-bold text-emerald-600 mb-0.5">
+                                    <span onclick="showAdminHub()" class="cursor-pointer hover:underline">لوحة التحكم</span>
+                                    <span>/</span>
+                                    <span class="text-slate-500">إدارة المشاريع</span>
+                                </div>
+                                <h2 class="text-2xl font-black text-slate-900">إدارة خيارات المشاريع</h2>
+                                <p class="text-slate-500 text-xs">تخصيص الخيارات المستخدمة في المقاطع، أنواع الدرفات، والمواصفات (بدون رموز SKU).</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <!-- Profile Options Section -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h3 class="text-lg font-bold text-slate-800">خيارات المقطع</h3>
+                                <button onclick="openAddOptionModal('profile')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة خيار
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                            <th class="p-4 font-bold">الاسم</th>
+                                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="profileOptionsTableBody">
+                                        <!-- Profile options go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Door Type Options Section -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h3 class="text-lg font-bold text-slate-800">خيارات نوع الدرفة</h3>
+                                <button onclick="openAddOptionModal('door_type')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة خيار
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                            <th class="p-4 font-bold">الاسم</th>
+                                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="doorTypeOptionsTableBody">
+                                        <!-- Door Type options go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Specification Options Section -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                                <h3 class="text-lg font-bold text-slate-800">خيارات المواصفات</h3>
+                                <button onclick="openAddOptionModal('specification')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    إضافة خيار
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                            <th class="p-4 font-bold">الاسم</th>
+                                            <th class="p-4 font-bold text-center">الإجراءات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="specOptionsTableBody">
+                                        <!-- Specification options go here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SECTION: INVENTORY / STORE MANAGEMENT -->
+                <div id="adminSectionInventory" class="hidden space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-5">
+                        <div class="flex items-center gap-3">
+                            <button onclick="showAdminHub()" class="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition flex items-center justify-center shadow-sm" title="العودة للوحة تحكم المشرف">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <div class="flex items-center gap-2 text-xs font-bold text-purple-600 mb-0.5">
+                                    <span onclick="showAdminHub()" class="cursor-pointer hover:underline">لوحة التحكم</span>
+                                    <span>/</span>
+                                    <span class="text-slate-500">إدارة المخزن</span>
+                                </div>
+                                <h2 class="text-2xl font-black text-slate-900">إدارة المخزن (قياسات ألواح الصاج)</h2>
+                                <p class="text-slate-500 text-xs">إدارة القياسات القياسية لألواح الصاج وسماكاتها وربطها برموز SKU المستودع.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sheet Sizes Section -->
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">إدارة قياسات ألواح الصاج القياسية</h3>
+                                <p class="text-xs text-slate-500">تستخدم هذه القياسات لحساب وتقطيع صاج درفات الأبواب في المشاريع</p>
+                            </div>
+                            <button onclick="openAddSheetSizeModal()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1.5 px-3 rounded-xl text-xs transition flex items-center gap-1 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                إضافة قياس لوح
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border-collapse text-sm">
+                                <thead>
+                                    <tr class="bg-slate-50/50 text-slate-600 text-xs border-b">
+                                        <th class="p-4 font-bold">السماكة (ملم)</th>
+                                        <th class="p-4 font-bold">العرض (سم)</th>
+                                        <th class="p-4 font-bold">الطول (سم)</th>
+                                        <th class="p-4 font-bold">الرمز (SKU)</th>
+                                        <th class="p-4 font-bold text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sheetSizesTableBody">
+                                    <!-- Sheet sizes go here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3465,7 +3646,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=130"></script>
+    <script src="script.js?v=132"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
@@ -3518,7 +3699,7 @@
                         <p class="text-[11px] text-slate-400 mt-1">تعديل هذا الاسم هنا يخص نظام المشاريع فقط ولا يؤثر على اسم الصنف في المستودع.</p>
                     </div>
 
-                    <div>
+                    <div id="optSkuContainer">
                         <label class="block text-xs font-bold text-slate-700 mb-2">الرمز (SKU)</label>
                         <input type="text" id="optFormSku" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-600 focus:outline-none font-mono text-sm" placeholder="سيتم تعبئته تلقائياً" readonly>
                     </div>

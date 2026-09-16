@@ -548,6 +548,11 @@ async function handlePopState(event) {
             }
         } else if (state.view === 'admin') {
             await showAdminView(true);
+            if (state.params && state.params.section) {
+                enterAdminSubSection(state.params.section, true);
+            } else {
+                showAdminHub(true);
+            }
         } else {
             showModuleSelectorView(true);
         }
@@ -846,7 +851,53 @@ async function fetchDepartmentCounts() {
     }
 }
 
-// ----------------- ADMIN VIEW LOGIC -----------------
+let adminCurrentSection = 'hub';
+
+window.enterAdminSubSection = function(section, fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('admin', { section: section });
+    }
+    adminCurrentSection = section;
+
+    const hub = document.getElementById('adminHub');
+    if (hub) hub.classList.add('hidden');
+
+    const sections = ['users', 'accessories', 'projects', 'inventory'];
+    sections.forEach(s => {
+        const el = document.getElementById('adminSection' + s.charAt(0).toUpperCase() + s.slice(1));
+        if (el) {
+            if (s === section) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+    });
+
+    if (section === 'users') {
+        loadUsers();
+    } else if (section === 'accessories' || section === 'projects') {
+        renderProjectOptionsAdmin();
+    } else if (section === 'inventory') {
+        renderSheetSizesAdmin();
+    }
+};
+
+window.showAdminHub = function(fromHistory = false) {
+    if (!fromHistory) {
+        pushNavigationState('admin');
+    }
+    adminCurrentSection = 'hub';
+
+    const hub = document.getElementById('adminHub');
+    if (hub) hub.classList.remove('hidden');
+
+    const sections = ['users', 'accessories', 'projects', 'inventory'];
+    sections.forEach(s => {
+        const el = document.getElementById('adminSection' + s.charAt(0).toUpperCase() + s.slice(1));
+        if (el) el.classList.add('hidden');
+    });
+};
 
 async function showAdminView(fromHistory = false) {
     if (!fromHistory) {
@@ -877,6 +928,9 @@ async function showAdminView(fromHistory = false) {
     departmentDetailView.classList.add('hidden');
     adminView.classList.remove('hidden');
     
+    // Always start at Admin Hub unless navigated with history
+    showAdminHub(true);
+
     await loadUsers();
     await loadProjectOptions();
     renderProjectOptionsAdmin();
@@ -5219,6 +5273,13 @@ window.openAddOptionModal = async function(type) {
     else if (type === 'specification') title = 'إضافة خيار مواصفات جديد';
 
     document.getElementById('optionModalTitle').textContent = title;
+    const subTitleEl = document.getElementById('optionModalSubtitle');
+    if (subTitleEl) {
+        subTitleEl.textContent = (type === 'lock' || type === 'hinge')
+            ? 'اختر الصنف من قسم إكسسوارات المخزن وتحديد مقاومة الحريق.'
+            : 'أدخل اسم الخيار المعتمد لمشاريع الأبواب.';
+    }
+
     document.getElementById('optFormId').value = '';
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = '';
@@ -5228,17 +5289,20 @@ window.openAddOptionModal = async function(type) {
     const storeContainer = document.getElementById('optStoreItemContainer');
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
+    const skuContainer = document.getElementById('optSkuContainer');
 
     // Custom name container is always visible so user can customize the display name
-    customContainer.classList.remove('hidden');
+    if (customContainer) customContainer.classList.remove('hidden');
 
     if (type === 'lock' || type === 'hinge') {
-        storeContainer.classList.remove('hidden');
-        fireContainer.classList.remove('hidden');
+        if (storeContainer) storeContainer.classList.remove('hidden');
+        if (fireContainer) fireContainer.classList.remove('hidden');
+        if (skuContainer) skuContainer.classList.remove('hidden');
         await loadStoreItemsForOptions(type);
     } else {
-        storeContainer.classList.add('hidden');
-        fireContainer.classList.add('hidden');
+        if (storeContainer) storeContainer.classList.add('hidden');
+        if (fireContainer) fireContainer.classList.add('hidden');
+        if (skuContainer) skuContainer.classList.add('hidden');
     }
 
     document.getElementById('projectOptionModal').classList.remove('hidden');
@@ -5273,6 +5337,13 @@ window.openEditOptionModal = async function(id, type) {
     else if (type === 'specification') title = 'تعديل خيار المواصفات';
 
     document.getElementById('optionModalTitle').textContent = title;
+    const subTitleEl = document.getElementById('optionModalSubtitle');
+    if (subTitleEl) {
+        subTitleEl.textContent = (type === 'lock' || type === 'hinge')
+            ? 'تعديل خيار الإكسسوار وربطه بالمستودع ومقاومة الحريق.'
+            : 'تعديل اسم الخيار المعتمد للمشاريع.';
+    }
+
     document.getElementById('optFormId').value = id;
     document.getElementById('optFormType').value = type;
     document.getElementById('optFormName').value = opt.name;
@@ -5282,17 +5353,20 @@ window.openEditOptionModal = async function(id, type) {
     const storeContainer = document.getElementById('optStoreItemContainer');
     const customContainer = document.getElementById('optCustomNameContainer');
     const fireContainer = document.getElementById('optFireRatedContainer');
+    const skuContainer = document.getElementById('optSkuContainer');
 
     // Always keep custom name container visible for editing the name
-    customContainer.classList.remove('hidden');
+    if (customContainer) customContainer.classList.remove('hidden');
 
     if (type === 'lock' || type === 'hinge') {
-        storeContainer.classList.remove('hidden');
-        fireContainer.classList.remove('hidden');
+        if (storeContainer) storeContainer.classList.remove('hidden');
+        if (fireContainer) fireContainer.classList.remove('hidden');
+        if (skuContainer) skuContainer.classList.remove('hidden');
         await loadStoreItemsForOptions(type, opt.name);
     } else {
-        storeContainer.classList.add('hidden');
-        fireContainer.classList.add('hidden');
+        if (storeContainer) storeContainer.classList.add('hidden');
+        if (fireContainer) fireContainer.classList.add('hidden');
+        if (skuContainer) skuContainer.classList.add('hidden');
     }
 
     document.getElementById('projectOptionModal').classList.remove('hidden');
@@ -5315,11 +5389,12 @@ window.handleOptionFormSubmit = async function(e) {
         return;
     }
 
+    const isAccessory = (type === 'lock' || type === 'hinge');
     const payload = {
         option_type: type,
         name: name,
-        sku: sku || null,
-        is_fire_rated: isFireRated
+        sku: isAccessory ? (sku || null) : null,
+        is_fire_rated: isAccessory ? isFireRated : false
     };
 
     let url = `${API_HOST}/api/project-options/`;
@@ -8204,6 +8279,16 @@ async function deleteEmployeeSalaryByAdmin(salaryId, userId) {
 // =========================================================================
 // ========================= SERVICES MANAGEMENT SYSTEM =====================
 // =========================================================================
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 const SERVICES_URL = `${API_HOST}/api/service-jobs`;
 const SERVICE_CLIENTS_URL = `${API_HOST}/api/service-clients`;
