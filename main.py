@@ -2201,6 +2201,7 @@ def delete_hr_request(
 
 # --- SERVICE JOBS & CLIENTS ENDPOINTS ---
 
+@app.get("/api/service-jobs", response_model=List[schemas.ServiceJobResponse], include_in_schema=False)
 @app.get("/api/service-jobs/", response_model=List[schemas.ServiceJobResponse])
 def get_service_jobs(
     status: Optional[str] = None,
@@ -2221,6 +2222,7 @@ def get_service_job(
         raise HTTPException(status_code=404, detail="العمل غير موجود")
     return job
 
+@app.post("/api/service-jobs", response_model=schemas.ServiceJobResponse, include_in_schema=False)
 @app.post("/api/service-jobs/", response_model=schemas.ServiceJobResponse)
 def create_service_job(
     job: schemas.ServiceJobCreate,
@@ -2292,6 +2294,7 @@ def delete_service_job_attachment(
 
 # --- SERVICE CLIENTS ENDPOINTS ---
 
+@app.get("/api/service-clients", response_model=List[schemas.ServiceClientResponse], include_in_schema=False)
 @app.get("/api/service-clients/", response_model=List[schemas.ServiceClientResponse])
 def get_service_clients(
     db: Session = Depends(get_db),
@@ -2299,6 +2302,7 @@ def get_service_clients(
 ):
     return crud.get_service_clients(db)
 
+@app.post("/api/service-clients", response_model=schemas.ServiceClientResponse, include_in_schema=False)
 @app.post("/api/service-clients/", response_model=schemas.ServiceClientResponse)
 def create_service_client(
     client: schemas.ServiceClientCreate,

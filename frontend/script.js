@@ -8295,7 +8295,7 @@ async function loadServicesJobs() {
     tbody.innerHTML = '';
 
     try {
-        const response = await authFetch(SERVICES_URL);
+        const response = await authFetch(SERVICES_URL + '/');
         if (!response.ok) throw new Error('فشل جلب قائمة الأعمال');
         allServicesJobs = await response.json();
 
@@ -8602,92 +8602,97 @@ window.removeServiceWizardFile = function(idx) {
 };
 
 // Wizard Submission
-document.addEventListener('DOMContentLoaded', () => {
-    const serviceWizardForm = document.getElementById('serviceWizardForm');
-    if (serviceWizardForm) {
-        serviceWizardForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+window.handleServiceWizardSubmit = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
 
-            const btn = document.getElementById('btnSubmitServiceJob');
-            const originalText = btn ? btn.innerHTML : '';
-            if (btn) {
-                btn.innerHTML = `
-                    <div class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>جاري الحفظ...</span>
-                `;
-                btn.disabled = true;
-            }
+    const name = (document.getElementById('swName')?.value || '').trim();
+    const job_number = (document.getElementById('swJobNumber')?.value || '').trim();
+    const client_name = (document.getElementById('swClientName')?.value || '').trim();
 
-            try {
-                const payload = {
-                    name: document.getElementById('swName').value.trim(),
-                    job_number: document.getElementById('swJobNumber').value.trim(),
-                    client_name: document.getElementById('swClientName').value.trim(),
-                    client_phone: document.getElementById('swClientPhone').value.trim() || null,
-                    received_date: document.getElementById('swReceivedDate').value ? new Date(document.getElementById('swReceivedDate').value).toISOString() : null,
-                    expected_delivery_date: document.getElementById('swDeliveryDate').value ? new Date(document.getElementById('swDeliveryDate').value).toISOString() : null,
-                    assigned_to: document.getElementById('swAssignedTo').value || null,
-                    status: "قيد التنفيذ",
-
-                    op_design: document.getElementById('swOpDesign').checked,
-                    op_laser_cutting: document.getElementById('swOpLaser').checked,
-                    op_bending: document.getElementById('swOpBending').checked,
-                    op_punching: document.getElementById('swOpPunching').checked,
-                    op_welding: document.getElementById('swOpWelding').checked,
-                    op_painting: document.getElementById('swOpPainting').checked,
-
-                    sheet_thickness: document.getElementById('swSheetThickness').value ? parseFloat(document.getElementById('swSheetThickness').value) : null,
-                    sheet_ownership: document.getElementById('swSheetOwnership').value || null,
-                    sheet_type: document.getElementById('swSheetType').value || null,
-                    notes: document.getElementById('swNotes').value.trim() || null,
-
-                    final_price: document.getElementById('swFinalPrice').value ? parseFloat(document.getElementById('swFinalPrice').value) : 0.0,
-                    tax_inclusive: document.getElementById('swTaxInclusive').checked,
-                    cutting_length: document.getElementById('swCuttingLength').value ? parseFloat(document.getElementById('swCuttingLength').value) : null,
-                    bends_count: document.getElementById('swBendsCount').value ? parseInt(document.getElementById('swBendsCount').value) : null,
-                    punch_strokes_count: document.getElementById('swPunchStrokesCount').value ? parseInt(document.getElementById('swPunchStrokesCount').value) : null,
-                    expected_duration: document.getElementById('swExpectedDuration').value.trim() || null
-                };
-
-                const res = await authFetch(SERVICES_URL + '/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'فشل حفظ العمل الجديد');
-                }
-
-                const createdJob = await res.json();
-
-                // Upload selected attachments
-                if (serviceWizardSelectedFiles.length > 0) {
-                    for (const file of serviceWizardSelectedFiles) {
-                        const fd = new FormData();
-                        fd.append('file', file);
-                        await authFetch(`${SERVICES_URL}/${createdJob.id}/attachments/`, {
-                            method: 'POST',
-                            body: fd
-                        });
-                    }
-                }
-
-                showToast('تمت إضافة العمل بنجاح!', 'bg-emerald-500', '✓');
-                viewServiceJobDetails(createdJob.id);
-            } catch (err) {
-                console.error(err);
-                showToast(err.message, 'bg-rose-500', '✗');
-            } finally {
-                if (btn) {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
-            }
-        });
+    if (!name || !job_number || !client_name) {
+        showToast('يرجى ملء الحقول الإلزامية: اسم العمل، رقم الإنتاج، واسم العميل', 'bg-amber-500', '⚠️');
+        goToServiceWizardStep(1);
+        return;
     }
-});
+
+    const btn = document.getElementById('btnSubmitServiceJob');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = `
+            <div class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <span>جاري الحفظ...</span>
+        `;
+        btn.disabled = true;
+    }
+
+    try {
+        const payload = {
+            name: name,
+            job_number: job_number,
+            client_name: client_name,
+            client_phone: (document.getElementById('swClientPhone')?.value || '').trim() || null,
+            received_date: document.getElementById('swReceivedDate')?.value ? new Date(document.getElementById('swReceivedDate').value).toISOString() : null,
+            expected_delivery_date: document.getElementById('swDeliveryDate')?.value ? new Date(document.getElementById('swDeliveryDate').value).toISOString() : null,
+            assigned_to: document.getElementById('swAssignedTo')?.value || null,
+            status: "قيد التنفيذ",
+
+            op_design: !!document.getElementById('swOpDesign')?.checked,
+            op_laser_cutting: !!document.getElementById('swOpLaser')?.checked,
+            op_bending: !!document.getElementById('swOpBending')?.checked,
+            op_punching: !!document.getElementById('swOpPunching')?.checked,
+            op_welding: !!document.getElementById('swOpWelding')?.checked,
+            op_painting: !!document.getElementById('swOpPainting')?.checked,
+
+            sheet_thickness: document.getElementById('swSheetThickness')?.value ? parseFloat(document.getElementById('swSheetThickness').value) : null,
+            sheet_ownership: document.getElementById('swSheetOwnership')?.value || null,
+            sheet_type: document.getElementById('swSheetType')?.value || null,
+            notes: (document.getElementById('swNotes')?.value || '').trim() || null,
+
+            final_price: document.getElementById('swFinalPrice')?.value ? parseFloat(document.getElementById('swFinalPrice').value) : 0.0,
+            tax_inclusive: !!document.getElementById('swTaxInclusive')?.checked,
+            cutting_length: document.getElementById('swCuttingLength')?.value ? parseFloat(document.getElementById('swCuttingLength').value) : null,
+            bends_count: document.getElementById('swBendsCount')?.value ? parseInt(document.getElementById('swBendsCount').value) : null,
+            punch_strokes_count: document.getElementById('swPunchStrokesCount')?.value ? parseInt(document.getElementById('swPunchStrokesCount').value) : null,
+            expected_duration: (document.getElementById('swExpectedDuration')?.value || '').trim() || null
+        };
+
+        const res = await authFetch(SERVICES_URL + '/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'فشل حفظ العمل الجديد');
+        }
+
+        const createdJob = await res.json();
+
+        // Upload selected attachments
+        if (serviceWizardSelectedFiles.length > 0) {
+            for (const file of serviceWizardSelectedFiles) {
+                const fd = new FormData();
+                fd.append('file', file);
+                await authFetch(`${SERVICES_URL}/${createdJob.id}/attachments/`, {
+                    method: 'POST',
+                    body: fd
+                });
+            }
+        }
+
+        showToast('تمت إضافة العمل بنجاح!', 'bg-emerald-500', '✓');
+        viewServiceJobDetails(createdJob.id);
+    } catch (err) {
+        console.error(err);
+        showToast(err.message || 'حدث خطأ أثناء حفظ العمل', 'bg-rose-500', '✗');
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+};
 
 // --- SERVICE JOB DETAILS VIEW ---
 
@@ -8989,7 +8994,7 @@ async function loadServicesClients() {
     tbody.innerHTML = '';
 
     try {
-        const res = await authFetch(SERVICE_CLIENTS_URL);
+        const res = await authFetch(SERVICE_CLIENTS_URL + '/');
         if (!res.ok) throw new Error('فشل تحميل قائمة العملاء');
         allServicesClients = await res.json();
         populateClientDatalist();
