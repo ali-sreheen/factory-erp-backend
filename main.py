@@ -175,6 +175,16 @@ def check_and_update_db_schema(db_engine):
             except Exception as e:
                 pass
 
+    # Check contractors table for contacts column
+    if "contractors" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("contractors")]
+        if "contacts" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE contractors ADD COLUMN contacts VARCHAR"))
+            except Exception as e:
+                pass
+
     # Fix items subcategories if they are invalid for their category
     if "items" in inspector.get_table_names() and "departments" in inspector.get_table_names() and "subdepartments" in inspector.get_table_names():
         try:

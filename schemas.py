@@ -386,6 +386,7 @@ class ContractorBase(BaseModel):
     name: str
     contact_person: Optional[str] = None
     phone: Optional[str] = None
+    contacts: Optional[str] = None
     finance_dept: Optional[str] = None
     financial_phone: Optional[str] = None
     notes: Optional[str] = None
@@ -397,6 +398,7 @@ class ContractorUpdate(BaseModel):
     name: Optional[str] = None
     contact_person: Optional[str] = None
     phone: Optional[str] = None
+    contacts: Optional[str] = None
     finance_dept: Optional[str] = None
     financial_phone: Optional[str] = None
     notes: Optional[str] = None

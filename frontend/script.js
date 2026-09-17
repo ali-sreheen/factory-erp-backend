@@ -2615,11 +2615,48 @@ window.switchProjectsTab = function(tabName) {
 
 let allContractors = [];
 
+window.addContractorContactRow = function(name = '', phone = '') {
+    const container = document.getElementById('contractorContactsContainer');
+    if (!container) return;
+
+    const rowIdx = container.children.length + 1;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 contractor-contact-row bg-slate-50 p-2 rounded-xl border border-slate-200';
+    div.innerHTML = `
+        <div class="flex-1">
+            <input type="text" placeholder="اسم المسؤول ${rowIdx}" value="${escapeHtml(name)}" class="contractor-contact-name w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div class="flex-1">
+            <input type="text" placeholder="رقم هاتف المسؤول ${rowIdx}" value="${escapeHtml(phone)}" class="contractor-contact-phone w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500" dir="ltr">
+        </div>
+        ${rowIdx > 1 ? `
+            <button type="button" onclick="this.closest('.contractor-contact-row').remove(); reindexContractorContactRows();" class="p-1.5 text-rose-500 hover:text-rose-700 transition" title="إزالة المسؤول">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        ` : `<div class="w-7"></div>`}
+    `;
+    container.appendChild(div);
+};
+
+window.reindexContractorContactRows = function() {
+    const container = document.getElementById('contractorContactsContainer');
+    if (!container) return;
+    const rows = container.querySelectorAll('.contractor-contact-row');
+    rows.forEach((r, idx) => {
+        const nameInput = r.querySelector('.contractor-contact-name');
+        const phoneInput = r.querySelector('.contractor-contact-phone');
+        if (nameInput) nameInput.placeholder = `اسم المسؤول ${idx + 1}`;
+        if (phoneInput) phoneInput.placeholder = `رقم هاتف المسؤول ${idx + 1}`;
+    });
+};
+
 window.openContractorModal = function(contractorId = null) {
     const form = document.getElementById('contractorForm');
     if (form) form.reset();
     document.getElementById('contractorId').value = '';
     const titleEl = document.getElementById('contractorModalTitle');
+    const container = document.getElementById('contractorContactsContainer');
+    if (container) container.innerHTML = '';
     
     if (contractorId) {
         if (titleEl) titleEl.textContent = 'تعديل بيانات المقاول';
@@ -2627,14 +2664,31 @@ window.openContractorModal = function(contractorId = null) {
         if (contractor) {
             document.getElementById('contractorId').value = contractor.id;
             document.getElementById('contractorName').value = contractor.name || '';
-            document.getElementById('contractorContactPerson').value = contractor.contact_person || '';
-            document.getElementById('contractorPhone').value = contractor.phone || '';
             document.getElementById('contractorFinanceDept').value = contractor.finance_dept || '';
             document.getElementById('contractorFinancialPhone').value = contractor.financial_phone || '';
             document.getElementById('contractorNotes').value = contractor.notes || '';
+
+            // Parse contacts if available
+            let list = [];
+            if (contractor.contacts) {
+                try {
+                    list = typeof contractor.contacts === 'string' ? JSON.parse(contractor.contacts) : contractor.contacts;
+                } catch (e) {
+                    list = [];
+                }
+            }
+            if (Array.isArray(list) && list.length > 0) {
+                list.forEach(c => addContractorContactRow(c.name || '', c.phone || ''));
+            } else if (contractor.contact_person || contractor.phone) {
+                // Backward compatibility: load single contact person/phone
+                addContractorContactRow(contractor.contact_person || '', contractor.phone || '');
+            } else {
+                addContractorContactRow('', '');
+            }
         }
     } else {
         if (titleEl) titleEl.textContent = 'إضافة مقاول جديد';
+        addContractorContactRow('', '');
     }
     
     const modal = document.getElementById('contractorModal');
@@ -2649,10 +2703,26 @@ window.closeContractorModal = function() {
 window.saveContractorForm = async function(event) {
     event.preventDefault();
     const id = document.getElementById('contractorId').value;
+    
+    // Collect Contacts
+    const contacts = [];
+    const contactRows = document.querySelectorAll('#contractorContactsContainer .contractor-contact-row');
+    contactRows.forEach(row => {
+        const cName = (row.querySelector('.contractor-contact-name')?.value || '').trim();
+        const cPhone = (row.querySelector('.contractor-contact-phone')?.value || '').trim();
+        if (cName || cPhone) {
+            contacts.push({ name: cName, phone: cPhone });
+        }
+    });
+
+    const contactsJson = contacts.length > 0 ? JSON.stringify(contacts) : null;
+    const primaryContact = contacts.length > 0 ? contacts[0] : null;
+
     const payload = {
         name: document.getElementById('contractorName').value.trim(),
-        contact_person: document.getElementById('contractorContactPerson').value.trim() || null,
-        phone: document.getElementById('contractorPhone').value.trim() || null,
+        contact_person: primaryContact ? primaryContact.name : null,
+        phone: primaryContact ? primaryContact.phone : null,
+        contacts: contactsJson,
         finance_dept: document.getElementById('contractorFinanceDept').value.trim() || null,
         financial_phone: document.getElementById('contractorFinancialPhone').value.trim() || null,
         notes: document.getElementById('contractorNotes').value.trim() || null
@@ -2687,7 +2757,7 @@ window.saveContractorForm = async function(event) {
 window.loadContractors = async function() {
     const tbody = document.getElementById('projectContractorsTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">جاري تحميل قائمة المقاولين...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">جاري تحميل قائمة المقاولين...</td></tr>';
     
     try {
         const response = await authFetch(`${CONTRACTORS_URL}/`);
@@ -2697,20 +2767,47 @@ window.loadContractors = async function() {
         
         tbody.innerHTML = '';
         if (contractors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">لا يوجد مقاولين مضافين بعد.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500">لا يوجد مقاولين مضافين بعد.</td></tr>';
             return;
         }
         
         contractors.forEach(c => {
+            // Parse contacts if available
+            let contactsList = [];
+            if (c.contacts) {
+                try {
+                    contactsList = typeof c.contacts === 'string' ? JSON.parse(c.contacts) : c.contacts;
+                } catch (e) {
+                    contactsList = [];
+                }
+            } else if (c.contact_person || c.phone) {
+                contactsList = [{ name: c.contact_person || '', phone: c.phone || '' }];
+            }
+
+            let contactsHtml = '';
+            if (Array.isArray(contactsList) && contactsList.length > 0) {
+                contactsHtml = `
+                    <div class="space-y-1">
+                        ${contactsList.map(cnt => `
+                            <div class="text-xs flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded-md">
+                                <span class="font-bold text-slate-800">${escapeHtml(cnt.name || '')}</span>
+                                ${cnt.phone ? `<span class="text-slate-500 font-mono" dir="ltr">(${escapeHtml(cnt.phone)})</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                contactsHtml = '<span class="text-slate-400 text-xs">-</span>';
+            }
+
             const tr = document.createElement('tr');
             tr.className = 'border-b hover:bg-slate-50 transition text-sm';
             tr.innerHTML = `
-                <td class="p-4 font-bold text-slate-800">${c.name}</td>
-                <td class="p-4 text-slate-700 font-semibold">${c.contact_person || '-'}</td>
-                <td class="p-4 text-slate-700" dir="ltr">${c.phone || '-'}</td>
-                <td class="p-4 text-slate-700">${c.finance_dept || '-'}</td>
-                <td class="p-4 text-slate-700" dir="ltr">${c.financial_phone || '-'}</td>
-                <td class="p-4 text-slate-600 text-xs">${c.notes || '-'}</td>
+                <td class="p-4 font-bold text-slate-800">${escapeHtml(c.name)}</td>
+                <td class="p-4">${contactsHtml}</td>
+                <td class="p-4 text-slate-700">${escapeHtml(c.finance_dept || '-')}</td>
+                <td class="p-4 text-slate-700" dir="ltr">${escapeHtml(c.financial_phone || '-')}</td>
+                <td class="p-4 text-slate-600 text-xs">${escapeHtml(c.notes || '-')}</td>
                 <td class="p-4 text-center">
                     <button onclick="openContractorModal(${c.id})" class="text-indigo-600 hover:text-indigo-800 p-1" title="تعديل">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -2723,7 +2820,7 @@ window.loadContractors = async function() {
             tbody.appendChild(tr);
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-500">${e.message}</td></tr>`;
     }
 };
 

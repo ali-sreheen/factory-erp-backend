@@ -238,6 +238,7 @@ class Contractor(Base):
     name = Column(String, index=True, nullable=False)
     contact_person = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    contacts = Column(String, nullable=True) # JSON string: [{"name": "...", "phone": "..."}]
     finance_dept = Column(String, nullable=True)
     financial_phone = Column(String, nullable=True)
     notes = Column(String, nullable=True)
