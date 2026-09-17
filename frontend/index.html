@@ -1324,7 +1324,8 @@
                                 <tr>
                                     <th class="p-4 font-bold">اسم العميل</th>
                                     <th class="p-4 font-bold">رقم الهاتف</th>
-                                    <th class="p-4 font-bold">الشركة / النشاط</th>
+                                    <th class="p-4 font-bold">مجال العمل</th>
+                                    <th class="p-4 font-bold">المسؤولين وأرقامهم</th>
                                     <th class="p-4 font-bold text-center">عدد الأعمال</th>
                                     <th class="p-4 font-bold">ملاحظات</th>
                                     <th class="p-4 font-bold text-center">الإجراءات</th>
@@ -1351,7 +1352,7 @@
                     </button>
                     <div>
                         <h2 id="serviceWizardTitle" class="text-3xl font-extrabold text-slate-900">إضافة عمل جديد</h2>
-                        <p class="text-slate-500 text-sm mt-0.5">اتبع الخطوات لإدخال كافة تفاصيل ومواصفات العمل.</p>
+                        <p id="serviceWizardSubTitle" class="text-slate-500 text-sm mt-0.5">اتبع الخطوات لإدخال كافة تفاصيل ومواصفات العمل.</p>
                     </div>
                 </div>
                 
@@ -1368,6 +1369,7 @@
 
                 <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
                     <form id="serviceWizardForm" novalidate onsubmit="handleServiceWizardSubmit(event)">
+                        <input type="hidden" id="swJobId" value="">
                         
                         <!-- STEP 1: Basic Info -->
                         <div id="serviceWizardStep1" class="service-wizard-step-content">
@@ -1596,6 +1598,12 @@
                             <option value="مكتمل">مكتمل</option>
                             <option value="تم التسليم">تم التسليم</option>
                         </select>
+
+                        <!-- Edit Job Button -->
+                        <button onclick="openEditServiceJobModal(currentServiceJobData ? currentServiceJobData.id : null)" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            <span>تعديل العمل</span>
+                        </button>
 
                         <!-- Generate Report Button -->
                         <button onclick="openServiceReportModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow flex items-center gap-2">
@@ -1955,19 +1963,34 @@
                         <input type="hidden" id="scmClientId">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">اسم العميل *</label>
-                            <input type="text" id="scmName" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            <input type="text" id="scmName" required placeholder="مثال: شركة الأفق للتجارة أو أحمد علي" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
-                            <input type="text" id="scmPhone" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none" dir="ltr">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف الرئيسي</label>
+                            <input type="text" id="scmPhone" placeholder="07xxxxxxxx" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none" dir="ltr">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">الشركة / النشاط</label>
-                            <input type="text" id="scmCompany" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">مجال العمل</label>
+                            <input type="text" id="scmCompany" placeholder="مثال: مقاولات عامة، ديكور داخلي، دعاية وإعلان..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
                         </div>
+
+                        <!-- Contacts Section -->
+                        <div class="border-t border-slate-200 pt-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs font-bold text-slate-800">مسؤولي التواصل</label>
+                                <button type="button" onclick="addServiceClientContactRow()" class="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold rounded-lg text-xs transition flex items-center gap-1 border border-teal-200">
+                                    <span>+</span>
+                                    <span>إضافة مسؤول</span>
+                                </button>
+                            </div>
+                            <div id="scmContactsContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                <!-- Dynamic contacts rows injected here -->
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">ملاحظات</label>
-                            <textarea id="scmNotes" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
+                            <textarea id="scmNotes" rows="2" placeholder="أي ملاحظات إضافية عن العميل..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none"></textarea>
                         </div>
                         <div class="flex justify-end gap-2 pt-2 border-t">
                             <button type="button" onclick="closeServiceClientModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">إلغاء</button>
@@ -2445,6 +2468,62 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Fire Door Specifications Rules Section -->
+                    <div class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden flex flex-col mt-8">
+                        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-50">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span class="text-amber-500">🔥</span>
+                                    <span>مواصفات الأبواب المقاومة للحريق (Fire-Rated Door Rules)</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-1">حدد نطاقات القياسات والمواصفات المعتمدة لأبواب الحريق. يعتبر الباب مطابقاً إذا انطبق عليه أي صف من هذه القائمة.</p>
+                            </div>
+                            <button onclick="openAddFireRuleModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm self-start sm:self-auto">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                إضافة صف مواصفة جديدة
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-center border-collapse text-xs">
+                                <thead>
+                                    <!-- Row 1: Main Names -->
+                                    <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                                        <th rowspan="2" class="p-3 border-l border-slate-200">#</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-amber-50/70 text-amber-900 font-extrabold">الطول (سم)</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-blue-50/70 text-blue-900 font-extrabold">العرض (سم)</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-indigo-50/70 text-indigo-900 font-extrabold">العمق (سم)</th>
+                                        <th rowspan="2" class="p-3 border-l border-slate-200 bg-slate-50 font-bold">المقطع</th>
+                                        <th rowspan="2" class="p-3 border-l border-slate-200 bg-slate-50 font-bold">نوع الدرفة</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-emerald-50/70 text-emerald-900 font-extrabold">سماكة الدرفة (سم)</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-purple-50/70 text-purple-900 font-extrabold">الكشفة (سم)</th>
+                                        <th colspan="2" class="p-2.5 border-l border-slate-200 bg-rose-50/70 text-rose-900 font-extrabold">الكشفة 2 (سم)</th>
+                                        <th rowspan="2" class="p-3 font-bold">الإجراءات</th>
+                                    </tr>
+                                    <!-- Row 2: Min / Max Values -->
+                                    <tr class="bg-slate-50 text-slate-600 text-[11px] font-semibold border-b border-slate-200">
+                                        <th class="p-2 border-l border-slate-200 bg-amber-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-amber-50/30">أعلى قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-blue-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-blue-50/30">أعلى قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-indigo-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-indigo-50/30">أعلى قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-emerald-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-emerald-50/30">أعلى قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-purple-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-purple-50/30">أعلى قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-rose-50/30">أقل قيمة</th>
+                                        <th class="p-2 border-l border-slate-200 bg-rose-50/30">أعلى قيمة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fireDoorRulesTableBody">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -3646,7 +3725,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=133"></script>
+    <script src="script.js?v=135"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
@@ -3712,6 +3791,157 @@
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeProjectOptionModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 transition">إلغاء</button>
                     <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition shadow-md hover:shadow-lg">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= FIRE DOOR RULE MODAL ================= -->
+    <div id="fireDoorRuleModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 overflow-y-auto max-h-[90vh] animate-scale-up">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                <div>
+                    <h3 id="fireRuleModalTitle" class="text-xl font-bold text-slate-950 flex items-center gap-2">
+                        <span>🔥 إضافة مواصفة باب مقاوم للحريق</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">حدد النطاقات المسموحة للقياسات وخيارات المقطع ونوع الدرفة.</p>
+                </div>
+                <button type="button" onclick="closeFireRuleModal()" class="text-slate-400 hover:text-slate-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form id="fireDoorRuleForm" onsubmit="handleFireRuleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="fireRuleId">
+
+                <!-- Rule Name / Note -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">اسم / وصف المواصفة (اختياري)</label>
+                    <input type="text" id="fireRuleName" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-sm font-semibold" placeholder="مثال: مواصفة درفة مفردة قياسية">
+                </div>
+
+                <!-- Profile & Door Type Dropdowns -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">المقطع (Profile)</label>
+                        <select id="fireRuleProfile" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm font-semibold focus:ring-2 focus:ring-amber-500">
+                            <option value="الجميع">الجميع (ينطبق على كافة المقاطع)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">نوع الدرفة (Door Type)</label>
+                        <select id="fireRuleDoorType" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm font-semibold focus:ring-2 focus:ring-amber-500">
+                            <option value="الجميع">الجميع (ينطبق على كافة أنواع الدرفات)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dimensions Ranges Grid -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700">نطاقات القياسات (اترك الحقل فارغاً إذا لم يكن هناك حد أدنى أو أقصى):</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <!-- الطول -->
+                        <div class="p-3 bg-amber-50/50 rounded-xl border border-amber-200/60">
+                            <span class="block text-xs font-extrabold text-amber-900 mb-2">الطول (سم)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinHeight" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 200">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxHeight" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 280">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- العرض -->
+                        <div class="p-3 bg-blue-50/50 rounded-xl border border-blue-200/60">
+                            <span class="block text-xs font-extrabold text-blue-900 mb-2">العرض (سم)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinWidth" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 80">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxWidth" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 140">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- العمق -->
+                        <div class="p-3 bg-indigo-50/50 rounded-xl border border-indigo-200/60">
+                            <span class="block text-xs font-extrabold text-indigo-900 mb-2">العمق (سم)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinDepth" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 15">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxDepth" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 33">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        <!-- سماكة الدرفة -->
+                        <div class="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/60">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-extrabold text-emerald-900">سماكة الدرفة (سم)</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinLeafThickness" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 4.5">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxLeafThickness" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 6.5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الكشفة -->
+                        <div class="p-3 bg-purple-50/50 rounded-xl border border-purple-200/60">
+                            <span class="block text-xs font-extrabold text-purple-900 mb-2">الكشفة (سم)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinArchitrave" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 2">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxArchitrave" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 10">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- الكشفة 2 -->
+                        <div class="p-3 bg-rose-50/50 rounded-xl border border-rose-200/60">
+                            <span class="block text-xs font-extrabold text-rose-900 mb-2">الكشفة 2 (سم)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أقل قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMinArchitrave2" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 2">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 font-bold mb-0.5">أعلى قيمة</label>
+                                    <input type="number" step="0.1" id="fireRuleMaxArchitrave2" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-center text-xs font-bold bg-white" placeholder="مثال: 12">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeFireRuleModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 transition">إلغاء</button>
+                    <button type="submit" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition shadow-md hover:shadow-lg">حفظ المواصفة</button>
                 </div>
             </form>
         </div>

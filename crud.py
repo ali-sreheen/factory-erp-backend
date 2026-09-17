@@ -668,6 +668,66 @@ def seed_default_sheet_sizes(db: Session):
             db.add(models.SheetSize(thickness=thickness, width=width, height=height))
         db.commit()
 
+# --- FIRE-RATED DOOR RULES CRUD ---
+
+def get_fire_door_rules(db: Session):
+    return db.query(models.FireDoorRule).order_by(models.FireDoorRule.id.asc()).all()
+
+def create_fire_door_rule(db: Session, rule: schemas.FireDoorRuleCreate):
+    db_rule = models.FireDoorRule(**rule.model_dump())
+    db.add(db_rule)
+    db.commit()
+    db.refresh(db_rule)
+    return db_rule
+
+def update_fire_door_rule(db: Session, rule_id: int, rule: schemas.FireDoorRuleCreate):
+    db_rule = db.query(models.FireDoorRule).filter(models.FireDoorRule.id == rule_id).first()
+    if db_rule:
+        for k, v in rule.model_dump().items():
+            setattr(db_rule, k, v)
+        db.commit()
+        db.refresh(db_rule)
+        return db_rule
+    return None
+
+def delete_fire_door_rule(db: Session, rule_id: int):
+    db_rule = db.query(models.FireDoorRule).filter(models.FireDoorRule.id == rule_id).first()
+    if db_rule:
+        db.delete(db_rule)
+        db.commit()
+        return True
+    return False
+
+def seed_default_fire_door_rules(db: Session):
+    if not db.query(models.FireDoorRule).first():
+        r1 = models.FireDoorRule(
+            name="Single Rabbit Standard",
+            min_height=200.0,
+            max_height=280.0,
+            min_width=80.0,
+            max_width=140.0,
+            min_depth=15.0,
+            max_depth=15.0,
+            profile_type="single rabbit with rubber",
+            door_type="الجميع",
+            leaf_thickness="الجميع"
+        )
+        r2 = models.FireDoorRule(
+            name="Double Rabbit Standard",
+            min_height=200.0,
+            max_height=280.0,
+            min_width=80.0,
+            max_width=140.0,
+            min_depth=15.0,
+            max_depth=33.0,
+            profile_type="double rabbit with rubber",
+            door_type="الجميع",
+            leaf_thickness="الجميع"
+        )
+        db.add(r1)
+        db.add(r2)
+        db.commit()
+
 def update_user_profile(db: Session, user_id: int, full_name: str, job_title: str, employment_id: str, department: str, avatar_url: str = None):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if db_user:
@@ -918,6 +978,40 @@ def delete_service_job_attachment(db: Session, attachment_id: int):
     return True
 
 
+def get_next_service_job_number(db: Session) -> str:
+    # Query all job numbers
+    jobs = db.query(models.ServiceJob.job_number).all()
+    if not jobs:
+        return "1"
+    
+    max_num = 0
+    found_any = False
+    for (j_num,) in jobs:
+        if not j_num:
+            continue
+        # Extract integer part if it's purely digits or has leading zeros like "01", "02"
+        # If it's pure number
+        clean = j_num.strip()
+        if clean.isdigit():
+            val = int(clean)
+            if val > max_num:
+                max_num = val
+            found_any = True
+        else:
+            # Check if ends with digits (e.g. JOB-12)
+            import re
+            m = re.findall(r'\d+', clean)
+            if m:
+                val = int(m[-1])
+                if val > max_num:
+                    max_num = val
+                found_any = True
+    
+    if found_any and max_num > 0:
+        return str(max_num + 1)
+    return "1"
+
+
 # --- SERVICE CLIENTS CRUD ---
 
 def get_service_clients(db: Session):
@@ -931,12 +1025,14 @@ def get_service_clients(db: Session):
             "name": c.name,
             "phone": c.phone,
             "company": c.company,
+            "contacts": c.contacts,
             "notes": c.notes,
             "created_at": c.created_at,
             "jobs_count": j_count
         }
         result.append(c_dict)
     return result
+
 
 
 def create_service_client(db: Session, client: schemas.ServiceClientCreate):

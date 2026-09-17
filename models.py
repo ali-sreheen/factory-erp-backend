@@ -377,5 +377,31 @@ class ServiceClient(Base):
     name = Column(String, index=True, nullable=False)
     phone = Column(String, nullable=True)
     company = Column(String, nullable=True)
+    contacts = Column(String, nullable=True) # JSON list of {name, phone}
     notes = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+
+class FireDoorRule(Base):
+    __tablename__ = "fire_door_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=True)
+    min_height = Column(Float, nullable=True)
+    max_height = Column(Float, nullable=True)
+    min_width = Column(Float, nullable=True)
+    max_width = Column(Float, nullable=True)
+    min_depth = Column(Float, nullable=True)
+    max_depth = Column(Float, nullable=True)
+    min_architrave = Column(Float, nullable=True)
+    max_architrave = Column(Float, nullable=True)
+    min_architrave_2 = Column(Float, nullable=True)
+    max_architrave_2 = Column(Float, nullable=True)
+    min_leaf_thickness = Column(Float, nullable=True)
+    max_leaf_thickness = Column(Float, nullable=True)
+    leaf_thickness = Column(String, nullable=True, default="الجميع")
+    profile_type = Column(String, nullable=True, default="الجميع")
+    door_type = Column(String, nullable=True, default="الجميع")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

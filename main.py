@@ -271,6 +271,7 @@ try:
     seed_default_departments(db_session)
     crud.seed_default_project_options(db_session)
     crud.seed_default_sheet_sizes(db_session)
+    crud.seed_default_fire_door_rules(db_session)
 finally:
     db_session.close()
 
@@ -1606,6 +1607,52 @@ def delete_sheet_size(
         raise HTTPException(status_code=404, detail="Sheet size not found")
     return {"message": "Deleted successfully"}
 
+# --- FIRE-RATED DOOR RULES ENDPOINTS ---
+
+@app.get("/api/fire-door-rules/", response_model=List[schemas.FireDoorRuleResponse])
+def read_fire_door_rules(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    return crud.get_fire_door_rules(db)
+
+@app.post("/api/fire-door-rules/", response_model=schemas.FireDoorRuleResponse)
+def create_fire_door_rule(
+    rule: schemas.FireDoorRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بإضافة مواصفات أبواب حريق")
+    return crud.create_fire_door_rule(db, rule)
+
+@app.put("/api/fire-door-rules/{rule_id}", response_model=schemas.FireDoorRuleResponse)
+def update_fire_door_rule(
+    rule_id: int,
+    rule_update: schemas.FireDoorRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بتعديل مواصفات أبواب حريق")
+    db_rule = crud.update_fire_door_rule(db, rule_id, rule_update)
+    if not db_rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return db_rule
+
+@app.delete("/api/fire-door-rules/{rule_id}")
+def delete_fire_door_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.username != "admin":
+        raise HTTPException(status_code=403, detail="غير مصرح لك بحذف مواصفات أبواب حريق")
+    success = crud.delete_fire_door_rule(db, rule_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    return {"message": "Deleted successfully"}
+
 # ==========================================
 #           PURCHASING MODULE
 # ==========================================
@@ -2211,6 +2258,14 @@ def get_service_jobs(
 ):
     return crud.get_service_jobs(db, status=status, client_name=client_name)
 
+@app.get("/api/service-jobs/next-number")
+def get_next_service_job_number(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    next_num = crud.get_next_service_job_number(db)
+    return {"next_job_number": next_num}
+
 @app.get("/api/service-jobs/{job_id}", response_model=schemas.ServiceJobResponse)
 def get_service_job(
     job_id: int,
@@ -2229,6 +2284,11 @@ def create_service_job(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if not job.job_number or not job.job_number.strip():
+        job.job_number = crud.get_next_service_job_number(db)
+    else:
+        job.job_number = job.job_number.strip()
+
     existing = crud.get_service_job_by_number(db, job.job_number)
     if existing:
         raise HTTPException(status_code=400, detail="رقم الإنتاج مسجل مسبقاً، الرجاء اختيار رقم آخر")
@@ -2242,6 +2302,7 @@ def update_service_job(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if job_update.job_number:
+        job_update.job_number = job_update.job_number.strip()
         existing = crud.get_service_job_by_number(db, job_update.job_number)
         if existing and existing.id != job_id:
             raise HTTPException(status_code=400, detail="رقم الإنتاج مسجل مسبقاً لعمل آخر")
@@ -2318,6 +2379,7 @@ def create_service_client(
         "name": db_client.name,
         "phone": db_client.phone,
         "company": db_client.company,
+        "contacts": db_client.contacts,
         "notes": db_client.notes,
         "created_at": db_client.created_at,
         "jobs_count": 0
@@ -2339,10 +2401,12 @@ def update_service_client(
         "name": db_client.name,
         "phone": db_client.phone,
         "company": db_client.company,
+        "contacts": db_client.contacts,
         "notes": db_client.notes,
         "created_at": db_client.created_at,
         "jobs_count": j_count
     }
+
 
 @app.delete("/api/service-clients/{client_id}")
 def delete_service_client(

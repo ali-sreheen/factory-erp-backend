@@ -604,6 +604,7 @@ class ServiceClientBase(BaseModel):
     name: str
     phone: Optional[str] = None
     company: Optional[str] = None
+    contacts: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -615,6 +616,7 @@ class ServiceClientUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     company: Optional[str] = None
+    contacts: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -623,9 +625,44 @@ class ServiceClientResponse(ServiceClientBase):
     created_at: Optional[datetime] = None
     jobs_count: Optional[int] = 0
 
+
+    class Config:
+        from_attributes = True
+
+
+# --- FIRE-RATED DOOR RULES SCHEMAS ---
+
+class FireDoorRuleBase(BaseModel):
+    name: Optional[str] = None
+    min_height: Optional[float] = None
+    max_height: Optional[float] = None
+    min_width: Optional[float] = None
+    max_width: Optional[float] = None
+    min_depth: Optional[float] = None
+    max_depth: Optional[float] = None
+    min_architrave: Optional[float] = None
+    max_architrave: Optional[float] = None
+    min_architrave_2: Optional[float] = None
+    max_architrave_2: Optional[float] = None
+    min_leaf_thickness: Optional[float] = None
+    max_leaf_thickness: Optional[float] = None
+    leaf_thickness: Optional[str] = "الجميع"
+    profile_type: Optional[str] = "الجميع"
+    door_type: Optional[str] = "الجميع"
+
+
+class FireDoorRuleCreate(FireDoorRuleBase):
+    pass
+
+
+class FireDoorRuleResponse(FireDoorRuleBase):
+    id: int
+    created_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
 
 UserResponse.update_forward_refs()
+
 

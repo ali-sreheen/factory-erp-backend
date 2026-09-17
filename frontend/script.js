@@ -876,8 +876,11 @@ window.enterAdminSubSection = function(section, fromHistory = false) {
 
     if (section === 'users') {
         loadUsers();
-    } else if (section === 'accessories' || section === 'projects') {
+    } else if (section === 'accessories') {
         renderProjectOptionsAdmin();
+    } else if (section === 'projects') {
+        renderProjectOptionsAdmin();
+        loadFireDoorRules().then(() => renderFireDoorRulesAdmin());
     } else if (section === 'inventory') {
         renderSheetSizesAdmin();
     }
@@ -934,6 +937,8 @@ async function showAdminView(fromHistory = false) {
     await loadUsers();
     await loadProjectOptions();
     renderProjectOptionsAdmin();
+    await loadFireDoorRules();
+    renderFireDoorRulesAdmin();
     await loadSheetSizes();
     renderSheetSizesAdmin();
 }
@@ -2818,6 +2823,7 @@ function openProjectWizard(fromHistory = false) {
     
     document.getElementById('projectWizardForm').reset();
     loadContractorOptions();
+    loadFireDoorRules();
     document.getElementById('projectDetailsTableBody').innerHTML = '';
     
     // Reset defaults and first row change counters
@@ -5561,6 +5567,261 @@ window.renderProjectOptionsAdmin = function() {
     }
 };
 
+// ================= FIRE-RATED DOOR RULES LOGIC =================
+let dbFireDoorRules = [];
+
+window.loadFireDoorRules = async function() {
+    try {
+        const response = await authFetch(`${API_HOST}/api/fire-door-rules/`);
+        if (response.ok) {
+            dbFireDoorRules = await response.json();
+        }
+    } catch (err) {
+        console.error('Error fetching fire door rules:', err);
+    }
+};
+
+window.renderFireDoorRulesAdmin = function() {
+    const tbody = document.getElementById('fireDoorRulesTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!dbFireDoorRules || dbFireDoorRules.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="16" class="p-8 text-center text-slate-400 font-semibold bg-slate-50/50">
+                    لا توجد مواصفات محددة لأبواب الحريق حالياً. اضغط على "إضافة صف مواصفة جديدة" لإنشاء مواصفة.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    dbFireDoorRules.forEach((rule, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b hover:bg-slate-50 transition text-slate-800 text-xs';
+
+        const fmtVal = (val) => (val !== null && val !== undefined && val !== '') ? `<span class="font-bold font-mono text-slate-900">${val}</span>` : '<span class="text-slate-300 font-mono">-</span>';
+        const profileBadge = (!rule.profile_type || rule.profile_type === 'الجميع') 
+            ? '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-bold text-[11px]">الجميع</span>' 
+            : `<span class="font-semibold text-slate-800">${rule.profile_type}</span>`;
+        const doorTypeBadge = (!rule.door_type || rule.door_type === 'الجميع') 
+            ? '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-bold text-[11px]">الجميع</span>' 
+            : `<span class="font-semibold text-slate-800">${rule.door_type}</span>`;
+
+        tr.innerHTML = `
+            <td class="p-3 font-mono font-bold text-slate-400 border-l border-slate-100">${idx + 1}</td>
+            <td class="p-2 border-l border-slate-100 bg-amber-50/20">${fmtVal(rule.min_height)}</td>
+            <td class="p-2 border-l border-slate-100 bg-amber-50/20">${fmtVal(rule.max_height)}</td>
+            <td class="p-2 border-l border-slate-100 bg-blue-50/20">${fmtVal(rule.min_width)}</td>
+            <td class="p-2 border-l border-slate-100 bg-blue-50/20">${fmtVal(rule.max_width)}</td>
+            <td class="p-2 border-l border-slate-100 bg-indigo-50/20">${fmtVal(rule.min_depth)}</td>
+            <td class="p-2 border-l border-slate-100 bg-indigo-50/20">${fmtVal(rule.max_depth)}</td>
+            <td class="p-2 border-l border-slate-100">${profileBadge}</td>
+            <td class="p-2 border-l border-slate-100">${doorTypeBadge}</td>
+            <td class="p-2 border-l border-slate-100 bg-emerald-50/20">${fmtVal(rule.min_leaf_thickness)}</td>
+            <td class="p-2 border-l border-slate-100 bg-emerald-50/20">${fmtVal(rule.max_leaf_thickness)}</td>
+            <td class="p-2 border-l border-slate-100 bg-purple-50/20">${fmtVal(rule.min_architrave)}</td>
+            <td class="p-2 border-l border-slate-100 bg-purple-50/20">${fmtVal(rule.max_architrave)}</td>
+            <td class="p-2 border-l border-slate-100 bg-rose-50/20">${fmtVal(rule.min_architrave_2)}</td>
+            <td class="p-2 border-l border-slate-100 bg-rose-50/20">${fmtVal(rule.max_architrave_2)}</td>
+            <td class="p-2">
+                <div class="flex items-center justify-center gap-1.5">
+                    <button onclick="openEditFireRuleModal(${rule.id})" class="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg transition text-xs font-bold border border-amber-200">تعديل</button>
+                    <button onclick="deleteFireRule(${rule.id})" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition text-xs font-bold border border-rose-200">حذف</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.openAddFireRuleModal = function() {
+    document.getElementById('fireRuleModalTitle').innerHTML = '<span>🔥 إضافة مواصفة باب مقاوم للحريق</span>';
+    document.getElementById('fireRuleId').value = '';
+    document.getElementById('fireRuleName').value = '';
+    
+    // Populate profile select
+    const profileSelect = document.getElementById('fireRuleProfile');
+    profileSelect.innerHTML = '<option value="الجميع">الجميع (ينطبق على كافة المقاطع)</option>';
+    if (typeof dbProfileOptions !== 'undefined') {
+        dbProfileOptions.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            profileSelect.appendChild(opt);
+        });
+    }
+
+    // Populate door type select
+    const doorTypeSelect = document.getElementById('fireRuleDoorType');
+    doorTypeSelect.innerHTML = '<option value="الجميع">الجميع (ينطبق على كافة أنواع الدرفات)</option>';
+    if (typeof dbDoorTypeOptions !== 'undefined') {
+        dbDoorTypeOptions.forEach(dt => {
+            const opt = document.createElement('option');
+            opt.value = dt.name;
+            opt.textContent = dt.name;
+            doorTypeSelect.appendChild(opt);
+        });
+    }
+
+    // Clear numeric fields
+    document.getElementById('fireRuleMinHeight').value = '';
+    document.getElementById('fireRuleMaxHeight').value = '';
+    document.getElementById('fireRuleMinWidth').value = '';
+    document.getElementById('fireRuleMaxWidth').value = '';
+    document.getElementById('fireRuleMinDepth').value = '';
+    document.getElementById('fireRuleMaxDepth').value = '';
+    document.getElementById('fireRuleMinLeafThickness').value = '';
+    document.getElementById('fireRuleMaxLeafThickness').value = '';
+    document.getElementById('fireRuleMinArchitrave').value = '';
+    document.getElementById('fireRuleMaxArchitrave').value = '';
+    document.getElementById('fireRuleMinArchitrave2').value = '';
+    document.getElementById('fireRuleMaxArchitrave2').value = '';
+
+    document.getElementById('fireDoorRuleModal').classList.remove('hidden');
+};
+
+window.openEditFireRuleModal = function(id) {
+    const rule = dbFireDoorRules.find(r => r.id === id);
+    if (!rule) return;
+
+    document.getElementById('fireRuleModalTitle').innerHTML = '<span>🔥 تعديل مواصفة باب مقاوم للحريق</span>';
+    document.getElementById('fireRuleId').value = rule.id;
+    document.getElementById('fireRuleName').value = rule.name || '';
+
+    // Populate profile select
+    const profileSelect = document.getElementById('fireRuleProfile');
+    profileSelect.innerHTML = '<option value="الجميع">الجميع (ينطبق على كافة المقاطع)</option>';
+    if (typeof dbProfileOptions !== 'undefined') {
+        dbProfileOptions.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            if (p.name === rule.profile_type) opt.selected = true;
+            profileSelect.appendChild(opt);
+        });
+    }
+    if (!rule.profile_type || rule.profile_type === 'الجميع') {
+        profileSelect.value = 'الجميع';
+    }
+
+    // Populate door type select
+    const doorTypeSelect = document.getElementById('fireRuleDoorType');
+    doorTypeSelect.innerHTML = '<option value="الجميع">الجميع (ينطبق على كافة أنواع الدرفات)</option>';
+    if (typeof dbDoorTypeOptions !== 'undefined') {
+        dbDoorTypeOptions.forEach(dt => {
+            const opt = document.createElement('option');
+            opt.value = dt.name;
+            opt.textContent = dt.name;
+            if (dt.name === rule.door_type) opt.selected = true;
+            doorTypeSelect.appendChild(opt);
+        });
+    }
+    if (!rule.door_type || rule.door_type === 'الجميع') {
+        doorTypeSelect.value = 'الجميع';
+    }
+
+    // Fill numeric fields
+    document.getElementById('fireRuleMinHeight').value = rule.min_height !== null && rule.min_height !== undefined ? rule.min_height : '';
+    document.getElementById('fireRuleMaxHeight').value = rule.max_height !== null && rule.max_height !== undefined ? rule.max_height : '';
+    document.getElementById('fireRuleMinWidth').value = rule.min_width !== null && rule.min_width !== undefined ? rule.min_width : '';
+    document.getElementById('fireRuleMaxWidth').value = rule.max_width !== null && rule.max_width !== undefined ? rule.max_width : '';
+    document.getElementById('fireRuleMinDepth').value = rule.min_depth !== null && rule.min_depth !== undefined ? rule.min_depth : '';
+    document.getElementById('fireRuleMaxDepth').value = rule.max_depth !== null && rule.max_depth !== undefined ? rule.max_depth : '';
+    document.getElementById('fireRuleMinLeafThickness').value = rule.min_leaf_thickness !== null && rule.min_leaf_thickness !== undefined ? rule.min_leaf_thickness : '';
+    document.getElementById('fireRuleMaxLeafThickness').value = rule.max_leaf_thickness !== null && rule.max_leaf_thickness !== undefined ? rule.max_leaf_thickness : '';
+    document.getElementById('fireRuleMinArchitrave').value = rule.min_architrave !== null && rule.min_architrave !== undefined ? rule.min_architrave : '';
+    document.getElementById('fireRuleMaxArchitrave').value = rule.max_architrave !== null && rule.max_architrave !== undefined ? rule.max_architrave : '';
+    document.getElementById('fireRuleMinArchitrave2').value = rule.min_architrave_2 !== null && rule.min_architrave_2 !== undefined ? rule.min_architrave_2 : '';
+    document.getElementById('fireRuleMaxArchitrave2').value = rule.max_architrave_2 !== null && rule.max_architrave_2 !== undefined ? rule.max_architrave_2 : '';
+
+    document.getElementById('fireDoorRuleModal').classList.remove('hidden');
+};
+
+window.closeFireRuleModal = function() {
+    document.getElementById('fireDoorRuleModal').classList.add('hidden');
+};
+
+window.handleFireRuleFormSubmit = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('fireRuleId').value;
+    const parseOrNull = (val) => {
+        const f = parseFloat(val);
+        return isNaN(f) ? null : f;
+    };
+
+    const payload = {
+        name: document.getElementById('fireRuleName').value.trim() || null,
+        profile_type: document.getElementById('fireRuleProfile').value,
+        door_type: document.getElementById('fireRuleDoorType').value,
+        min_height: parseOrNull(document.getElementById('fireRuleMinHeight').value),
+        max_height: parseOrNull(document.getElementById('fireRuleMaxHeight').value),
+        min_width: parseOrNull(document.getElementById('fireRuleMinWidth').value),
+        max_width: parseOrNull(document.getElementById('fireRuleMaxWidth').value),
+        min_depth: parseOrNull(document.getElementById('fireRuleMinDepth').value),
+        max_depth: parseOrNull(document.getElementById('fireRuleMaxDepth').value),
+        min_leaf_thickness: parseOrNull(document.getElementById('fireRuleMinLeafThickness').value),
+        max_leaf_thickness: parseOrNull(document.getElementById('fireRuleMaxLeafThickness').value),
+        min_architrave: parseOrNull(document.getElementById('fireRuleMinArchitrave').value),
+        max_architrave: parseOrNull(document.getElementById('fireRuleMaxArchitrave').value),
+        min_architrave_2: parseOrNull(document.getElementById('fireRuleMinArchitrave2').value),
+        max_architrave_2: parseOrNull(document.getElementById('fireRuleMaxArchitrave2').value)
+    };
+
+    let url = `${API_HOST}/api/fire-door-rules/`;
+    let method = 'POST';
+    if (id) {
+        url = `${API_HOST}/api/fire-door-rules/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        showToast('جار الحفظ...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            showToast('تم حفظ المواصفة بنجاح', 'bg-emerald-500', '✓');
+            closeFireRuleModal();
+            await loadFireDoorRules();
+            renderFireDoorRulesAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحفظ', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء حفظ المواصفة', 'bg-rose-500', '✗');
+    }
+};
+
+window.deleteFireRule = async function(id) {
+    if (!confirm('هل أنت متأكد من رغبتك في حذف هذا الصف من مواصفات أبواب الحريق؟')) return;
+
+    try {
+        showToast('جار الحذف...', 'bg-blue-500', 'ℹ');
+        const response = await authFetch(`${API_HOST}/api/fire-door-rules/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showToast('تم حذف المواصفة بنجاح', 'bg-emerald-500', '✓');
+            await loadFireDoorRules();
+            renderFireDoorRulesAdmin();
+        } else {
+            const data = await response.json();
+            showToast(data.detail || 'حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء الحذف', 'bg-rose-500', '✗');
+    }
+};
+
 // ------------- AUTOMATIC ARCHITRAVE 2 CALCULATION -------------
 
 window.autoCalculateArchitrave2 = function(input) {
@@ -6289,10 +6550,15 @@ window.exportFireDoorsToExcel = function() {
     showToast('تم تصدير ملف أبواب الحريق بنجاح', 'bg-emerald-500', '✓');
 };
 
-window.proceedFromStep2 = function() {
+window.proceedFromStep2 = async function() {
     if (ignoreFireDoorValidation) {
         goToWizardStep(3);
         return;
+    }
+
+    // Ensure fire door rules are loaded
+    if (!dbFireDoorRules || dbFireDoorRules.length === 0) {
+        await loadFireDoorRules();
     }
 
     const rows = document.querySelectorAll('#projectDetailsTableBody tr');
@@ -6300,42 +6566,112 @@ window.proceedFromStep2 = function() {
 
     rows.forEach(tr => {
         const inputs = tr.querySelectorAll('input, select');
-        if (inputs.length < 21) return; // safety check
+        if (inputs.length < 17) return; // safety check
 
         const doorNum = inputs[0].value || 'بدون رقم';
-        const isFireResistant = inputs[14].checked;
+        // Check fire_resistance checkbox: inputs[16] is fire_resistance, with defensive fallback to inputs[14]
+        let isFireResistant = false;
+        if (inputs[16] && inputs[16].type === 'checkbox') {
+            isFireResistant = inputs[16].checked;
+        } else if (inputs[14] && inputs[14].type === 'checkbox') {
+            isFireResistant = inputs[14].checked;
+        }
 
         if (isFireResistant) {
             const width = parseFloat(inputs[2].value);
             const height = parseFloat(inputs[3].value);
             const depth = parseFloat(inputs[4].value);
-            const profile = inputs[9].value;
+            const profile = inputs[9] ? inputs[9].value.trim() : '';
+            const doorType = inputs[10] ? inputs[10].value.trim() : '';
+            const leafThickness = inputs[14] ? parseFloat(inputs[14].value) : NaN;
+            const architrave = inputs[17] ? parseFloat(inputs[17].value) : NaN;
+            const architrave2 = inputs[18] ? parseFloat(inputs[18].value) : NaN;
 
-            let doorErrors = [];
+            if (dbFireDoorRules && dbFireDoorRules.length > 0) {
+                let matchesAny = false;
+                for (let r of dbFireDoorRules) {
+                    let match = true;
 
-            // 1. Width <= 140
-            if (isNaN(width) || width > 140) {
-                doorErrors.push("العرض يجب ألا يزيد عن 140 سم");
-            }
-            // 2. Height <= 280
-            if (isNaN(height) || height > 280) {
-                doorErrors.push("الطول يجب ألا يزيد عن 280 سم");
-            }
-            // 3. Depth and Profile validation
-            if (profile === "single rabbit with rubber") {
-                if (isNaN(depth) || depth !== 15) {
-                    doorErrors.push("العمق يجب أن يكون 15 سم");
+                    // 1. Height check
+                    if (r.min_height !== null && r.min_height !== undefined && !isNaN(r.min_height)) {
+                        if (isNaN(height) || height < r.min_height) match = false;
+                    }
+                    if (r.max_height !== null && r.max_height !== undefined && !isNaN(r.max_height)) {
+                        if (isNaN(height) || height > r.max_height) match = false;
+                    }
+
+                    // 2. Width check
+                    if (r.min_width !== null && r.min_width !== undefined && !isNaN(r.min_width)) {
+                        if (isNaN(width) || width < r.min_width) match = false;
+                    }
+                    if (r.max_width !== null && r.max_width !== undefined && !isNaN(r.max_width)) {
+                        if (isNaN(width) || width > r.max_width) match = false;
+                    }
+
+                    // 3. Depth check
+                    if (r.min_depth !== null && r.min_depth !== undefined && !isNaN(r.min_depth)) {
+                        if (isNaN(depth) || depth < r.min_depth) match = false;
+                    }
+                    if (r.max_depth !== null && r.max_depth !== undefined && !isNaN(r.max_depth)) {
+                        if (isNaN(depth) || depth > r.max_depth) match = false;
+                    }
+
+                    // 4. Profile check
+                    if (r.profile_type && r.profile_type !== 'الجميع') {
+                        if (!profile || profile !== r.profile_type) match = false;
+                    }
+
+                    // 5. Door Type check
+                    if (r.door_type && r.door_type !== 'الجميع') {
+                        if (!doorType || doorType !== r.door_type) match = false;
+                    }
+
+                    // 6. Leaf Thickness check
+                    if (r.min_leaf_thickness !== null && r.min_leaf_thickness !== undefined && !isNaN(r.min_leaf_thickness)) {
+                        if (isNaN(leafThickness) || leafThickness < r.min_leaf_thickness) match = false;
+                    }
+                    if (r.max_leaf_thickness !== null && r.max_leaf_thickness !== undefined && !isNaN(r.max_leaf_thickness)) {
+                        if (isNaN(leafThickness) || leafThickness > r.max_leaf_thickness) match = false;
+                    }
+
+                    // 7. Architrave (الكشفة) check
+                    if (r.min_architrave !== null && r.min_architrave !== undefined && !isNaN(r.min_architrave)) {
+                        if (isNaN(architrave) || architrave < r.min_architrave) match = false;
+                    }
+                    if (r.max_architrave !== null && r.max_architrave !== undefined && !isNaN(r.max_architrave)) {
+                        if (isNaN(architrave) || architrave > r.max_architrave) match = false;
+                    }
+
+                    // 8. Architrave 2 (الكشفة 2) check
+                    if (r.min_architrave_2 !== null && r.min_architrave_2 !== undefined && !isNaN(r.min_architrave_2)) {
+                        if (isNaN(architrave2) || architrave2 < r.min_architrave_2) match = false;
+                    }
+                    if (r.max_architrave_2 !== null && r.max_architrave_2 !== undefined && !isNaN(r.max_architrave_2)) {
+                        if (isNaN(architrave2) || architrave2 > r.max_architrave_2) match = false;
+                    }
+
+                    if (match) {
+                        matchesAny = true;
+                        break;
+                    }
                 }
-            } else if (profile === "double rabbit with rubber") {
-                if (isNaN(depth) || depth < 15 || depth > 33) {
-                    doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم");
+
+                if (!matchesAny) {
+                    errors.push(`الباب رقم (${doorNum}): القياسات أو المواصفات المختارة لا تطابق أي من مواصفات أبواب الحريق المعتمدة في النظام.`);
                 }
             } else {
-                doorErrors.push("المقطع المختار غير مطابق (يجب اختيار single rabbit with rubber أو Double rabbit with rubber)");
-            }
-
-            if (doorErrors.length > 0) {
-                errors.push(`الباب رقم (${doorNum}): ${doorErrors.join('، ')}`);
+                // Fallback default rules if none configured
+                let doorErrors = [];
+                if (isNaN(width) || width > 140) doorErrors.push("العرض يجب ألا يزيد عن 140 سم");
+                if (isNaN(height) || height > 280) doorErrors.push("الطول يجب ألا يزيد عن 280 سم");
+                if (profile === "single rabbit with rubber") {
+                    if (isNaN(depth) || depth !== 15) doorErrors.push("العمق يجب أن يكون 15 سم");
+                } else if (profile === "double rabbit with rubber") {
+                    if (isNaN(depth) || depth < 15 || depth > 33) doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم");
+                }
+                if (doorErrors.length > 0) {
+                    errors.push(`الباب رقم (${doorNum}): ${doorErrors.join('، ')}`);
+                }
             }
         }
     });
@@ -8496,6 +8832,9 @@ window.filterServicesJobsTable = function() {
                         <button onclick="viewServiceJobDetails(${job.id})" class="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 transition" title="عرض التفاصيل">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
+                        <button onclick="openEditServiceJobModal(${job.id})" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="تعديل العمل">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
                         <button onclick="deleteServiceJobById(${job.id})" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition" title="حذف العمل">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
@@ -8510,7 +8849,7 @@ window.filterServicesJobsTable = function() {
 
 let currentServiceWizardStep = 1;
 
-window.openServiceWizard = function(fromHistory = false) {
+window.openServiceWizard = async function(fromHistory = false) {
     if (!fromHistory) {
         pushNavigationState('serviceWizard');
     }
@@ -8529,9 +8868,22 @@ window.openServiceWizard = function(fromHistory = false) {
     const wView = document.getElementById('serviceWizardView');
     if (wView) wView.classList.remove('hidden');
 
-    // Reset Form
+    // Reset Form and Titles
     const form = document.getElementById('serviceWizardForm');
     if (form) form.reset();
+    const jobIdInput = document.getElementById('swJobId');
+    if (jobIdInput) jobIdInput.value = '';
+
+    const title = document.getElementById('serviceWizardTitle');
+    const subTitle = document.getElementById('serviceWizardSubTitle');
+    const btnSubmit = document.getElementById('btnSubmitServiceJob');
+    if (title) title.textContent = 'إضافة عمل جديد';
+    if (subTitle) subTitle.textContent = 'اتبع الخطوات لإدخال كافة تفاصيل ومواصفات العمل.';
+    if (btnSubmit) btnSubmit.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        <span>اعتماد وحفظ العمل</span>
+    `;
+
     serviceWizardSelectedFiles = [];
     renderServiceWizardSelectedFiles();
 
@@ -8540,11 +8892,119 @@ window.openServiceWizard = function(fromHistory = false) {
     const recDate = document.getElementById('swReceivedDate');
     if (recDate) recDate.value = today;
 
+    // Fetch and populate next job number automatically
+    const jobNumInput = document.getElementById('swJobNumber');
+    if (jobNumInput) {
+        jobNumInput.value = '';
+        try {
+            const res = await authFetch(`${SERVICES_URL}/next-number`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.next_job_number && !jobNumInput.value) {
+                    jobNumInput.value = data.next_job_number;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to get next job number', e);
+        }
+    }
+
     // Populate Users
     loadUsersIntoSelect('swAssignedTo');
 
     // Populate Client Datalist
     populateClientDatalist();
+
+    goToServiceWizardStep(1);
+};
+
+window.openEditServiceJobModal = async function(jobId) {
+    if (!jobId) return;
+
+    let job = currentServiceJobData;
+    if (!job || job.id !== jobId) {
+        try {
+            const res = await authFetch(`${SERVICES_URL}/${jobId}`);
+            if (!res.ok) throw new Error('فشل جلب تفاصيل العمل للتعديل');
+            job = await res.json();
+            currentServiceJobData = job;
+        } catch (e) {
+            showToast(e.message, 'bg-rose-500', '✗');
+            return;
+        }
+    }
+
+    pushNavigationState('serviceWizard', { editJobId: jobId });
+
+    const viewsToHide = [
+        'moduleSelectorView', 'projectsView', 'projectWizardView', 'projectDetailView',
+        'departmentsView', 'subDeptView', 'departmentDetailView', 'adminView',
+        'purchasingView', 'purchaseRequestDetailView', 'hrView',
+        'servicesView', 'serviceJobDetailView'
+    ];
+    viewsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+
+    const wView = document.getElementById('serviceWizardView');
+    if (wView) wView.classList.remove('hidden');
+
+    const form = document.getElementById('serviceWizardForm');
+    if (form) form.reset();
+
+    // Set Edit Mode Identifiers
+    const jobIdInput = document.getElementById('swJobId');
+    if (jobIdInput) jobIdInput.value = job.id;
+
+    const title = document.getElementById('serviceWizardTitle');
+    const subTitle = document.getElementById('serviceWizardSubTitle');
+    const btnSubmit = document.getElementById('btnSubmitServiceJob');
+    if (title) title.textContent = 'تعديل بيانات العمل';
+    if (subTitle) subTitle.textContent = `تعديل تفاصيل العمل رقم ${job.job_number || ''}`;
+    if (btnSubmit) btnSubmit.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        <span>حفظ التعديلات</span>
+    `;
+
+    // Step 1: Basic info
+    document.getElementById('swName').value = job.name || '';
+    document.getElementById('swJobNumber').value = job.job_number || '';
+    document.getElementById('swClientName').value = job.client_name || '';
+    document.getElementById('swClientPhone').value = job.client_phone || '';
+    document.getElementById('swReceivedDate').value = job.received_date ? job.received_date.split('T')[0] : '';
+    document.getElementById('swDeliveryDate').value = job.expected_delivery_date ? job.expected_delivery_date.split('T')[0] : '';
+
+    // Step 2: Operations & Sheet
+    document.getElementById('swOpDesign').checked = !!job.op_design;
+    document.getElementById('swOpLaser').checked = !!job.op_laser_cutting;
+    document.getElementById('swOpBending').checked = !!job.op_bending;
+    document.getElementById('swOpPunching').checked = !!job.op_punching;
+    document.getElementById('swOpWelding').checked = !!job.op_welding;
+    document.getElementById('swOpPainting').checked = !!job.op_painting;
+
+    document.getElementById('swSheetThickness').value = job.sheet_thickness !== null && job.sheet_thickness !== undefined ? job.sheet_thickness : '';
+    if (job.sheet_ownership) document.getElementById('swSheetOwnership').value = job.sheet_ownership;
+    if (job.sheet_type) document.getElementById('swSheetType').value = job.sheet_type;
+    document.getElementById('swNotes').value = job.notes || '';
+
+    // Step 3: Pricing & Specs
+    document.getElementById('swFinalPrice').value = job.final_price !== null && job.final_price !== undefined ? job.final_price : '';
+    document.getElementById('swTaxInclusive').checked = job.tax_inclusive !== false;
+    document.getElementById('swCuttingLength').value = job.cutting_length !== null && job.cutting_length !== undefined ? job.cutting_length : '';
+    document.getElementById('swBendsCount').value = job.bends_count !== null && job.bends_count !== undefined ? job.bends_count : '';
+    document.getElementById('swPunchStrokesCount').value = job.punch_strokes_count !== null && job.punch_strokes_count !== undefined ? job.punch_strokes_count : '';
+    document.getElementById('swExpectedDuration').value = job.expected_duration || '';
+
+    // Users and Datalist
+    await loadUsersIntoSelect('swAssignedTo');
+    if (job.assigned_to) {
+        document.getElementById('swAssignedTo').value = job.assigned_to;
+    }
+    populateClientDatalist();
+
+    serviceWizardSelectedFiles = [];
+    renderServiceWizardSelectedFiles();
 
     goToServiceWizardStep(1);
 };
@@ -8686,16 +9146,17 @@ window.removeServiceWizardFile = function(idx) {
     renderServiceWizardSelectedFiles();
 };
 
-// Wizard Submission
+// Wizard Submission (Create or Edit)
 window.handleServiceWizardSubmit = async function(e) {
     if (e && e.preventDefault) e.preventDefault();
 
+    const editJobId = document.getElementById('swJobId')?.value;
     const name = (document.getElementById('swName')?.value || '').trim();
     const job_number = (document.getElementById('swJobNumber')?.value || '').trim();
     const client_name = (document.getElementById('swClientName')?.value || '').trim();
 
-    if (!name || !job_number || !client_name) {
-        showToast('يرجى ملء الحقول الإلزامية: اسم العمل، رقم الإنتاج، واسم العميل', 'bg-amber-500', '⚠️');
+    if (!name || !client_name) {
+        showToast('يرجى ملء الحقول الإلزامية: اسم العمل واسم العميل', 'bg-amber-500', '⚠️');
         goToServiceWizardStep(1);
         return;
     }
@@ -8713,13 +9174,12 @@ window.handleServiceWizardSubmit = async function(e) {
     try {
         const payload = {
             name: name,
-            job_number: job_number,
+            job_number: job_number || null,
             client_name: client_name,
             client_phone: (document.getElementById('swClientPhone')?.value || '').trim() || null,
             received_date: document.getElementById('swReceivedDate')?.value ? new Date(document.getElementById('swReceivedDate').value).toISOString() : null,
             expected_delivery_date: document.getElementById('swDeliveryDate')?.value ? new Date(document.getElementById('swDeliveryDate').value).toISOString() : null,
             assigned_to: document.getElementById('swAssignedTo')?.value || null,
-            status: "قيد التنفيذ",
 
             op_design: !!document.getElementById('swOpDesign')?.checked,
             op_laser_cutting: !!document.getElementById('swOpLaser')?.checked,
@@ -8741,33 +9201,43 @@ window.handleServiceWizardSubmit = async function(e) {
             expected_duration: (document.getElementById('swExpectedDuration')?.value || '').trim() || null
         };
 
-        const res = await authFetch(SERVICES_URL + '/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        let res;
+        if (editJobId) {
+            res = await authFetch(`${SERVICES_URL}/${editJobId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            payload.status = "قيد التنفيذ";
+            res = await authFetch(SERVICES_URL + '/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || 'فشل حفظ العمل الجديد');
+            throw new Error(err.detail || 'فشل حفظ بيانات العمل');
         }
 
-        const createdJob = await res.json();
+        const savedJob = await res.json();
 
-        // Upload selected attachments
+        // Upload selected attachments if any
         if (serviceWizardSelectedFiles.length > 0) {
             for (const file of serviceWizardSelectedFiles) {
                 const fd = new FormData();
                 fd.append('file', file);
-                await authFetch(`${SERVICES_URL}/${createdJob.id}/attachments/`, {
+                await authFetch(`${SERVICES_URL}/${savedJob.id}/attachments/`, {
                     method: 'POST',
                     body: fd
                 });
             }
         }
 
-        showToast('تمت إضافة العمل بنجاح!', 'bg-emerald-500', '✓');
-        viewServiceJobDetails(createdJob.id);
+        showToast(editJobId ? 'تم تحديث بيانات العمل بنجاح!' : 'تمت إضافة العمل بنجاح!', 'bg-emerald-500', '✓');
+        viewServiceJobDetails(savedJob.id);
     } catch (err) {
         console.error(err);
         showToast(err.message || 'حدث خطأ أثناء حفظ العمل', 'bg-rose-500', '✗');
@@ -9097,33 +9567,62 @@ function renderServicesClientsTable(clients) {
     if (!tbody) return;
 
     if (clients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400">لا يوجد عملاء مسجلين حالياً.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400">لا يوجد عملاء مسجلين حالياً.</td></tr>';
         return;
     }
 
-    tbody.innerHTML = clients.map(c => `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="p-4 font-bold text-slate-900">${escapeHtml(c.name)}</td>
-            <td class="p-4 text-slate-600 font-semibold" dir="ltr">${escapeHtml(c.phone || '-')}</td>
-            <td class="p-4 text-slate-600">${escapeHtml(c.company || '-')}</td>
-            <td class="p-4 text-center">
-                <span class="px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-bold text-xs">
-                    ${c.jobs_count || 0} عمل
-                </span>
-            </td>
-            <td class="p-4 text-slate-500 text-xs">${escapeHtml(c.notes || '-')}</td>
-            <td class="p-4 text-center">
-                <div class="flex items-center justify-center gap-1.5">
-                    <button onclick="openServiceClientModal(${c.id})" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="تعديل">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button onclick="deleteServiceClient(${c.id})" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition" title="حذف">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+    tbody.innerHTML = clients.map(c => {
+        // Parse contacts if available
+        let contactsList = [];
+        if (c.contacts) {
+            try {
+                contactsList = typeof c.contacts === 'string' ? JSON.parse(c.contacts) : c.contacts;
+            } catch (e) {
+                contactsList = [];
+            }
+        }
+
+        let contactsHtml = '';
+        if (Array.isArray(contactsList) && contactsList.length > 0) {
+            contactsHtml = `
+                <div class="space-y-1">
+                    ${contactsList.map(cnt => `
+                        <div class="text-xs flex items-center gap-1.5 bg-slate-50 border border-slate-200/60 px-2 py-0.5 rounded-md">
+                            <span class="font-bold text-slate-800">${escapeHtml(cnt.name || '')}</span>
+                            ${cnt.phone ? `<span class="text-slate-500 font-mono" dir="ltr">(${escapeHtml(cnt.phone)})</span>` : ''}
+                        </div>
+                    `).join('')}
                 </div>
-            </td>
-        </tr>
-    `).join('');
+            `;
+        } else {
+            contactsHtml = '<span class="text-slate-400 text-xs">-</span>';
+        }
+
+        return `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                <td class="p-4 font-bold text-slate-900">${escapeHtml(c.name)}</td>
+                <td class="p-4 text-slate-600 font-semibold" dir="ltr">${escapeHtml(c.phone || '-')}</td>
+                <td class="p-4 text-slate-600">${escapeHtml(c.company || '-')}</td>
+                <td class="p-4">${contactsHtml}</td>
+                <td class="p-4 text-center">
+                    <span class="px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-bold text-xs">
+                        ${c.jobs_count || 0} عمل
+                    </span>
+                </td>
+                <td class="p-4 text-slate-500 text-xs">${escapeHtml(c.notes || '-')}</td>
+                <td class="p-4 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <button onclick="openServiceClientModal(${c.id})" class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="تعديل">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button onclick="deleteServiceClient(${c.id})" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition" title="حذف">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 window.filterServicesClientsTable = function() {
@@ -9135,9 +9634,45 @@ window.filterServicesClientsTable = function() {
     const filtered = allServicesClients.filter(c => 
         (c.name && c.name.toLowerCase().includes(q)) ||
         (c.phone && c.phone.includes(q)) ||
-        (c.company && c.company.toLowerCase().includes(q))
+        (c.company && c.company.toLowerCase().includes(q)) ||
+        (c.contacts && c.contacts.toLowerCase().includes(q))
     );
     renderServicesClientsTable(filtered);
+};
+
+window.addServiceClientContactRow = function(name = '', phone = '') {
+    const container = document.getElementById('scmContactsContainer');
+    if (!container) return;
+
+    const rowIdx = container.children.length + 1;
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 scm-contact-row bg-slate-50 p-2 rounded-xl border border-slate-200';
+    div.innerHTML = `
+        <div class="flex-1">
+            <input type="text" placeholder="اسم المسؤول ${rowIdx}" value="${escapeHtml(name)}" class="scm-contact-name w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div class="flex-1">
+            <input type="text" placeholder="رقم هاتف المسؤول ${rowIdx}" value="${escapeHtml(phone)}" class="scm-contact-phone w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-teal-500" dir="ltr">
+        </div>
+        ${rowIdx > 1 ? `
+            <button type="button" onclick="this.closest('.scm-contact-row').remove(); reindexServiceClientContactRows();" class="p-1.5 text-rose-500 hover:text-rose-700 transition" title="إزالة المسؤول">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        ` : `<div class="w-7"></div>`}
+    `;
+    container.appendChild(div);
+};
+
+window.reindexServiceClientContactRows = function() {
+    const container = document.getElementById('scmContactsContainer');
+    if (!container) return;
+    const rows = container.querySelectorAll('.scm-contact-row');
+    rows.forEach((r, idx) => {
+        const nameInput = r.querySelector('.scm-contact-name');
+        const phoneInput = r.querySelector('.scm-contact-phone');
+        if (nameInput) nameInput.placeholder = `اسم المسؤول ${idx + 1}`;
+        if (phoneInput) phoneInput.placeholder = `رقم هاتف المسؤول ${idx + 1}`;
+    });
 };
 
 window.openServiceClientModal = function(clientId = null) {
@@ -9147,6 +9682,9 @@ window.openServiceClientModal = function(clientId = null) {
     const phoneInput = document.getElementById('scmPhone');
     const companyInput = document.getElementById('scmCompany');
     const notesInput = document.getElementById('scmNotes');
+    const contactsContainer = document.getElementById('scmContactsContainer');
+
+    if (contactsContainer) contactsContainer.innerHTML = '';
 
     if (clientId) {
         const client = allServicesClients.find(c => c.id === clientId);
@@ -9157,6 +9695,21 @@ window.openServiceClientModal = function(clientId = null) {
         if (phoneInput) phoneInput.value = client.phone || '';
         if (companyInput) companyInput.value = client.company || '';
         if (notesInput) notesInput.value = client.notes || '';
+
+        // Contacts
+        let list = [];
+        if (client.contacts) {
+            try {
+                list = typeof client.contacts === 'string' ? JSON.parse(client.contacts) : client.contacts;
+            } catch (e) {
+                list = [];
+            }
+        }
+        if (Array.isArray(list) && list.length > 0) {
+            list.forEach(c => addServiceClientContactRow(c.name || '', c.phone || ''));
+        } else {
+            addServiceClientContactRow('', '');
+        }
     } else {
         if (title) title.textContent = 'إضافة عميل جديد';
         if (idInput) idInput.value = '';
@@ -9164,6 +9717,7 @@ window.openServiceClientModal = function(clientId = null) {
         if (phoneInput) phoneInput.value = '';
         if (companyInput) companyInput.value = '';
         if (notesInput) notesInput.value = '';
+        addServiceClientContactRow('', '');
     }
 
     const modal = document.getElementById('serviceClientModal');
@@ -9188,7 +9742,26 @@ window.handleServiceClientSubmit = async function(e) {
         return;
     }
 
-    const payload = { name, phone, company, notes };
+    // Collect Contacts
+    const contacts = [];
+    const contactRows = document.querySelectorAll('#scmContactsContainer .scm-contact-row');
+    contactRows.forEach(row => {
+        const cName = (row.querySelector('.scm-contact-name')?.value || '').trim();
+        const cPhone = (row.querySelector('.scm-contact-phone')?.value || '').trim();
+        if (cName || cPhone) {
+            contacts.push({ name: cName, phone: cPhone });
+        }
+    });
+
+    const contactsJson = contacts.length > 0 ? JSON.stringify(contacts) : null;
+
+    const payload = {
+        name,
+        phone,
+        company,
+        contacts: contactsJson,
+        notes
+    };
 
     try {
         let res;
@@ -9232,3 +9805,4 @@ window.deleteServiceClient = async function(clientId) {
         showToast(e.message, 'bg-rose-500', '✗');
     }
 };
+
