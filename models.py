@@ -325,6 +325,7 @@ class ServiceJob(Base):
     name = Column(String, index=True, nullable=False)
     client_name = Column(String, index=True, nullable=False)
     client_phone = Column(String, nullable=True)
+    contact_person = Column(String, nullable=True)
     received_date = Column(DateTime(timezone=True), nullable=True)
     expected_delivery_date = Column(DateTime(timezone=True), nullable=True)
     assigned_to = Column(String, nullable=True)

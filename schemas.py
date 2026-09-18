@@ -531,6 +531,7 @@ class ServiceJobBase(BaseModel):
     name: str
     client_name: str
     client_phone: Optional[str] = None
+    contact_person: Optional[str] = None
     received_date: Optional[datetime] = None
     expected_delivery_date: Optional[datetime] = None
     assigned_to: Optional[str] = None
@@ -565,6 +566,7 @@ class ServiceJobUpdate(BaseModel):
     name: Optional[str] = None
     client_name: Optional[str] = None
     client_phone: Optional[str] = None
+    contact_person: Optional[str] = None
     received_date: Optional[datetime] = None
     expected_delivery_date: Optional[datetime] = None
     assigned_to: Optional[str] = None

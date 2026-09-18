@@ -9009,8 +9009,12 @@ window.openServiceWizard = async function(fromHistory = false) {
     // Populate Users
     loadUsersIntoSelect('swAssignedTo');
 
-    // Populate Client Datalist
-    populateClientDatalist();
+    // Ensure clients are loaded, then populate client dropdown
+    if (!allServicesClients || allServicesClients.length === 0) {
+        await loadServicesClients();
+    } else {
+        populateServiceClientsSelect();
+    }
 
     goToServiceWizardStep(1);
 };
@@ -9068,6 +9072,7 @@ window.openEditServiceJobModal = async function(jobId) {
     document.getElementById('swName').value = job.name || '';
     document.getElementById('swJobNumber').value = job.job_number || '';
     document.getElementById('swClientName').value = job.client_name || '';
+    document.getElementById('swContactPerson').value = job.contact_person || '';
     document.getElementById('swClientPhone').value = job.client_phone || '';
     document.getElementById('swReceivedDate').value = job.received_date ? job.received_date.split('T')[0] : '';
     document.getElementById('swDeliveryDate').value = job.expected_delivery_date ? job.expected_delivery_date.split('T')[0] : '';
@@ -9093,12 +9098,19 @@ window.openEditServiceJobModal = async function(jobId) {
     document.getElementById('swPunchStrokesCount').value = job.punch_strokes_count !== null && job.punch_strokes_count !== undefined ? job.punch_strokes_count : '';
     document.getElementById('swExpectedDuration').value = job.expected_duration || '';
 
-    // Users and Datalist
+    // Users and Client Select
     await loadUsersIntoSelect('swAssignedTo');
     if (job.assigned_to) {
         document.getElementById('swAssignedTo').value = job.assigned_to;
     }
-    populateClientDatalist();
+    
+    if (!allServicesClients || allServicesClients.length === 0) {
+        await loadServicesClients();
+    }
+    populateServiceClientsSelect(job.client_name, job.contact_person);
+    if (job.client_phone) {
+        document.getElementById('swClientPhone').value = job.client_phone;
+    }
 
     serviceWizardSelectedFiles = [];
     renderServiceWizardSelectedFiles();
@@ -9113,8 +9125,13 @@ window.goToServiceWizardStep = function(stepNum) {
             const name = document.getElementById('swName')?.value.trim();
             const jobNum = document.getElementById('swJobNumber')?.value.trim();
             const clientName = document.getElementById('swClientName')?.value.trim();
+            const contactPerson = document.getElementById('swContactPerson')?.value.trim();
             if (!name || !jobNum || !clientName) {
-                showToast('يرجى ملء الحقول الإلزامية في الخطوة الأولى (اسم العمل، رقم الإنتاج، اسم العميل)', 'bg-amber-500', '⚠️');
+                showToast('يرجى ملء الحقول الإلزامية في الخطوة الأولى (اسم العمل، رقم الإنتاج، واختيار العميل)', 'bg-amber-500', '⚠️');
+                return;
+            }
+            if (!contactPerson) {
+                showToast('يرجى اختيار مسؤول التواصل للعميل المحدد', 'bg-amber-500', '⚠️');
                 return;
             }
         } else if (currentServiceWizardStep === 2) {
@@ -9169,21 +9186,125 @@ window.goToServiceWizardStep = function(stepNum) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-window.handleServiceClientInput = function(val) {
-    if (!val) return;
-    const match = allServicesClients.find(c => c.name.trim().toLowerCase() === val.trim().toLowerCase());
-    if (match && match.phone) {
-        const phoneInput = document.getElementById('swClientPhone');
-        if (phoneInput && !phoneInput.value) {
-            phoneInput.value = match.phone;
+window.handleServiceClientSelect = function(clientName, selectedContact = null) {
+    const nameInput = document.getElementById('swClientName');
+    const contactSelect = document.getElementById('swContactPersonSelect');
+    const contactInput = document.getElementById('swContactPerson');
+    const phoneInput = document.getElementById('swClientPhone');
+
+    if (nameInput) nameInput.value = clientName || '';
+    if (contactInput) contactInput.value = '';
+    if (contactSelect) {
+        contactSelect.innerHTML = '<option value="">-- اختر مسؤول التواصل --</option>';
+        contactSelect.disabled = true;
+    }
+    if (phoneInput) phoneInput.value = '';
+
+    if (!clientName) return;
+
+    const client = allServicesClients.find(c => c.name.trim().toLowerCase() === clientName.trim().toLowerCase());
+    if (!client) return;
+
+    let contactsList = [];
+    if (client.contacts) {
+        try {
+            contactsList = typeof client.contacts === 'string' ? JSON.parse(client.contacts) : client.contacts;
+        } catch (e) {
+            contactsList = [];
+        }
+    }
+
+    if (!Array.isArray(contactsList)) contactsList = [];
+
+    // If client has contacts defined
+    if (contactsList.length > 0) {
+        contactSelect.disabled = false;
+        contactsList.forEach(cnt => {
+            const opt = document.createElement('option');
+            opt.value = cnt.name;
+            opt.textContent = `${cnt.name}${cnt.phone ? ` (${cnt.phone})` : ''}`;
+            opt.dataset.phone = cnt.phone || '';
+            contactSelect.appendChild(opt);
+        });
+
+        // Also add client's main phone/name as an option if not in contacts
+        if (client.phone && !contactsList.some(cnt => cnt.name === client.name)) {
+            const mainOpt = document.createElement('option');
+            mainOpt.value = client.name;
+            mainOpt.textContent = `${client.name} - الإدارة/الرقم الأساسي (${client.phone})`;
+            mainOpt.dataset.phone = client.phone;
+            contactSelect.appendChild(mainOpt);
+        }
+
+        if (selectedContact) {
+            contactSelect.value = selectedContact;
+            if (contactInput) contactInput.value = selectedContact;
+            const chosen = contactSelect.options[contactSelect.selectedIndex];
+            if (chosen && chosen.dataset.phone && phoneInput) {
+                phoneInput.value = chosen.dataset.phone;
+            } else if (client.phone && phoneInput) {
+                phoneInput.value = client.phone;
+            }
+        } else {
+            // Auto select the first contact person by default
+            contactSelect.selectedIndex = 1;
+            const chosen = contactSelect.options[1];
+            if (chosen) {
+                if (contactInput) contactInput.value = chosen.value;
+                if (chosen.dataset.phone && phoneInput) {
+                    phoneInput.value = chosen.dataset.phone;
+                } else if (client.phone && phoneInput) {
+                    phoneInput.value = client.phone;
+                }
+            }
+        }
+    } else {
+        // Fallback: client has no extra contacts, create a default option with client's name & phone
+        contactSelect.disabled = false;
+        const opt = document.createElement('option');
+        opt.value = client.name;
+        opt.textContent = `${client.name}${client.phone ? ` (${client.phone})` : ''}`;
+        opt.dataset.phone = client.phone || '';
+        contactSelect.appendChild(opt);
+        contactSelect.value = client.name;
+        if (contactInput) contactInput.value = client.name;
+        if (phoneInput && client.phone) phoneInput.value = client.phone;
+    }
+};
+
+window.handleServiceContactPersonSelect = function(val) {
+    const contactInput = document.getElementById('swContactPerson');
+    const contactSelect = document.getElementById('swContactPersonSelect');
+    const phoneInput = document.getElementById('swClientPhone');
+
+    if (contactInput) contactInput.value = val || '';
+
+    if (contactSelect && phoneInput) {
+        const chosen = contactSelect.options[contactSelect.selectedIndex];
+        if (chosen && chosen.dataset.phone) {
+            phoneInput.value = chosen.dataset.phone;
         }
     }
 };
 
-function populateClientDatalist() {
-    const dl = document.getElementById('swClientDatalist');
-    if (!dl) return;
-    dl.innerHTML = allServicesClients.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.company ? `${c.name} (${c.company})` : c.name)}</option>`).join('');
+function populateServiceClientsSelect(selectedClientName = null, selectedContact = null) {
+    const sel = document.getElementById('swClientSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- اختر العميل --</option>';
+    allServicesClients.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.name;
+        opt.textContent = c.company ? `${c.name} (${c.company})` : c.name;
+        sel.appendChild(opt);
+    });
+
+    if (selectedClientName) {
+        sel.value = selectedClientName;
+        handleServiceClientSelect(selectedClientName, selectedContact);
+    } else {
+        sel.value = '';
+        handleServiceClientSelect('');
+    }
 }
 
 async function loadUsersIntoSelect(selectId) {
@@ -9251,9 +9372,15 @@ window.handleServiceWizardSubmit = async function(e) {
     const name = (document.getElementById('swName')?.value || '').trim();
     const job_number = (document.getElementById('swJobNumber')?.value || '').trim();
     const client_name = (document.getElementById('swClientName')?.value || '').trim();
+    const contact_person = (document.getElementById('swContactPerson')?.value || '').trim();
 
     if (!name || !client_name) {
-        showToast('يرجى ملء الحقول الإلزامية: اسم العمل واسم العميل', 'bg-amber-500', '⚠️');
+        showToast('يرجى ملء الحقول الإلزامية: اسم العمل واختيار العميل', 'bg-amber-500', '⚠️');
+        goToServiceWizardStep(1);
+        return;
+    }
+    if (!contact_person) {
+        showToast('يرجى اختيار مسؤول التواصل للعميل المحدد', 'bg-amber-500', '⚠️');
         goToServiceWizardStep(1);
         return;
     }
@@ -9274,6 +9401,7 @@ window.handleServiceWizardSubmit = async function(e) {
             job_number: job_number || null,
             client_name: client_name,
             client_phone: (document.getElementById('swClientPhone')?.value || '').trim() || null,
+            contact_person: contact_person || null,
             received_date: document.getElementById('swReceivedDate')?.value ? new Date(document.getElementById('swReceivedDate').value).toISOString() : null,
             expected_delivery_date: document.getElementById('swDeliveryDate')?.value ? new Date(document.getElementById('swDeliveryDate').value).toISOString() : null,
             assigned_to: document.getElementById('swAssignedTo')?.value || null,
@@ -9414,6 +9542,8 @@ function renderServiceJobDetails(job) {
 
     // Card 2: Client Info
     document.getElementById('sjdClientName').textContent = job.client_name || '-';
+    const contactPersonEl = document.getElementById('sjdContactPerson');
+    if (contactPersonEl) contactPersonEl.textContent = job.contact_person || '-';
     document.getElementById('sjdClientPhone').textContent = job.client_phone || '-';
     const phoneBtn = document.getElementById('sjdPhoneCallBtn');
     if (phoneBtn) {
@@ -9595,6 +9725,8 @@ window.openServiceReportModal = function() {
     
     document.getElementById('repJobName').textContent = job.name || '-';
     document.getElementById('repClientName').textContent = job.client_name || '-';
+    const repContactEl = document.getElementById('repContactPerson');
+    if (repContactEl) repContactEl.textContent = job.contact_person || '-';
     document.getElementById('repClientPhone').textContent = job.client_phone || '-';
     document.getElementById('repAssignedTo').textContent = job.assigned_to || 'غير محدد';
     document.getElementById('repReceivedDate').textContent = job.received_date ? job.received_date.split('T')[0] : '-';
@@ -9617,6 +9749,8 @@ window.openServiceReportModal = function() {
     document.getElementById('recJobName').textContent = job.name || '-';
     document.getElementById('recProdNumber').textContent = job.job_number || '-';
     document.getElementById('recClientName').textContent = job.client_name || '-';
+    const recContactEl = document.getElementById('recContactPerson');
+    if (recContactEl) recContactEl.textContent = job.contact_person || '-';
     document.getElementById('recClientPhone').textContent = job.client_phone || '-';
     document.getElementById('recOperations').textContent = opsText;
     document.getElementById('recSheetInfo').textContent = `سماكة ${job.sheet_thickness || '-'} ملم - صاج ${job.sheet_type || '-'} (${job.sheet_ownership || '-'})`;
@@ -9649,7 +9783,7 @@ async function loadServicesClients() {
         const res = await authFetch(SERVICE_CLIENTS_URL + '/');
         if (!res.ok) throw new Error('فشل تحميل قائمة العملاء');
         allServicesClients = await res.json();
-        populateClientDatalist();
+        populateServiceClientsSelect();
         renderServicesClientsTable(allServicesClients);
         updateServicesStats();
     } catch (e) {
