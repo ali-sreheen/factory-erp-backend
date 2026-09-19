@@ -1493,13 +1493,9 @@ def bulk_save_fire_doors(payload: FireDoorsBulkSaveRequest, db: Session = Depend
         if not db_detail:
             continue
         
-        # If locked and not admin, skip modifying sticker_number
+        # If locked and not admin, skip modifying this door entirely
         is_locked = bool(db_detail.is_fire_door_locked)
         if is_locked and current_user.username != "admin":
-            # Can only update final_delivery_date if given, cannot modify sticker
-            for idx, u in index_map.items():
-                if u.final_delivery_date is not None:
-                    db_detail.final_delivery_date = u.final_delivery_date
             continue
 
         qty = db_detail.quantity if db_detail.quantity and db_detail.quantity > 0 else 1
@@ -1539,12 +1535,15 @@ def final_lock_fire_doors(payload: Optional[FireDoorsFinalLockRequest] = None, d
     if payload and payload.ids:
         query = query.filter(models.ProjectDetail.id.in_(payload.ids))
         
-    details = query.all()
+    import datetime
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     for d in details:
         d.is_fire_door_locked = True
+        if not d.final_delivery_date:
+            d.final_delivery_date = today_str
         
     db.commit()
-    return {"message": "تم الحفظ النهائي بنجاح. لن يتمكن سوى مسؤول النظام (الأدمن) من تعديل أرقام الملصقات للابواب المحددة."}
+    return {"message": "تم الحفظ النهائي وتحديد تاريخ الاستلام النهائي بنجاح. لن يتمكن سوى مسؤول النظام (الأدمن) من تعديل أو حذف الأبواب المحددة."}
 
 class FireDoorBatchDeleteItem(BaseModel):
     id: int
@@ -1567,6 +1566,10 @@ def batch_delete_fire_doors(payload: FireDoorBatchDeleteRequest, db: Session = D
     for detail_id, indices_to_remove in grouped.items():
         db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
         if not db_detail:
+            continue
+
+        # If locked and not admin, do not allow deleting!
+        if bool(db_detail.is_fire_door_locked) and current_user.username != "admin":
             continue
             
         qty = db_detail.quantity if db_detail.quantity and db_detail.quantity > 0 else 1

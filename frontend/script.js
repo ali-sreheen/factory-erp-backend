@@ -6609,30 +6609,30 @@ window.renderFireDoorsTable = function() {
         if (fireDoorsEditMode) {
             if (canEditSticker) {
                 stickerHtml = `
-                    <div class="space-y-0.5">
+                    <div class="space-y-0.5 inline-block w-full max-w-[120px]">
                         <input type="text" 
                                value="${escapeHtml(d.sticker_number || '')}" 
                                oninput="handleStickerInput(this, ${globalIdx})" 
-                               class="fd-sticker-input w-full px-2.5 py-1 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-rose-500 outline-none transition" 
-                               placeholder="رقم الملصق..." />
-                        <div class="fd-sticker-error text-[10px] text-rose-600 font-bold hidden flex items-center gap-1">
+                               class="fd-sticker-input w-full px-2 py-1 text-center border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-rose-500 outline-none transition" 
+                               placeholder="الملصق" />
+                        <div class="fd-sticker-error text-[10px] text-rose-600 font-bold hidden flex items-center justify-center gap-1">
                             <span>⚠️</span> <span>الرقم مستخدم</span>
                         </div>
                     </div>
                 `;
             } else {
                 stickerHtml = `
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center justify-center gap-1 whitespace-nowrap">
                         <span class="font-mono font-bold text-slate-700">${escapeHtml(d.sticker_number || '-')}</span>
-                        <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200" title="مقفل - الأدمن فقط يمكنه التعديل">🔒 مقفل</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded border border-slate-200" title="مقفل نهائياً">🔒</span>
                     </div>
                 `;
             }
         } else {
             stickerHtml = `
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <span class="font-mono font-bold text-slate-800">${escapeHtml(d.sticker_number || '-')}</span>
-                    ${d.is_locked ? '<span class="text-xs" title="حفظ نهائي (مقفل)">🔒</span>' : ''}
+                    ${d.is_locked ? '<span class="text-xs text-indigo-600" title="حفظ نهائي (مقفل)">🔒</span>' : ''}
                 </div>
             `;
         }
@@ -6643,17 +6643,17 @@ window.renderFireDoorsTable = function() {
             finalDeliveryHtml = `
                 <input type="date" 
                        value="${escapeHtml(d.final_delivery_date || '')}" 
-                       class="fd-delivery-input w-full px-2 py-1 border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500" />
+                       class="fd-delivery-input w-full max-w-[130px] px-1.5 py-1 text-center border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500" />
             `;
         } else {
             finalDeliveryHtml = d.final_delivery_date ? 
-                `<span class="font-medium text-slate-700">${escapeHtml(d.final_delivery_date)}</span>` : 
+                `<span class="font-medium text-slate-700 whitespace-nowrap">${escapeHtml(d.final_delivery_date)}</span>` : 
                 '<span class="text-slate-400 text-xs">-</span>';
         }
 
         // Installation date cell
         const installationHtml = d.installation_date ? 
-            `<span class="px-2 py-0.5 rounded-md font-semibold ${d.installation_date === 'منتهي' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}">${escapeHtml(d.installation_date)}</span>` : 
+            `<span class="px-2 py-0.5 rounded-md font-semibold text-center whitespace-nowrap inline-block ${d.installation_date === 'منتهي' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}">${escapeHtml(d.installation_date)}</span>` : 
             '<span class="text-slate-400 text-xs">-</span>';
 
         // Checkbox cell
@@ -6661,54 +6661,71 @@ window.renderFireDoorsTable = function() {
         if (fireDoorsLockMode) {
             if (isLocked) {
                 checkboxCellHtml = `
-                    <td class="p-3 text-center fd-col-checkbox">
+                    <td class="p-2.5 text-center fd-col-checkbox">
                         <span class="text-xs text-indigo-500 font-bold" title="مقفل بالفعل">🔒</span>
                     </td>
                 `;
             } else {
                 checkboxCellHtml = `
-                    <td class="p-3 text-center fd-col-checkbox">
-                        <input type="checkbox" class="fd-row-checkbox rounded text-indigo-600 focus:ring-0 cursor-pointer" onchange="updateSelectedCount()" data-id="${d.id}" data-index="${d.index}" />
+                    <td class="p-2.5 text-center fd-col-checkbox">
+                        <input type="checkbox" class="fd-row-checkbox rounded text-indigo-600 focus:ring-0 cursor-pointer" onclick="handleFireDoorCheckboxClick(event, this)" data-id="${d.id}" data-index="${d.index}" />
                     </td>
                 `;
             }
         } else {
-            checkboxCellHtml = `
-                <td class="p-3 text-center fd-col-checkbox ${fireDoorsEditMode ? '' : 'hidden'}">
-                    <input type="checkbox" class="fd-row-checkbox rounded text-rose-600 focus:ring-0 cursor-pointer" onchange="updateSelectedCount()" data-id="${d.id}" data-index="${d.index}" />
+            if (isLocked && !isAdmin) {
+                checkboxCellHtml = `
+                    <td class="p-2.5 text-center fd-col-checkbox ${fireDoorsEditMode ? '' : 'hidden'}">
+                        <span class="text-xs text-slate-400" title="مقفل نهائياً - لا يمكن حذفه أو تعديله">🔒</span>
+                    </td>
+                `;
+            } else {
+                checkboxCellHtml = `
+                    <td class="p-2.5 text-center fd-col-checkbox ${fireDoorsEditMode ? '' : 'hidden'}">
+                        <input type="checkbox" class="fd-row-checkbox rounded text-rose-600 focus:ring-0 cursor-pointer" onclick="handleFireDoorCheckboxClick(event, this)" data-id="${d.id}" data-index="${d.index}" />
+                    </td>
+                `;
+            }
+        }
+
+        // Row actions (delete button in edit mode)
+        let actionsHtml = '';
+        if (isLocked && !isAdmin) {
+            actionsHtml = `
+                <td class="p-2.5 text-center fd-col-actions ${fireDoorsEditMode ? '' : 'hidden'}">
+                    <span class="text-slate-400 text-xs" title="مقفل نهائياً">🔒</span>
+                </td>
+            `;
+        } else {
+            actionsHtml = `
+                <td class="p-2.5 text-center fd-col-actions ${fireDoorsEditMode ? '' : 'hidden'}">
+                    <button type="button" onclick="deleteSingleFireDoor(${d.id}, ${d.index})" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition" title="حذف هذا الباب">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
                 </td>
             `;
         }
 
-        // Row actions (delete button in edit mode)
-        const actionsHtml = `
-            <td class="p-3 text-center fd-col-actions ${fireDoorsEditMode ? '' : 'hidden'}">
-                <button type="button" onclick="deleteSingleFireDoor(${d.id}, ${d.index})" class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition" title="حذف هذا الباب">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            </td>
-        `;
-
         tr.innerHTML = `
             ${checkboxCellHtml}
-            <td class="p-3 font-bold text-slate-800">${escapeHtml(d.project_name)}</td>
-            <td class="p-3 font-bold text-slate-500">${escapeHtml(d.project_number)}</td>
-            <td class="p-3 text-slate-700 font-medium">${escapeHtml(d.door_number)}</td>
-            <td class="p-3">${stickerHtml}</td>
-            <td class="p-3">${installationHtml}</td>
-            <td class="p-3">${finalDeliveryHtml}</td>
+            <td class="p-2.5 font-bold text-slate-800 whitespace-nowrap">${escapeHtml(d.project_name)}</td>
+            <td class="p-2.5 font-bold text-slate-500 whitespace-nowrap">${escapeHtml(d.project_number)}</td>
+            <td class="p-2.5 text-slate-700 font-medium whitespace-nowrap">${escapeHtml(d.door_number)}</td>
+            <td class="p-2.5 text-center">${stickerHtml}</td>
+            <td class="p-2.5 text-center">${installationHtml}</td>
+            <td class="p-2.5 text-center">${finalDeliveryHtml}</td>
             
             <!-- Optional Specs Columns -->
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.height)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.width)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.depth)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.door_type)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.profile_type)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.lock_type)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.hinges)}</td>
-            <td class="p-3 text-slate-600 fd-col-spec ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.window)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.height)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.width)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.depth)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.door_type)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.profile_type)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.lock_type)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.hinges)}</td>
+            <td class="p-2.5 text-slate-600 fd-col-spec whitespace-nowrap ${fireDoorsShowSpecs ? '' : 'hidden'}">${escapeHtml(d.window)}</td>
             
             ${actionsHtml}
         `;
@@ -6854,10 +6871,33 @@ function validateAllStickers() {
     return hasDuplicates;
 }
 
-// --- Batch Selection & Deletion ---
+// --- Batch Selection & Deletion with Shift-Click Support ---
+let lastFireDoorCheckedCheckbox = null;
+
+window.handleFireDoorCheckboxClick = function(event, currentCheckbox) {
+    const checkboxes = Array.from(document.querySelectorAll('#fireDoorsTableBody .fd-row-checkbox'));
+    
+    if (event && event.shiftKey && lastFireDoorCheckedCheckbox && lastFireDoorCheckedCheckbox !== currentCheckbox) {
+        const start = checkboxes.indexOf(lastFireDoorCheckedCheckbox);
+        const end = checkboxes.indexOf(currentCheckbox);
+        
+        if (start !== -1 && end !== -1) {
+            const [lower, upper] = start < end ? [start, end] : [end, start];
+            const targetState = currentCheckbox.checked;
+            for (let i = lower; i <= upper; i++) {
+                checkboxes[i].checked = targetState;
+            }
+        }
+    }
+    
+    lastFireDoorCheckedCheckbox = currentCheckbox;
+    updateSelectedCount();
+};
+
 window.toggleSelectAllFireDoors = function(checked) {
     const checkboxes = document.querySelectorAll('#fireDoorsTableBody .fd-row-checkbox');
     checkboxes.forEach(cb => cb.checked = checked);
+    lastFireDoorCheckedCheckbox = null;
     updateSelectedCount();
 };
 

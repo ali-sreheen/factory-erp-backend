@@ -3001,30 +3001,30 @@
             <div class="p-4 sm:p-6 overflow-y-auto flex-grow bg-slate-50/50">
                 <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
                     <table class="w-full text-right border-collapse text-xs sm:text-sm" id="mainFireDoorsTable">
-                        <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
+                        <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold whitespace-nowrap">
                             <tr>
                                 <!-- Checkbox column for batch actions -->
-                                <th class="p-3 text-center w-10 fd-col-checkbox hidden">
+                                <th class="p-2.5 text-center w-8 fd-col-checkbox hidden">
                                     <input type="checkbox" id="chkSelectAllFireDoors" onchange="toggleSelectAllFireDoors(this.checked)" class="rounded text-rose-600 focus:ring-0 cursor-pointer">
                                 </th>
-                                <th class="p-3 border-b">اسم المشروع</th>
-                                <th class="p-3 border-b">رقم المشروع</th>
-                                <th class="p-3 border-b">رقم الباب</th>
-                                <th class="p-3 border-b min-w-[160px]">رقم الملصق</th>
-                                <th class="p-3 border-b">تاريخ التركيب</th>
-                                <th class="p-3 border-b min-w-[140px]">تاريخ الاستلام النهائي</th>
+                                <th class="p-2.5 border-b min-w-[170px]">اسم المشروع</th>
+                                <th class="p-2.5 border-b min-w-[110px]">رقم المشروع</th>
+                                <th class="p-2.5 border-b min-w-[90px]">رقم الباب</th>
+                                <th class="p-2.5 border-b w-28 text-center">رقم الملصق</th>
+                                <th class="p-2.5 border-b w-28 text-center">تاريخ التركيب</th>
+                                <th class="p-2.5 border-b w-32 text-center">تاريخ الاستلام النهائي</th>
                                 
                                 <!-- Optional Specs Columns -->
-                                <th class="p-3 border-b fd-col-spec hidden">طول الباب</th>
-                                <th class="p-3 border-b fd-col-spec hidden">عرض الباب</th>
-                                <th class="p-3 border-b fd-col-spec hidden">عمق الباب</th>
-                                <th class="p-3 border-b fd-col-spec hidden">نوع الدرفة</th>
-                                <th class="p-3 border-b fd-col-spec hidden">نوع المقطع</th>
-                                <th class="p-3 border-b fd-col-spec hidden">الزرفيل</th>
-                                <th class="p-3 border-b fd-col-spec hidden">الفصالة</th>
-                                <th class="p-3 border-b fd-col-spec hidden">الشباك</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">طول الباب</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">عرض الباب</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">عمق الباب</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">نوع الدرفة</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">نوع المقطع</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">الزرفيل</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">الفصالة</th>
+                                <th class="p-2.5 border-b fd-col-spec hidden">الشباك</th>
                                 
-                                <th class="p-3 border-b text-center fd-col-actions hidden">إجراءات</th>
+                                <th class="p-2.5 border-b text-center w-14 fd-col-actions hidden">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody id="fireDoorsTableBody" class="divide-y divide-slate-100 text-slate-800">
@@ -3949,7 +3949,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=139"></script>
+    <script src="script.js?v=140"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
