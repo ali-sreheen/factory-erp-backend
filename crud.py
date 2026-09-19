@@ -377,6 +377,41 @@ def update_project(db: Session, project_id: int, project_update: schemas.Project
     if db_project:
         old_status = db_project.status
         update_data = project_update.model_dump(exclude_unset=True)
+
+        # Validate sequential workflow steps
+        workflow_steps = [
+            ("step_design", "التصميم"),
+            ("step_cutting", "القص"),
+            ("step_forming", "التشكيل"),
+            ("step_assembly", "التجميع"),
+            ("step_painting", "الدهان"),
+            ("step_accessories", "الإكسسوارات"),
+            ("step_installation", "التركيب / التسليم"),
+        ]
+        step_keys = [s[0] for s in workflow_steps]
+        step_labels = {s[0]: s[1] for s in workflow_steps}
+
+        for i, (key, label) in enumerate(workflow_steps):
+            if key in update_data:
+                new_val = update_data[key]
+                prev_key, prev_label = workflow_steps[i - 1] if i > 0 else (None, None)
+                next_key, next_label = workflow_steps[i + 1] if i < len(workflow_steps) - 1 else (None, None)
+
+                prev_val = update_data.get(prev_key, getattr(db_project, prev_key)) if prev_key else None
+                next_val = update_data.get(next_key, getattr(db_project, next_key)) if next_key else None
+
+                if new_val == "جاري العمل":
+                    if prev_val and prev_val not in ["جاري العمل", "تم الانتهاء"]:
+                        raise ValueError(f"لا يمكن بدء خطوة ({label}) قبل أن تكون الخطوة السابقة ({prev_label}) جاري العمل أو تم الانتهاء.")
+                    if next_val and next_val == "تم الانتهاء":
+                        raise ValueError(f"لا يمكن تحويل خطوة ({label}) إلى جاري العمل لأن الخطوة التالية ({next_label}) تم الانتهاء منها بالفعل.")
+                elif new_val == "تم الانتهاء":
+                    if prev_val and prev_val != "تم الانتهاء":
+                        raise ValueError(f"لا يمكن إنهاء خطوة ({label}) قبل إنهاء الخطوة السابقة ({prev_label}).")
+                elif new_val == "لم يتم البدء":
+                    if next_val and next_val in ["جاري العمل", "تم الانتهاء"]:
+                        raise ValueError(f"لا يمكن إعادة خطوة ({label}) إلى لم يتم البدء لأن الخطوة التالية ({next_label}) قيد التنفيذ أو مكتملة.")
+
         for key, value in update_data.items():
             setattr(db_project, key, value)
             

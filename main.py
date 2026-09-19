@@ -951,8 +951,11 @@ def update_project(project_id: int, project_update: schemas.ProjectUpdate, db: S
     if current_user.username != "admin" and current_user.id != existing.executive_manager_id and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="Not authorized")
         
-    project = crud.update_project(db, project_id, project_update)
-    return project
+    try:
+        project = crud.update_project(db, project_id, project_update)
+        return project
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.delete("/api/projects/{project_id}")
 def delete_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

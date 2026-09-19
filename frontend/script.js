@@ -4402,26 +4402,116 @@ function getStepColorClasses(val) {
     return 'bg-slate-50 border-slate-200 text-slate-600 focus:ring-slate-500'; // لم يتم البدء
 }
 
+const WORKFLOW_STEPS_CONFIG = [
+    { key: 'step_design', label: 'التصميم' },
+    { key: 'step_cutting', label: 'القص' },
+    { key: 'step_forming', label: 'التشكيل' },
+    { key: 'step_assembly', label: 'التجميع' },
+    { key: 'step_painting', label: 'الدهان' },
+    { key: 'step_accessories', label: 'الإكسسوارات' },
+    { key: 'step_installation', label: 'التركيب / التسليم' }
+];
+
+function validateWorkflowStepTransition(projectData, field, newVal) {
+    const idx = WORKFLOW_STEPS_CONFIG.findIndex(s => s.key === field);
+    if (idx === -1) return { valid: true };
+
+    const currentStep = WORKFLOW_STEPS_CONFIG[idx];
+    const prevStep = idx > 0 ? WORKFLOW_STEPS_CONFIG[idx - 1] : null;
+    const nextStep = idx < WORKFLOW_STEPS_CONFIG.length - 1 ? WORKFLOW_STEPS_CONFIG[idx + 1] : null;
+
+    const prevVal = prevStep ? (projectData[prevStep.key] || 'لم يتم البدء') : null;
+    const nextVal = nextStep ? (projectData[nextStep.key] || 'لم يتم البدء') : null;
+
+    if (newVal === 'جاري العمل') {
+        if (prevVal && prevVal !== 'جاري العمل' && prevVal !== 'تم الانتهاء') {
+            return {
+                valid: false,
+                error: `لا يمكن تحويل خطوة (${currentStep.label}) إلى "جاري العمل" قبل أن تكون خطوة (${prevStep.label}) جاري العمل أو تم الانتهاء.`
+            };
+        }
+        if (nextVal && nextVal === 'تم الانتهاء') {
+            return {
+                valid: false,
+                error: `لا يمكن تحويل خطوة (${currentStep.label}) إلى "جاري العمل" لأن خطوة (${nextStep.label}) تم الانتهاء منها بالفعل.`
+            };
+        }
+    } else if (newVal === 'تم الانتهاء') {
+        if (prevVal && prevVal !== 'تم الانتهاء') {
+            return {
+                valid: false,
+                error: `لا يمكن إنهاء خطوة (${currentStep.label}) قبل إنهاء خطوة (${prevStep.label}).`
+            };
+        }
+    } else if (newVal === 'لم يتم البدء') {
+        if (nextVal && (nextVal === 'جاري العمل' || nextVal === 'تم الانتهاء')) {
+            return {
+                valid: false,
+                error: `لا يمكن تحويل خطوة (${currentStep.label}) إلى "لم يتم البدء" لأن خطوة (${nextStep.label}) قيد التنفيذ أو تم الانتهاء منها.`
+            };
+        }
+    }
+
+    return { valid: true };
+}
+
 async function updateTrackingStep(field, selectEl, explicitProjectId = null) {
     const newVal = selectEl.value;
-    selectEl.className = `w-full max-w-[200px] border rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(newVal)}`;
-    
     const targetProjectId = explicitProjectId || currentTrackingProjectId;
     if (!targetProjectId) return;
-    
+
+    // Determine target project object
+    let targetProject = null;
+    if (explicitProjectId && window.allActiveTrackingProjects) {
+        targetProject = window.allActiveTrackingProjects.find(p => p.id === explicitProjectId);
+    } else if (currentTrackingProjectData && currentTrackingProjectData.id === targetProjectId) {
+        targetProject = currentTrackingProjectData;
+    }
+
+    const previousVal = (targetProject && targetProject[field]) || 'لم يتم البدء';
+
+    if (targetProject) {
+        const validation = validateWorkflowStepTransition(targetProject, field, newVal);
+        if (!validation.valid) {
+            showToast(validation.error, 'bg-rose-500', '⚠️');
+            selectEl.value = previousVal;
+            selectEl.className = `w-full ${selectEl.classList.contains('max-w-[200px]') ? 'max-w-[200px]' : ''} border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(previousVal)}`;
+            return;
+        }
+    }
+
+    selectEl.className = `w-full ${selectEl.classList.contains('max-w-[200px]') ? 'max-w-[200px]' : ''} border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(newVal)}`;
+
     try {
         const payload = {};
         payload[field] = newVal;
-        
+
         const response = await authFetch(`${PROJECTS_URL}/${targetProjectId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
-        if (!response.ok) throw new Error('فشل الحفظ التلقائي');
-        showToast('تم الحفظ تلقائياً', 'bg-emerald-500', '✓');
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || 'فشل الحفظ التلقائي');
+        }
+
+        // Update local object state
+        if (targetProject) {
+            targetProject[field] = newVal;
+        }
+        if (currentTrackingProjectData && currentTrackingProjectData.id === targetProjectId) {
+            currentTrackingProjectData[field] = newVal;
+        }
+
+        showToast('تم الحفظ بنجاح', 'bg-emerald-500', '✓');
     } catch (e) {
+        // Revert select on error
+        if (targetProject) {
+            selectEl.value = previousVal;
+            selectEl.className = `w-full ${selectEl.classList.contains('max-w-[200px]') ? 'max-w-[200px]' : ''} border rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 transition-colors ${getStepColorClasses(previousVal)}`;
+        }
         showToast(e.message, 'bg-rose-500', '✗');
     }
 }
@@ -6537,6 +6627,7 @@ window.openAllProjectsTrackingModal = async function() {
         
         const projects = await response.json();
         const activeProjects = projects.filter(p => p.status === 'active');
+        window.allActiveTrackingProjects = activeProjects;
         
         tbody.innerHTML = '';
         if (activeProjects.length === 0) {
