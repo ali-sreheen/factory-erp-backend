@@ -283,6 +283,8 @@ class ProjectDetailBase(BaseModel):
     leaf_size_2: Optional[str] = None
     specifications: Optional[str] = None
     notes: Optional[str] = None
+    final_delivery_date: Optional[str] = None
+    is_fire_door_locked: Optional[bool] = False
 
 class ProjectDetailCreate(ProjectDetailBase):
     pass

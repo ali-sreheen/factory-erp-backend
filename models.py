@@ -135,6 +135,7 @@ class Project(Base):
     step_accessories = Column(String, default="لم يتم البدء")
     step_installation = Column(String, default="لم يتم البدء")
     expected_completion_date = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     executive_manager = relationship("User", foreign_keys=[executive_manager_id], back_populates="managed_projects")
     details = relationship("ProjectDetail", back_populates="project", cascade="all, delete-orphan")
@@ -175,6 +176,8 @@ class ProjectDetail(Base):
     leaf_size_2 = Column(String, nullable=True)
     specifications = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    final_delivery_date = Column(String, nullable=True)
+    is_fire_door_locked = Column(Boolean, default=False, nullable=True)
 
     project = relationship("Project", back_populates="details")
 

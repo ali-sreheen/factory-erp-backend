@@ -385,6 +385,10 @@ def update_project(db: Session, project_id: int, project_update: schemas.Project
             db_project.activated_at = datetime.now(timezone.utc)
             generate_stickers_for_project_details(db, project_id)
             
+        if db_project.status == "completed" and old_status != "completed":
+            from datetime import datetime, timezone
+            db_project.completed_at = datetime.now(timezone.utc)
+            
         db.commit()
         db.refresh(db_project)
         return db_project

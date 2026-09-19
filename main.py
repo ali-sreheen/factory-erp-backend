@@ -119,6 +119,16 @@ def check_and_update_db_schema(db_engine):
                     conn.execute(text("ALTER TABLE projects ADD COLUMN delivery_approval VARCHAR DEFAULT 'stopped'"))
             except Exception as e:
                 pass
+        if "completed_at" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE projects ADD COLUMN completed_at TIMESTAMP WITH TIME ZONE"))
+            except Exception as e:
+                try:
+                    with db_engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE projects ADD COLUMN completed_at DATETIME"))
+                except Exception as ex:
+                    pass
 
     # Check purchase_requests table
     if "purchase_requests" in inspector.get_table_names():
@@ -144,7 +154,7 @@ def check_and_update_db_schema(db_engine):
     # Check project_details table
     if "project_details" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("project_details")]
-        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count", "leaf_thickness", "sticker_number", "specifications", "leaf_size", "leaf_size_2", "window_width", "window_height", "window_position"]:
+        for col in ["architrave", "architrave_2", "under_tile", "notes", "direction", "hinges", "qashatah", "raddad", "hinges_count", "leaf_thickness", "sticker_number", "specifications", "leaf_size", "leaf_size_2", "window_width", "window_height", "window_position", "final_delivery_date"]:
             if col not in columns:
                 try:
                     with db_engine.begin() as conn:
@@ -158,6 +168,12 @@ def check_and_update_db_schema(db_engine):
                             conn.execute(text(f"ALTER TABLE project_details ADD COLUMN {col} VARCHAR"))
                 except Exception as e:
                     pass
+        if "is_fire_door_locked" not in columns:
+            try:
+                with db_engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE project_details ADD COLUMN is_fire_door_locked BOOLEAN NOT NULL DEFAULT FALSE"))
+            except Exception as e:
+                pass
         if "quantity" not in columns:
             try:
                 with db_engine.begin() as conn:
@@ -1388,26 +1404,242 @@ def get_fire_doors(db: Session = Depends(get_db), current_user: models.User = De
     
     result = []
     for d in details:
-        is_project_active = d.project.status == "active" if d.project else False
+        is_project_active = d.project.status.lower() in ["active", "completed"] if (d.project and d.project.status) else False
         has_sticker = bool(d.sticker_number)
         
+        # Only show doors when project is active/completed, or if stickers exist
         if is_project_active or has_sticker:
             qty = d.quantity if d.quantity and d.quantity > 0 else 1
             stickers = get_stickers_list(d.sticker_number, qty)
+            
+            # Format installation date: if project is completed, use completed_at or expected date
+            proj_status = d.project.status.lower() if (d.project and d.project.status) else "pending"
+            installation_date = ""
+            if proj_status == "completed":
+                if d.project.completed_at:
+                    installation_date = d.project.completed_at.strftime("%Y-%m-%d")
+                elif d.project.expected_completion_date:
+                    installation_date = d.project.expected_completion_date.strftime("%Y-%m-%d")
+                elif d.project.delivery_date:
+                    installation_date = d.project.delivery_date.strftime("%Y-%m-%d")
+                else:
+                    installation_date = "منتهي"
+            
+            # Format window info
+            win_parts = []
+            if d.window_details:
+                win_parts.append(str(d.window_details))
+            if d.window_width or d.window_height:
+                w_w = d.window_width or "-"
+                w_h = d.window_height or "-"
+                win_parts.append(f"{w_w}×{w_h}")
+            if d.window_position:
+                win_parts.append(str(d.window_position))
+            window_str = " - ".join(win_parts) if win_parts else "-"
+
             for idx in range(qty):
-                sticker_val = stickers[idx]
+                sticker_val = stickers[idx] if idx < len(stickers) else ""
                 door_label = d.door_number or "-"
                 if qty > 1:
                     door_label = f"{door_label} ({idx+1}/{qty})"
                 result.append({
                     "id": d.id,
+                    "project_id": d.project_id,
                     "index": idx,
+                    "total_quantity": qty,
                     "project_name": d.project.name if d.project else "-",
                     "project_number": d.project.project_number if d.project else "-",
+                    "project_status": proj_status,
                     "door_number": door_label,
-                    "sticker_number": sticker_val
+                    "raw_door_number": d.door_number or "",
+                    "sticker_number": sticker_val,
+                    "installation_date": installation_date,
+                    "final_delivery_date": d.final_delivery_date or "",
+                    "is_locked": bool(d.is_fire_door_locked),
+                    # Specifications
+                    "height": d.height or "-",
+                    "width": d.width or "-",
+                    "depth": d.depth or "-",
+                    "door_type": d.door_type or "-",
+                    "profile_type": d.profile_type or "-",
+                    "lock_type": d.lock_type or "-",
+                    "hinges": d.hinges or "-",
+                    "window": window_str
                 })
     return result
+
+class FireDoorItemUpdate(BaseModel):
+    id: int
+    index: int
+    sticker_number: str
+    final_delivery_date: Optional[str] = None
+
+class FireDoorsBulkSaveRequest(BaseModel):
+    updates: List[FireDoorItemUpdate]
+
+@app.post("/api/fire-doors/bulk-save")
+def bulk_save_fire_doors(payload: FireDoorsBulkSaveRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin" and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="غير مصرح بتعديل أبواب الحريق")
+    
+    # Group updates by detail_id
+    from collections import defaultdict
+    grouped = defaultdict(dict)
+    for u in payload.updates:
+        grouped[u.id][u.index] = u
+
+    for detail_id, index_map in grouped.items():
+        db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
+        if not db_detail:
+            continue
+        
+        # If locked and not admin, skip modifying sticker_number
+        is_locked = bool(db_detail.is_fire_door_locked)
+        if is_locked and current_user.username != "admin":
+            # Can only update final_delivery_date if given, cannot modify sticker
+            for idx, u in index_map.items():
+                if u.final_delivery_date is not None:
+                    db_detail.final_delivery_date = u.final_delivery_date
+            continue
+
+        qty = db_detail.quantity if db_detail.quantity and db_detail.quantity > 0 else 1
+        stickers = get_stickers_list(db_detail.sticker_number, qty)
+        
+        for idx, u in index_map.items():
+            if 0 <= idx < qty:
+                stickers[idx] = u.sticker_number
+            if u.final_delivery_date is not None:
+                db_detail.final_delivery_date = u.final_delivery_date
+        
+        db_detail.sticker_number = ",".join(stickers)
+
+    db.commit()
+    return {"message": "تم حفظ تعديلات أبواب الحريق بنجاح"}
+
+@app.post("/api/fire-doors/final-lock")
+def final_lock_fire_doors(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin" and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="غير مصرح بإجراء الحفظ النهائي")
+        
+    from sqlalchemy import or_
+    details = db.query(models.ProjectDetail).filter(
+        or_(
+            models.ProjectDetail.fire_resistance.like("Yes%"),
+            models.ProjectDetail.fire_resistance.like("نعم%"),
+            models.ProjectDetail.fire_resistance.like("YES%")
+        )
+    ).all()
+    
+    for d in details:
+        d.is_fire_door_locked = True
+        
+    db.commit()
+    return {"message": "تم الحفظ النهائي بنجاح. لن يتمكن سوى مسؤول النظام (الأدمن) من تعديل أرقام الملصقات."}
+
+class FireDoorBatchDeleteItem(BaseModel):
+    id: int
+    index: int
+
+class FireDoorBatchDeleteRequest(BaseModel):
+    items: List[FireDoorBatchDeleteItem]
+
+@app.post("/api/fire-doors/batch-delete")
+def batch_delete_fire_doors(payload: FireDoorBatchDeleteRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin" and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="غير مصرح بحذف أبواب الحريق")
+        
+    # Group items to delete by detail_id
+    from collections import defaultdict
+    grouped = defaultdict(set)
+    for item in payload.items:
+        grouped[item.id].add(item.index)
+
+    for detail_id, indices_to_remove in grouped.items():
+        db_detail = db.query(models.ProjectDetail).filter(models.ProjectDetail.id == detail_id).first()
+        if not db_detail:
+            continue
+            
+        qty = db_detail.quantity if db_detail.quantity and db_detail.quantity > 0 else 1
+        stickers = get_stickers_list(db_detail.sticker_number, qty)
+        
+        # If all doors of this detail are removed, delete the whole detail
+        if len(indices_to_remove) >= qty:
+            db.delete(db_detail)
+        else:
+            # Rebuild remaining stickers and decrement quantity
+            remaining_stickers = [stickers[i] for i in range(qty) if i not in indices_to_remove]
+            db_detail.quantity = len(remaining_stickers)
+            db_detail.sticker_number = ",".join(remaining_stickers)
+            
+    db.commit()
+    return {"message": "تم حذف الأبواب المحددة بنجاح"}
+
+class FireDoorAddRequest(BaseModel):
+    project_id: int
+    door_number: str
+    sticker_number: Optional[str] = None
+    width: Optional[str] = None
+    height: Optional[str] = None
+    depth: Optional[str] = None
+    door_type: Optional[str] = None
+    profile_type: Optional[str] = None
+    lock_type: Optional[str] = None
+    hinges: Optional[str] = None
+    window_details: Optional[str] = None
+    final_delivery_date: Optional[str] = None
+
+@app.post("/api/fire-doors/add-door")
+def add_single_fire_door(payload: FireDoorAddRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if current_user.username != "admin" and not user_has_project_management(current_user, db):
+        raise HTTPException(status_code=403, detail="غير مصرح بإضافة أبواب حريق")
+        
+    project = db.query(models.Project).filter(models.Project.id == payload.project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="المشروع غير موجود")
+        
+    # Determine sticker number if not provided
+    sticker_val = payload.sticker_number
+    if not sticker_val:
+        all_stickers = db.query(models.ProjectDetail.sticker_number).filter(
+            models.ProjectDetail.sticker_number != None,
+            models.ProjectDetail.sticker_number != ""
+        ).all()
+        max_num = 0
+        import re
+        for (s_num,) in all_stickers:
+            if s_num:
+                for part in s_num.split(','):
+                    try:
+                        digits = re.findall(r'\d+', part)
+                        if digits:
+                            val = int(digits[-1])
+                            if val > max_num:
+                                max_num = val
+                    except Exception:
+                        pass
+        sticker_val = str(max_num + 1)
+
+    new_detail = models.ProjectDetail(
+        project_id=payload.project_id,
+        door_number=payload.door_number,
+        sticker_number=sticker_val,
+        quantity=1,
+        fire_resistance="نعم - Yes",
+        width=payload.width,
+        height=payload.height,
+        depth=payload.depth,
+        door_type=payload.door_type,
+        profile_type=payload.profile_type,
+        lock_type=payload.lock_type,
+        hinges=payload.hinges,
+        window_details=payload.window_details,
+        final_delivery_date=payload.final_delivery_date,
+        is_fire_door_locked=False
+    )
+    db.add(new_detail)
+    db.commit()
+    db.refresh(new_detail)
+    return {"message": "تمت إضافة باب الحريق بنجاح", "id": new_detail.id}
 
 class StickerUpdateRequest(BaseModel):
     index: int

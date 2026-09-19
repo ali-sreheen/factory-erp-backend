@@ -2907,50 +2907,235 @@
 
     <!-- ================= FIRE DOORS MODAL ================= -->
     <div id="fireDoorsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]">
-            <div class="bg-rose-700 text-white px-6 py-4 flex justify-between items-center">
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    أبواب الحريق ومتابعة الملصقات
-                </h3>
-                <div class="flex items-center gap-3">
-                    <button onclick="exportFireDoorsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-4 rounded-xl transition text-xs shadow flex items-center gap-1">
-                        📥 تصدير Excel
+        <div class="bg-white rounded-2xl shadow-2xl max-w-[96vw] xl:max-w-7xl w-full mx-2 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]">
+            <div class="bg-rose-700 text-white px-5 py-3.5 flex flex-wrap justify-between items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-rose-200" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <h3 class="text-base sm:text-lg font-bold">أبواب الحريق ومتابعة الملصقات</h3>
+                    <span id="fireDoorsCountBadge" class="bg-rose-800 text-rose-100 text-xs px-2.5 py-0.5 rounded-full font-bold">0 باب</span>
+                </div>
+                
+                <div class="flex items-center flex-wrap gap-2">
+                    <!-- Specifications Toggle Checkbox -->
+                    <label class="flex items-center gap-1.5 text-xs font-bold bg-rose-800/80 hover:bg-rose-800 px-3 py-1.5 rounded-xl cursor-pointer transition select-none border border-rose-600">
+                        <input type="checkbox" id="chkFireDoorSpecs" onchange="toggleFireDoorSpecsColumns(this.checked)" class="rounded text-rose-600 focus:ring-0 cursor-pointer">
+                        <span>مواصفات الأبواب</span>
+                    </label>
+
+                    <!-- Edit Mode Button -->
+                    <button id="btnToggleFireDoorEdit" onclick="toggleFireDoorEditMode()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
+                        <span>✏️</span>
+                        <span id="btnToggleFireDoorEditText">تعديل</span>
                     </button>
-                    <button onclick="closeFireDoorsModal()" class="text-white/70 hover:text-white transition">
+
+                    <!-- Final Lock Button -->
+                    <button id="btnFinalLockFireDoors" onclick="openFinalLockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
+                        <span>🔒</span>
+                        <span>حفظ نهائي</span>
+                    </button>
+
+                    <!-- Export Excel Button -->
+                    <button onclick="exportFireDoorsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
+                        <span>📥</span>
+                        <span>تصدير Excel</span>
+                    </button>
+
+                    <!-- Print Button -->
+                    <button onclick="printFireDoorsTable()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
+                        <span>🖨️</span>
+                        <span>طباعة</span>
+                    </button>
+
+                    <!-- Close Modal Button -->
+                    <button onclick="closeFireDoorsModal()" class="text-white/70 hover:text-white transition p-1">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
             </div>
-            <div class="p-6 overflow-y-auto flex-grow">
-                <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table class="w-full text-right border-collapse text-sm">
-                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+
+            <!-- Edit Action Bar (Visible only in Edit Mode) -->
+            <div id="fireDoorsEditToolbar" class="bg-amber-50 border-b border-amber-200 px-5 py-2.5 flex flex-wrap justify-between items-center gap-2 hidden">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+                        <span class="animate-pulse">●</span> وضع التعديل مفعّل
+                    </span>
+                    <span id="fireDoorsSelectedCount" class="text-xs text-slate-500 font-semibold">(تم تحديد 0)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="openAddFireDoorModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
+                        <span>+</span>
+                        <span>إضافة باب</span>
+                    </button>
+                    <button type="button" id="btnDeleteSelectedFireDoors" onclick="deleteSelectedFireDoors()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <span>🗑️</span>
+                        <span>حذف المحدد</span>
+                    </button>
+                    <button type="button" onclick="saveFireDoorsBulkEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
+                        <span>💾</span>
+                        <span>حفظ التعديلات</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-6 overflow-y-auto flex-grow bg-slate-50/50">
+                <div class="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+                    <table class="w-full text-right border-collapse text-xs sm:text-sm" id="mainFireDoorsTable">
+                        <thead class="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold">
                             <tr>
-                                <th class="p-3 font-bold border-b">اسم المشروع</th>
-                                <th class="p-3 font-bold border-b">رقم المشروع</th>
-                                <th class="p-3 font-bold border-b">رقم الباب</th>
-                                <th class="p-3 font-bold border-b">رقم الملصق</th>
-                                <th class="p-3 font-bold border-b text-center">العمليات</th>
+                                <!-- Checkbox column for batch actions -->
+                                <th class="p-3 text-center w-10 fd-col-checkbox hidden">
+                                    <input type="checkbox" id="chkSelectAllFireDoors" onchange="toggleSelectAllFireDoors(this.checked)" class="rounded text-rose-600 focus:ring-0 cursor-pointer">
+                                </th>
+                                <th class="p-3 border-b">اسم المشروع</th>
+                                <th class="p-3 border-b">رقم المشروع</th>
+                                <th class="p-3 border-b">رقم الباب</th>
+                                <th class="p-3 border-b min-w-[160px]">رقم الملصق</th>
+                                <th class="p-3 border-b">تاريخ التركيب</th>
+                                <th class="p-3 border-b min-w-[140px]">تاريخ الاستلام النهائي</th>
+                                
+                                <!-- Optional Specs Columns -->
+                                <th class="p-3 border-b fd-col-spec hidden">طول الباب</th>
+                                <th class="p-3 border-b fd-col-spec hidden">عرض الباب</th>
+                                <th class="p-3 border-b fd-col-spec hidden">عمق الباب</th>
+                                <th class="p-3 border-b fd-col-spec hidden">نوع الدرفة</th>
+                                <th class="p-3 border-b fd-col-spec hidden">نوع المقطع</th>
+                                <th class="p-3 border-b fd-col-spec hidden">الزرفيل</th>
+                                <th class="p-3 border-b fd-col-spec hidden">الفصالة</th>
+                                <th class="p-3 border-b fd-col-spec hidden">الشباك</th>
+                                
+                                <th class="p-3 border-b text-center fd-col-actions hidden">إجراءات</th>
                             </tr>
                         </thead>
-                        <tbody id="fireDoorsTableBody" class="divide-y divide-slate-100">
+                        <tbody id="fireDoorsTableBody" class="divide-y divide-slate-100 text-slate-800">
                             <!-- Dynamic rows loaded here -->
                         </tbody>
                     </table>
                 </div>
-                <div id="fireDoorsEmpty" class="text-center py-10 text-slate-500 font-bold hidden">
-                    لا يوجد أبواب مقاومة للحريق مسجلة في النظام حالياً.
+                <div id="fireDoorsEmpty" class="text-center py-12 text-slate-500 font-bold hidden bg-white rounded-xl border border-slate-200 mt-2">
+                    لا يوجد أبواب مقاومة للحريق مسجلة في النظام للمشاريع الفعالة حالياً.
                 </div>
-                <div id="fireDoorsLoading" class="text-center py-10 text-slate-500">
-                    جاري تحميل الأبواب...
+                <div id="fireDoorsLoading" class="text-center py-12 text-slate-500 font-bold">
+                    <span class="inline-block animate-spin mr-2">⏳</span> جاري تحميل أبواب الحريق...
                 </div>
             </div>
-            <div class="p-4 bg-slate-50 border-t text-center shrink-0">
-                <button type="button" onclick="closeFireDoorsModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2 px-6 rounded-xl transition">إغلاق</button>
+
+            <div class="p-3.5 bg-slate-50 border-t flex justify-between items-center text-xs text-slate-500 shrink-0">
+                <span id="fireDoorsFooterInfo">ملاحظة: تظهر الأبواب في الجدول وتأخذ أرقام الملصقات تلقائياً عند تفعيل المشروع.</span>
+                <button type="button" onclick="closeFireDoorsModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-1.5 px-5 rounded-xl transition">إغلاق</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Final Lock Confirmation Modal -->
+    <div id="fireDoorsFinalLockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="p-5 bg-indigo-600 text-white flex items-center gap-3">
+                <div class="p-2 bg-indigo-500/30 rounded-xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold">تأكيد الحفظ النهائي</h3>
+                    <p class="text-xs text-indigo-100 mt-0.5">قفل أرقام الملصقات وحمايتها من التعديل</p>
+                </div>
+            </div>
+            <div class="p-6 space-y-3">
+                <p class="text-sm text-slate-700 leading-relaxed">
+                    عند إتمام <strong class="text-indigo-600">الحفظ النهائي</strong>، سيتم قفل أرقام الملصقات في جدول أبواب الحريق، 
+                    <span class="text-rose-600 font-bold">ولن يتمكن سوى مسؤول النظام (الأدمن)</span> من تعديلها لاحقاً.
+                </p>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                    ⚠️ يرجى التأكد من صحة جميع أرقام الملصقات وتواريخ الاستلام قبل المتابعة.
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex justify-end gap-2">
+                <button type="button" onclick="closeFinalLockModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl transition">إلغاء</button>
+                <button type="button" onclick="confirmFinalLockFireDoors()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow">تأكيد الحفظ النهائي</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Fire Door Modal -->
+    <div id="fireDoorAddModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden border border-slate-100 transform scale-95 transition-transform duration-300">
+            <div class="p-4 bg-emerald-600 text-white flex justify-between items-center">
+                <h3 class="text-base font-bold flex items-center gap-1.5">
+                    <span>🚪</span>
+                    <span>إضافة باب حريق جديد</span>
+                </h3>
+                <button onclick="closeAddFireDoorModal()" class="text-white/70 hover:text-white transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form onsubmit="submitAddFireDoor(event)" class="p-5 space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">المشروع *</label>
+                    <select id="addFdProjectId" required class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                        <!-- Populated dynamically with active projects -->
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">رقم الباب *</label>
+                        <input type="text" id="addFdDoorNumber" required placeholder="مثال: D-01" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">رقم الملصق (اختياري)</label>
+                        <input type="text" id="addFdStickerNumber" placeholder="تلقائي إن ترك فارغاً" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">الارتفاع (سم)</label>
+                        <input type="text" id="addFdHeight" placeholder="210" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">العرض (سم)</label>
+                        <input type="text" id="addFdWidth" placeholder="100" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">العمق (سم)</label>
+                        <input type="text" id="addFdDepth" placeholder="15" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">نوع الدرفة</label>
+                        <input type="text" id="addFdDoorType" placeholder="مفردة / مزدوجة" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">نوع المقطع</label>
+                        <input type="text" id="addFdProfileType" placeholder="مقطع..." class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">الزرفيل</label>
+                        <input type="text" id="addFdLockType" placeholder="نوع الزرفيل" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">الفصالة</label>
+                        <input type="text" id="addFdHinges" placeholder="نوع الفصالة" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">الشباك</label>
+                        <input type="text" id="addFdWindow" placeholder="VP / GMP / مقاس..." class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">تاريخ الاستلام النهائي</label>
+                        <input type="date" id="addFdFinalDeliveryDate" class="w-full px-3 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div class="pt-3 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeAddFireDoorModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow">إضافة الباب</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -3745,7 +3930,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=137"></script>
+    <script src="script.js?v=138"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
