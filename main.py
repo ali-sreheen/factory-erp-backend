@@ -1516,25 +1516,35 @@ def bulk_save_fire_doors(payload: FireDoorsBulkSaveRequest, db: Session = Depend
     db.commit()
     return {"message": "تم حفظ تعديلات أبواب الحريق بنجاح"}
 
+class FireDoorLockItem(BaseModel):
+    id: int
+
+class FireDoorsFinalLockRequest(BaseModel):
+    ids: Optional[List[int]] = None
+
 @app.post("/api/fire-doors/final-lock")
-def final_lock_fire_doors(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def final_lock_fire_doors(payload: Optional[FireDoorsFinalLockRequest] = None, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.username != "admin" and not user_has_project_management(current_user, db):
         raise HTTPException(status_code=403, detail="غير مصرح بإجراء الحفظ النهائي")
         
     from sqlalchemy import or_
-    details = db.query(models.ProjectDetail).filter(
+    query = db.query(models.ProjectDetail).filter(
         or_(
             models.ProjectDetail.fire_resistance.like("Yes%"),
             models.ProjectDetail.fire_resistance.like("نعم%"),
             models.ProjectDetail.fire_resistance.like("YES%")
         )
-    ).all()
+    )
     
+    if payload and payload.ids:
+        query = query.filter(models.ProjectDetail.id.in_(payload.ids))
+        
+    details = query.all()
     for d in details:
         d.is_fire_door_locked = True
         
     db.commit()
-    return {"message": "تم الحفظ النهائي بنجاح. لن يتمكن سوى مسؤول النظام (الأدمن) من تعديل أرقام الملصقات."}
+    return {"message": "تم الحفظ النهائي بنجاح. لن يتمكن سوى مسؤول النظام (الأدمن) من تعديل أرقام الملصقات للابواب المحددة."}
 
 class FireDoorBatchDeleteItem(BaseModel):
     id: int

@@ -2929,9 +2929,9 @@
                     </button>
 
                     <!-- Final Lock Button -->
-                    <button id="btnFinalLockFireDoors" onclick="openFinalLockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
+                    <button id="btnFinalLockFireDoors" onclick="toggleFireDoorsLockMode()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1">
                         <span>🔒</span>
-                        <span>حفظ نهائي</span>
+                        <span id="btnFinalLockFireDoorsText">حفظ نهائي</span>
                     </button>
 
                     <!-- Export Excel Button -->
@@ -2975,6 +2975,25 @@
                     <button type="button" onclick="saveFireDoorsBulkEdits()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm">
                         <span>💾</span>
                         <span>حفظ التعديلات</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Final Lock Action Bar (Visible only in Lock Selection Mode) -->
+            <div id="fireDoorsLockToolbar" class="bg-indigo-50 border-b border-indigo-200 px-5 py-2.5 flex flex-wrap justify-between items-center gap-2 hidden">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-indigo-900 flex items-center gap-1">
+                        <span class="animate-pulse">🔒</span> حدد الأبواب المراد قفلها نهائياً
+                    </span>
+                    <span id="fireDoorsLockSelectedCount" class="text-xs text-indigo-700 font-bold bg-indigo-100 px-2.5 py-0.5 rounded-full">(تم تحديد 0)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="toggleFireDoorsLockMode()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3.5 py-1.5 rounded-lg transition">
+                        إلغاء
+                    </button>
+                    <button type="button" id="btnConfirmLockSelection" onclick="openFinalLockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition flex items-center gap-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <span>🔒</span>
+                        <span>تأكيد الحفظ النهائي للمحدد</span>
                     </button>
                 </div>
             </div>
@@ -3044,11 +3063,11 @@
             </div>
             <div class="p-6 space-y-3">
                 <p class="text-sm text-slate-700 leading-relaxed">
-                    عند إتمام <strong class="text-indigo-600">الحفظ النهائي</strong>، سيتم قفل أرقام الملصقات في جدول أبواب الحريق، 
+                    سيتم قفل أرقام الملصقات لـ <strong id="finalLockDoorsCountText" class="text-indigo-600 font-bold">0 باب</strong> بشكل نهائي، 
                     <span class="text-rose-600 font-bold">ولن يتمكن سوى مسؤول النظام (الأدمن)</span> من تعديلها لاحقاً.
                 </p>
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                    ⚠️ يرجى التأكد من صحة جميع أرقام الملصقات وتواريخ الاستلام قبل المتابعة.
+                    ⚠️ يرجى التأكد من صحة أرقام الملصقات وتواريخ الاستلام للأبواب المحددة قبل المتابعة.
                 </div>
             </div>
             <div class="p-4 bg-slate-50 border-t flex justify-end gap-2">
@@ -3930,7 +3949,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=138"></script>
+    <script src="script.js?v=139"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">

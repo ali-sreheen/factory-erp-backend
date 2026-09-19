@@ -6522,6 +6522,7 @@ window.closeAllProjectsTrackingModal = function() {
 // ================= FIRE DOORS MODAL LOGIC =================
 let globalFireDoors = [];
 let fireDoorsEditMode = false;
+let fireDoorsLockMode = false;
 let fireDoorsShowSpecs = false;
 
 window.openFireDoorsModal = async function() {
@@ -6532,7 +6533,9 @@ window.openFireDoorsModal = async function() {
     
     // Reset states
     fireDoorsEditMode = false;
+    fireDoorsLockMode = false;
     updateFireDoorsEditToolbarState();
+    updateFireDoorsLockToolbarState();
     
     const specsChk = document.getElementById('chkFireDoorSpecs');
     if (specsChk) fireDoorsShowSpecs = specsChk.checked;
@@ -6654,11 +6657,28 @@ window.renderFireDoorsTable = function() {
             '<span class="text-slate-400 text-xs">-</span>';
 
         // Checkbox cell
-        const checkboxHtml = `
-            <td class="p-3 text-center fd-col-checkbox ${fireDoorsEditMode ? '' : 'hidden'}">
-                <input type="checkbox" class="fd-row-checkbox rounded text-rose-600 focus:ring-0 cursor-pointer" onchange="updateSelectedCount()" data-id="${d.id}" data-index="${d.index}" />
-            </td>
-        `;
+        let checkboxCellHtml = '';
+        if (fireDoorsLockMode) {
+            if (isLocked) {
+                checkboxCellHtml = `
+                    <td class="p-3 text-center fd-col-checkbox">
+                        <span class="text-xs text-indigo-500 font-bold" title="مقفل بالفعل">🔒</span>
+                    </td>
+                `;
+            } else {
+                checkboxCellHtml = `
+                    <td class="p-3 text-center fd-col-checkbox">
+                        <input type="checkbox" class="fd-row-checkbox rounded text-indigo-600 focus:ring-0 cursor-pointer" onchange="updateSelectedCount()" data-id="${d.id}" data-index="${d.index}" />
+                    </td>
+                `;
+            }
+        } else {
+            checkboxCellHtml = `
+                <td class="p-3 text-center fd-col-checkbox ${fireDoorsEditMode ? '' : 'hidden'}">
+                    <input type="checkbox" class="fd-row-checkbox rounded text-rose-600 focus:ring-0 cursor-pointer" onchange="updateSelectedCount()" data-id="${d.id}" data-index="${d.index}" />
+                </td>
+            `;
+        }
 
         // Row actions (delete button in edit mode)
         const actionsHtml = `
@@ -6672,7 +6692,7 @@ window.renderFireDoorsTable = function() {
         `;
 
         tr.innerHTML = `
-            ${checkboxHtml}
+            ${checkboxCellHtml}
             <td class="p-3 font-bold text-slate-800">${escapeHtml(d.project_name)}</td>
             <td class="p-3 font-bold text-slate-500">${escapeHtml(d.project_number)}</td>
             <td class="p-3 text-slate-700 font-medium">${escapeHtml(d.door_number)}</td>
@@ -6698,13 +6718,55 @@ window.renderFireDoorsTable = function() {
     if (fireDoorsEditMode) {
         validateAllStickers();
     }
+    updateSelectedCount();
 };
 
 window.toggleFireDoorEditMode = function() {
+    if (fireDoorsLockMode) {
+        fireDoorsLockMode = false;
+        updateFireDoorsLockToolbarState();
+    }
     fireDoorsEditMode = !fireDoorsEditMode;
     updateFireDoorsEditToolbarState();
     renderFireDoorsTable();
 };
+
+window.toggleFireDoorsLockMode = function() {
+    if (fireDoorsEditMode) {
+        fireDoorsEditMode = false;
+        updateFireDoorsEditToolbarState();
+    }
+    fireDoorsLockMode = !fireDoorsLockMode;
+    updateFireDoorsLockToolbarState();
+    renderFireDoorsTable();
+};
+
+function updateFireDoorsLockToolbarState() {
+    const toolbar = document.getElementById('fireDoorsLockToolbar');
+    const btnText = document.getElementById('btnFinalLockFireDoorsText');
+    const btn = document.getElementById('btnFinalLockFireDoors');
+    const chkSelectAll = document.getElementById('chkSelectAllFireDoors');
+
+    if (chkSelectAll) chkSelectAll.checked = false;
+
+    if (fireDoorsLockMode) {
+        if (toolbar) toolbar.classList.remove('hidden');
+        if (btnText) btnText.textContent = 'إلغاء التحديد';
+        if (btn) btn.className = 'bg-slate-600 hover:bg-slate-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1';
+    } else {
+        if (toolbar) toolbar.classList.add('hidden');
+        if (btnText) btnText.textContent = 'حفظ نهائي';
+        if (btn) btn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3.5 rounded-xl transition text-xs shadow flex items-center gap-1';
+    }
+
+    // Toggle column headers
+    document.querySelectorAll('.fd-col-checkbox').forEach(el => {
+        if (fireDoorsLockMode || fireDoorsEditMode) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    });
+
+    updateSelectedCount();
+}
 
 function updateFireDoorsEditToolbarState() {
     const toolbar = document.getElementById('fireDoorsEditToolbar');
@@ -6725,7 +6787,11 @@ function updateFireDoorsEditToolbarState() {
     }
 
     // Toggle column headers
-    document.querySelectorAll('.fd-col-checkbox, .fd-col-actions').forEach(el => {
+    document.querySelectorAll('.fd-col-checkbox').forEach(el => {
+        if (fireDoorsLockMode || fireDoorsEditMode) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+    });
+    document.querySelectorAll('.fd-col-actions').forEach(el => {
         if (fireDoorsEditMode) el.classList.remove('hidden');
         else el.classList.add('hidden');
     });
@@ -6803,6 +6869,13 @@ window.updateSelectedCount = function() {
     if (countEl) countEl.textContent = `(تم تحديد ${checked.length})`;
     if (deleteBtn) {
         deleteBtn.disabled = checked.length === 0;
+    }
+
+    const lockCountEl = document.getElementById('fireDoorsLockSelectedCount');
+    const confirmLockBtn = document.getElementById('btnConfirmLockSelection');
+    if (lockCountEl) lockCountEl.textContent = `(تم تحديد ${checked.length})`;
+    if (confirmLockBtn) {
+        confirmLockBtn.disabled = checked.length === 0;
     }
 };
 
@@ -6906,7 +6979,16 @@ window.saveFireDoorsBulkEdits = async function() {
 
 // --- Final Lock Modal Logic ---
 window.openFinalLockModal = function() {
+    const checked = document.querySelectorAll('#fireDoorsTableBody .fd-row-checkbox:checked');
+    if (checked.length === 0) {
+        showToast('يرجى تحديد باب واحد على الأقل للحفظ النهائي', 'bg-amber-500', '⚠️');
+        return;
+    }
+
     const modal = document.getElementById('fireDoorsFinalLockModal');
+    const countText = document.getElementById('finalLockDoorsCountText');
+    if (countText) countText.textContent = `${checked.length} باب`;
+
     if (!modal) return;
     modal.classList.remove('hidden');
     void modal.offsetWidth;
@@ -6923,14 +7005,26 @@ window.closeFinalLockModal = function() {
 };
 
 window.confirmFinalLockFireDoors = async function() {
+    const checked = document.querySelectorAll('#fireDoorsTableBody .fd-row-checkbox:checked');
+    const ids = Array.from(new Set(Array.from(checked).map(cb => parseInt(cb.dataset.id)).filter(id => !isNaN(id))));
+
+    if (ids.length === 0) {
+        showToast('لم يتم تحديد أي أبواب للحفظ النهائي', 'bg-amber-500', '⚠️');
+        return;
+    }
+
     try {
         const response = await authFetch(`${API_HOST}/api/fire-doors/final-lock`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids })
         });
-        if (!response.ok) throw new Error('فشل الحفظ النهائي');
+        if (!response.ok) throw new Error('فشل الحفظ النهائي للأبواب المحددة');
 
         closeFinalLockModal();
-        showToast('تم الحفظ النهائي بنجاح. أرقام الملصقات مقفلة ولا تعدل إلا بواسطة الأدمن', 'bg-indigo-600', '🔒');
+        showToast('تم الحفظ النهائي للأبواب المحددة بنجاح. أرقام الملصقات مقفلة الآن.', 'bg-indigo-600', '🔒');
+        fireDoorsLockMode = false;
+        updateFireDoorsLockToolbarState();
         await loadFireDoorsData();
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
