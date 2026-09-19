@@ -6637,19 +6637,10 @@ window.renderFireDoorsTable = function() {
             `;
         }
 
-        // Final delivery cell
-        let finalDeliveryHtml = '';
-        if (fireDoorsEditMode && canEditFinalDelivery) {
-            finalDeliveryHtml = `
-                <input type="date" 
-                       value="${escapeHtml(d.final_delivery_date || '')}" 
-                       class="fd-delivery-input w-full max-w-[130px] px-1.5 py-1 text-center border border-slate-300 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500" />
-            `;
-        } else {
-            finalDeliveryHtml = d.final_delivery_date ? 
-                `<span class="font-medium text-slate-700 whitespace-nowrap">${escapeHtml(d.final_delivery_date)}</span>` : 
-                '<span class="text-slate-400 text-xs">-</span>';
-        }
+        // Final delivery cell (automatically set upon final lock, read-only)
+        const finalDeliveryHtml = d.final_delivery_date ? 
+            `<span class="font-medium text-slate-700 whitespace-nowrap">${escapeHtml(d.final_delivery_date)}</span>` : 
+            '<span class="text-slate-400 text-xs">-</span>';
 
         // Installation date cell
         const installationHtml = d.installation_date ? 
@@ -6658,11 +6649,18 @@ window.renderFireDoorsTable = function() {
 
         // Checkbox cell
         let checkboxCellHtml = '';
+        const isProjectCompleted = d.project_status && d.project_status.toLowerCase() === 'completed';
         if (fireDoorsLockMode) {
             if (isLocked) {
                 checkboxCellHtml = `
                     <td class="p-2.5 text-center fd-col-checkbox">
                         <span class="text-xs text-indigo-500 font-bold" title="مقفل بالفعل">🔒</span>
+                    </td>
+                `;
+            } else if (!isProjectCompleted) {
+                checkboxCellHtml = `
+                    <td class="p-2.5 text-center fd-col-checkbox">
+                        <span class="text-[10px] bg-amber-50 text-amber-600 px-1 py-0.5 rounded border border-amber-200 cursor-not-allowed" title="لا يمكن الحفظ النهائي إلا بعد أن يصبح المشروع منتهياً">المشروع غير منتهي</span>
                     </td>
                 `;
             } else {
@@ -6985,17 +6983,14 @@ window.saveFireDoorsBulkEdits = async function() {
         const id = parseInt(r.dataset.id);
         const index = parseInt(r.dataset.index);
         const stickerInput = r.querySelector('.fd-sticker-input');
-        const deliveryInput = r.querySelector('.fd-delivery-input');
 
         const stickerVal = stickerInput ? stickerInput.value.trim() : null;
-        const deliveryVal = deliveryInput ? deliveryInput.value.trim() : null;
 
         if (id && !isNaN(index)) {
             updates.push({
                 id: id,
                 index: index,
-                sticker_number: stickerVal !== null ? stickerVal : '',
-                final_delivery_date: deliveryVal !== null ? deliveryVal : undefined
+                sticker_number: stickerVal !== null ? stickerVal : ''
             });
         }
     });

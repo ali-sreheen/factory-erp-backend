@@ -1504,8 +1504,6 @@ def bulk_save_fire_doors(payload: FireDoorsBulkSaveRequest, db: Session = Depend
         for idx, u in index_map.items():
             if 0 <= idx < qty:
                 stickers[idx] = u.sticker_number
-            if u.final_delivery_date is not None:
-                db_detail.final_delivery_date = u.final_delivery_date
         
         db_detail.sticker_number = ",".join(stickers)
 
@@ -1535,6 +1533,20 @@ def final_lock_fire_doors(payload: Optional[FireDoorsFinalLockRequest] = None, d
     if payload and payload.ids:
         query = query.filter(models.ProjectDetail.id.in_(payload.ids))
         
+    details = query.all()
+    if not details:
+        raise HTTPException(status_code=404, detail="لم يتم العثور على أي أبواب تطابق الاختيار")
+
+    # Ensure all doors belong to a completed project
+    for d in details:
+        proj_status = d.project.status.lower() if (d.project and d.project.status) else ""
+        if proj_status != "completed":
+            proj_name = d.project.name if d.project else "-"
+            raise HTTPException(
+                status_code=400, 
+                detail=f"لا يمكن إجراء الحفظ النهائي للباب ({d.door_number}) لأن المشروع ({proj_name}) ليس في حالة منتهي."
+            )
+
     import datetime
     today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     for d in details:
