@@ -2873,21 +2873,106 @@ async function loadContractorOptions(selectedName = '') {
 }
 
 window.handleContractorSelectChange = function(selectElem) {
-    const selectedName = selectElem.value;
-    if (!selectedName) return;
+    const selectedName = selectElem ? selectElem.value : '';
+    updateEngineerFieldState(selectedName);
+};
+
+window.updateEngineerFieldState = function(contractorName, selectedEngName = '', selectedEngPhone = '') {
+    const engNameInput = document.getElementById('pwEngineerName');
+    const engSelect = document.getElementById('pwEngineerSelect');
+    const engPhoneInput = document.getElementById('pwEngineerPhone');
     
-    const contractor = allContractors.find(c => c.name === selectedName);
+    if (!engNameInput || !engSelect || !engPhoneInput) return;
+
+    if (!contractorName) {
+        // No contractor selected: revert to free text input
+        engSelect.classList.add('hidden');
+        engSelect.innerHTML = '<option value="">-- اختر مسؤول الموقع --</option>';
+        engNameInput.classList.remove('hidden');
+        engNameInput.readOnly = false;
+        if (!selectedEngName) engNameInput.value = '';
+        engPhoneInput.readOnly = false;
+        engPhoneInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        if (!selectedEngPhone) engPhoneInput.value = '';
+        return;
+    }
+
+    const contractor = (allContractors || []).find(c => c.name === contractorName);
+    let contactsList = [];
     if (contractor) {
-        const engNameInput = document.getElementById('pwEngineerName');
-        const engPhoneInput = document.getElementById('pwEngineerPhone');
-        
-        if (engNameInput && contractor.contact_person) {
-            engNameInput.value = contractor.contact_person;
+        if (contractor.contacts) {
+            try {
+                contactsList = typeof contractor.contacts === 'string' ? JSON.parse(contractor.contacts) : contractor.contacts;
+            } catch (e) {
+                contactsList = [];
+            }
         }
-        if (engPhoneInput && contractor.phone) {
-            engPhoneInput.value = contractor.phone;
+        if ((!contactsList || contactsList.length === 0) && (contractor.contact_person || contractor.phone)) {
+            contactsList = [{ name: contractor.contact_person || '', phone: contractor.phone || '' }];
         }
     }
+
+    // Switch to select dropdown
+    engNameInput.classList.add('hidden');
+    engSelect.classList.remove('hidden');
+    engSelect.innerHTML = '';
+
+    if (contactsList.length === 0) {
+        engSelect.innerHTML = '<option value="">(لا يوجد مسؤولو تواصل مسجلون لدى المقاول)</option>';
+        engNameInput.value = '';
+        engPhoneInput.value = '';
+        engPhoneInput.readOnly = true;
+        engPhoneInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        return;
+    }
+
+    engSelect.innerHTML = '<option value="">-- اختر مسؤول الموقع --</option>';
+    let matchedOption = null;
+
+    contactsList.forEach((cnt, idx) => {
+        const opt = document.createElement('option');
+        opt.value = cnt.name || '';
+        opt.dataset.phone = cnt.phone || '';
+        opt.textContent = cnt.phone ? `${cnt.name} (${cnt.phone})` : cnt.name;
+        if (selectedEngName && cnt.name === selectedEngName) {
+            opt.selected = true;
+            matchedOption = opt;
+        }
+        engSelect.appendChild(opt);
+    });
+
+    // Auto-select if there is only 1 contact or if matched
+    if (!matchedOption && contactsList.length === 1) {
+        engSelect.selectedIndex = 1;
+        matchedOption = engSelect.options[1];
+    }
+
+    if (matchedOption) {
+        engNameInput.value = matchedOption.value;
+        engPhoneInput.value = matchedOption.dataset.phone || selectedEngPhone || '';
+    } else {
+        engNameInput.value = '';
+        engPhoneInput.value = '';
+    }
+
+    // Phone is read-only and bound to the contractor's contact
+    engPhoneInput.readOnly = true;
+    engPhoneInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+};
+
+window.handleEngineerSelectChange = function(selectElem) {
+    const engNameInput = document.getElementById('pwEngineerName');
+    const engPhoneInput = document.getElementById('pwEngineerPhone');
+    const selectedOption = selectElem.options[selectElem.selectedIndex];
+
+    if (!selectedOption || !selectedOption.value) {
+        if (engNameInput) engNameInput.value = '';
+        if (engPhoneInput) engPhoneInput.value = '';
+        return;
+    }
+
+    if (engNameInput) engNameInput.value = selectedOption.value;
+    if (engPhoneInput) engPhoneInput.value = selectedOption.dataset.phone || '';
 };
 
 function openProjectWizard(fromHistory = false) {
@@ -2919,6 +3004,7 @@ function openProjectWizard(fromHistory = false) {
     if(pdView) pdView.classList.add('hidden');
     
     document.getElementById('projectWizardForm').reset();
+    updateEngineerFieldState('');
     loadContractorOptions();
     loadFireDoorRules();
     document.getElementById('projectDetailsTableBody').innerHTML = '';
@@ -4012,8 +4098,7 @@ window.editProject = async function(projectId, fromHistory = false) {
         if (p.delivery_date) {
             document.getElementById('pwDeliveryDate').value = p.delivery_date.split('T')[0];
         }
-        document.getElementById('pwEngineerName').value = p.engineer_name || '';
-        document.getElementById('pwEngineerPhone').value = p.engineer_phone || '';
+        updateEngineerFieldState(p.contractor_name || '', p.engineer_name || '', p.engineer_phone || '');
         document.getElementById('pwLocation').value = p.location || '';
         document.getElementById('pwMapUrl').value = p.map_url || '';
         document.getElementById('pwAssignee').value = p.executive_manager_id || '';
