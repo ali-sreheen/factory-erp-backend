@@ -5319,27 +5319,110 @@ window.renderSheetNestingContent = function(tab) {
             const fontSize = Math.max(3, Math.min(piece.width / 5, piece.height / 5, 8));
             const subFontSize = Math.max(2.2, fontSize * 0.7);
 
-            // Realistic contour rendering based on part type
+            // Realistic contour rendering based on accurate CAD manufacturing geometry
             let realisticPath = '';
             const pw = piece.width;
             const ph = piece.height;
             const pName = piece.part_name || '';
 
             if (pName.includes('قائم') && ph > pw) {
-                // Vertical post with top miter notches
-                const notchD = Math.min(pw * 0.35, 12);
+                // Vertical Post (Jamb) with authentic CAD top miter cutouts and bottom floor anchors
+                const notchD = Math.min(pw * 0.16, ph * 0.08, 6.0);
+                const postCadPoints = [
+                    [0.3533, 0.9504], [0.3421, 0.876], [0.3343, 0.8512], [0.3156, 0.8512],
+                    [0.3078, 0.8017], [0.2866, 0.6612], [0.2788, 0.6364], [0.2488, 0.6364],
+                    [0.2488, 0.4876], [0.2414, 0.438], [0.2314, 0.438], [0.2239, 0.4876],
+                    [0.2239, 0.6364], [0.1852, 0.6364], [0.1852, 0.4876], [0.1778, 0.438],
+                    [0.1678, 0.438], [0.1603, 0.4876], [0.1603, 0.6364], [0.1304, 0.6364],
+                    [0.1225, 0.5868], [0.0377, 0.0248], [0.0299, 0.0], [0.0, 0.0]
+                ];
+                const postCadPointsRight = [
+                    [1.0, 0.0], [0.9701, 0.0], [0.9623, 0.0248], [0.8226, 0.9504],
+                    [0.8148, 1.0], [0.7848, 1.0], [0.7848, 0.8512], [0.7774, 0.8017],
+                    [0.7674, 0.8017], [0.7599, 0.8512], [0.7599, 1.0], [0.416, 1.0],
+                    [0.416, 0.8512], [0.4085, 0.8017], [0.3986, 0.8017], [0.3911, 0.8512],
+                    [0.3911, 1.0], [0.3612, 1.0]
+                ];
+
+                let d = `M 0,${ph} `;
+                // Left top contour
+                postCadPoints.forEach(pt => {
+                    d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
+                });
+                // Right top contour
+                postCadPointsRight.forEach(pt => {
+                    d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
+                });
+                d += `L ${pw},${ph} Z`;
+
+                // Hinge cutouts along hinge side (left rabbet, X ~ 12% - 20% of pw)
+                const hx = Math.max(1, pw * 0.12);
+                const hw = Math.min(pw * 0.08, 3.2);
+                const hh = Math.min(ph * 0.05, 10.2);
+                const hPositions = [ph * 0.08, ph * 0.18, ph * 0.53, ph * 0.88];
+                let hingesSvg = '';
+                hPositions.forEach(hy => {
+                    hingesSvg += `<rect x="${hx.toFixed(2)}" y="${hy.toFixed(2)}" width="${hw.toFixed(2)}" height="${hh.toFixed(2)}" fill="${color.border}" opacity="0.5" rx="0.4" />`;
+                });
+
+                // Lock cutout indicators (if opposite jamb) and bend lines
+                const bendX1 = (pw * 0.28).toFixed(2);
+                const bendX2 = (pw * 0.72).toFixed(2);
+                const bendLines = `
+                    <line x1="${bendX1}" y1="${notchD}" x2="${bendX1}" y2="${ph}" stroke="${color.border}" stroke-width="0.4" stroke-dasharray="2,2" opacity="0.45" />
+                    <line x1="${bendX2}" y1="${notchD}" x2="${bendX2}" y2="${ph}" stroke="${color.border}" stroke-width="0.4" stroke-dasharray="2,2" opacity="0.45" />
+                `;
+
                 realisticPath = `
-                    <path d="M 0,${ph} L ${pw},${ph} L ${pw},${notchD} L ${pw*0.75},0 L ${pw*0.25},0 L 0,${notchD} Z" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
-                    <!-- Visual Hinge / Cutout indicators -->
-                    <rect x="2" y="${ph*0.08}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
-                    <rect x="2" y="${ph*0.45}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
-                    <rect x="2" y="${ph*0.82}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                    <path d="${d}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                    ${bendLines}
+                    ${hingesSvg}
                 `;
             } else if (pName.includes('رأس') && ph > pw) {
-                // Vertical oriented header with end miter cutouts
-                const notchD = Math.min(pw * 0.3, 10);
+                // Header (رأس) with accurate CAD end cutouts on BOTH ends (top & bottom)
+                const notchD = Math.min(pw * 0.16, ph * 0.08, 6.0);
+                const headCadTop = [
+                    [1.0, 0.0], [0.9701, 0.0], [0.9623, 0.0248], [0.8775, 0.5868],
+                    [0.8696, 0.6364], [0.8447, 0.4711], [0.7462, 0.4711], [0.7212, 0.6364],
+                    [0.7134, 0.6612], [0.6922, 0.8017], [0.6844, 0.8512], [0.6657, 0.8512],
+                    [0.6579, 0.876], [0.6467, 0.9504], [0.6388, 1.0], [0.6091, 0.8347],
+                    [0.2102, 0.8347], [0.1852, 1.0], [0.1774, 0.9504], [0.0377, 0.0248],
+                    [0.0299, 0.0], [0.0, 0.0]
+                ];
+                const headCadBottom = [
+                    [0.0, 0.0], [0.0299, 0.0], [0.0377, 0.0248], [0.1774, 0.9504],
+                    [0.1852, 1.0], [0.2102, 0.8347], [0.6091, 0.8347], [0.6388, 1.0],
+                    [0.6467, 0.9504], [0.6579, 0.876], [0.6657, 0.8512], [0.6844, 0.8512],
+                    [0.6922, 0.8017], [0.7134, 0.6612], [0.7212, 0.6364], [0.7462, 0.4711],
+                    [0.8447, 0.4711], [0.8696, 0.6364], [0.8775, 0.5868], [0.9623, 0.0248],
+                    [0.9701, 0.0], [1.0, 0.0]
+                ];
+
+                let d = `M ${(headCadTop[0][0] * pw).toFixed(2)},${(headCadTop[0][1] * notchD).toFixed(2)} `;
+                // Top miter cutouts
+                headCadTop.forEach(pt => {
+                    d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
+                });
+                // Left straight edge down to bottom cutout
+                d += `L 0,${(ph - notchD).toFixed(2)} `;
+                // Bottom miter cutouts
+                headCadBottom.forEach(pt => {
+                    d += `L ${(pt[0] * pw).toFixed(2)},${(ph - pt[1] * notchD).toFixed(2)} `;
+                });
+                // Right straight edge back up to top
+                d += `L ${pw},${notchD.toFixed(2)} Z`;
+
+                // Subtle bend lines
+                const bendX1 = (pw * 0.28).toFixed(2);
+                const bendX2 = (pw * 0.72).toFixed(2);
+                const bendLines = `
+                    <line x1="${bendX1}" y1="${notchD}" x2="${bendX1}" y2="${ph - notchD}" stroke="${color.border}" stroke-width="0.4" stroke-dasharray="2,2" opacity="0.45" />
+                    <line x1="${bendX2}" y1="${notchD}" x2="${bendX2}" y2="${ph - notchD}" stroke="${color.border}" stroke-width="0.4" stroke-dasharray="2,2" opacity="0.45" />
+                `;
+
                 realisticPath = `
-                    <path d="M 0,0 L ${pw},0 L ${pw},${notchD} L ${pw*0.75},${notchD*1.5} L ${pw},${notchD*2} L ${pw},${ph-notchD*2} L ${pw*0.75},${ph-notchD*1.5} L ${pw},${ph-notchD} L ${pw},${ph} L 0,${ph} L 0,${ph-notchD} L ${pw*0.25},${ph-notchD*1.5} L 0,${ph-notchD*2} L 0,${notchD*2} L ${pw*0.25},${notchD*1.5} L 0,${notchD} Z" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                    <path d="${d}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                    ${bendLines}
                 `;
             } else if (pName.includes('درفة') || pName.includes('درفه')) {
                 // Door Leaf with handle & lock indicators
