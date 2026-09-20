@@ -5473,14 +5473,13 @@ window.renderSheetNestingContent = function(tab) {
                 <g class="piece-group" transform="translate(${piece.x}, ${piece.y})">
                     ${realisticPath}
                     <!-- Label: Door Number -->
-                    <text x="${piece.width / 2}" y="${piece.height / 2 - (piece.part_name ? subFontSize * 0.6 : 0)}" font-size="${fontSize}" font-weight="bold" fill="${color.text}" text-anchor="middle" dominant-baseline="central">
+                    <text x="${piece.width / 2}" y="${piece.height / 2 - fontSize * 0.5}" font-size="${fontSize}" font-weight="bold" fill="${color.text}" text-anchor="middle" dominant-baseline="central">
                         ${piece.door_number || 'باب'}
                     </text>
-                    ${piece.part_name ? `
-                        <text x="${piece.width / 2}" y="${piece.height / 2 + fontSize * 0.9}" font-size="${subFontSize}" fill="${color.text}" opacity="0.85" text-anchor="middle" dominant-baseline="central">
-                            ${piece.part_name} (${piece.width}×${piece.height})
-                        </text>
-                    ` : ''}
+                    <!-- Label: Dimensions (Width×Height) -->
+                    <text x="${piece.width / 2}" y="${piece.height / 2 + fontSize * 0.7}" font-size="${subFontSize}" fill="${color.text}" opacity="0.9" text-anchor="middle" dominant-baseline="central">
+                        (${piece.width}×${piece.height})
+                    </text>
                 </g>
             `;
         });
@@ -5518,7 +5517,7 @@ window.renderSheetNestingContent = function(tab) {
                     return `
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-medium" style="background-color: ${c.bg}; border-color: ${c.border}; color: ${c.text}">
                             <strong>${p.door_number || 'باب'}</strong>
-                            <span>(${p.part_name || 'قطعة'}: ${p.width}×${p.height} سم)</span>
+                            <span>(${p.width}×${p.height} سم)</span>
                         </span>
                     `;
                 }).join('')}
