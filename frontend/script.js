@@ -5459,11 +5459,42 @@ window.renderSheetNestingContent = function(tab) {
                     ${bendLines}
                 `;
             } else if (pName.includes('درفة') || pName.includes('درفه')) {
-                // Door Leaf with handle & lock indicators
+                // Door Leaf (الدرفة)
+                // Leaf 1 has hinges on the hinge edge, while both have lock/handle holes on the opposite edge
+                const hasHinges = pName.includes('1') || !pName.includes('2');
+                
+                // Bend / formation lines near left and right edges (e.g., 2% - 4% from edges)
+                const leafBendLeft = Math.min(pw * 0.05, 4.0).toFixed(2);
+                const leafBendRight = (pw - Math.min(pw * 0.05, 4.0)).toFixed(2);
+                const leafBends = `
+                    <line x1="${leafBendLeft}" y1="0" x2="${leafBendLeft}" y2="${ph}" stroke="${color.border}" stroke-width="0.35" stroke-dasharray="2,2" opacity="0.35" />
+                    <line x1="${leafBendRight}" y1="0" x2="${leafBendRight}" y2="${ph}" stroke="${color.border}" stroke-width="0.35" stroke-dasharray="2,2" opacity="0.35" />
+                `;
+
+                // Handle and lock hardware on lock edge (right side)
+                const handleX = pw - Math.min(pw * 0.10, 8.0);
+                const handleY = ph * 0.50;
+                const lockEdgeCutout = `
+                    <circle cx="${handleX.toFixed(2)}" cy="${handleY.toFixed(2)}" r="${Math.min(pw * 0.025, 2.5).toFixed(2)}" fill="${color.border}" opacity="0.55" />
+                    <rect x="${(pw - Math.min(pw * 0.035, 3.0)).toFixed(2)}" y="${(handleY - Math.min(ph * 0.06, 12)).toFixed(2)}" width="${Math.min(pw * 0.035, 3.0).toFixed(2)}" height="${(Math.min(ph * 0.06, 12) * 2).toFixed(2)}" fill="${color.border}" opacity="0.5" rx="0.4" />
+                `;
+
+                // Hinges on the hinge edge (left side) if leaf 1 (which contains hinges)
+                let leafHingesSvg = '';
+                if (hasHinges) {
+                    const lHingesY = [ph * 0.10, ph * 0.22, ph * 0.54, ph * 0.88];
+                    const lhw = Math.min(pw * 0.035, 3.2);
+                    const lhh = Math.min(ph * 0.05, 10.2);
+                    lHingesY.forEach(hy => {
+                        leafHingesSvg += `<rect x="0.5" y="${hy.toFixed(2)}" width="${lhw.toFixed(2)}" height="${lhh.toFixed(2)}" fill="${color.border}" opacity="0.55" rx="0.4" />`;
+                    });
+                }
+
                 realisticPath = `
                     <rect width="${pw}" height="${ph}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />
-                    <circle cx="${pw - Math.min(pw*0.12, 10)}" cy="${ph*0.5}" r="${Math.min(pw*0.04, 3)}" fill="${color.border}" opacity="0.5" />
-                    <rect x="${pw - Math.min(pw*0.05, 4)}" y="${ph*0.44}" width="${Math.min(pw*0.04, 3)}" height="${Math.min(ph*0.12, 24)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                    ${leafBends}
+                    ${lockEdgeCutout}
+                    ${leafHingesSvg}
                 `;
             } else {
                 realisticPath = `<rect width="${pw}" height="${ph}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />`;
