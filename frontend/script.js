@@ -5319,9 +5319,42 @@ window.renderSheetNestingContent = function(tab) {
             const fontSize = Math.max(3, Math.min(piece.width / 5, piece.height / 5, 8));
             const subFontSize = Math.max(2.2, fontSize * 0.7);
 
+            // Realistic contour rendering based on part type
+            let realisticPath = '';
+            const pw = piece.width;
+            const ph = piece.height;
+            const pName = piece.part_name || '';
+
+            if (pName.includes('قائم') && ph > pw) {
+                // Vertical post with top miter notches
+                const notchD = Math.min(pw * 0.35, 12);
+                realisticPath = `
+                    <path d="M 0,${ph} L ${pw},${ph} L ${pw},${notchD} L ${pw*0.75},0 L ${pw*0.25},0 L 0,${notchD} Z" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                    <!-- Visual Hinge / Cutout indicators -->
+                    <rect x="2" y="${ph*0.08}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                    <rect x="2" y="${ph*0.45}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                    <rect x="2" y="${ph*0.82}" width="${Math.min(pw*0.2, 5)}" height="${Math.min(ph*0.06, 12)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                `;
+            } else if (pName.includes('رأس') && ph > pw) {
+                // Vertical oriented header with end miter cutouts
+                const notchD = Math.min(pw * 0.3, 10);
+                realisticPath = `
+                    <path d="M 0,0 L ${pw},0 L ${pw},${notchD} L ${pw*0.75},${notchD*1.5} L ${pw},${notchD*2} L ${pw},${ph-notchD*2} L ${pw*0.75},${ph-notchD*1.5} L ${pw},${ph-notchD} L ${pw},${ph} L 0,${ph} L 0,${ph-notchD} L ${pw*0.25},${ph-notchD*1.5} L 0,${ph-notchD*2} L 0,${notchD*2} L ${pw*0.25},${notchD*1.5} L 0,${notchD} Z" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                `;
+            } else if (pName.includes('درفة') || pName.includes('درفه')) {
+                // Door Leaf with handle & lock indicators
+                realisticPath = `
+                    <rect width="${pw}" height="${ph}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />
+                    <circle cx="${pw - Math.min(pw*0.12, 10)}" cy="${ph*0.5}" r="${Math.min(pw*0.04, 3)}" fill="${color.border}" opacity="0.5" />
+                    <rect x="${pw - Math.min(pw*0.05, 4)}" y="${ph*0.44}" width="${Math.min(pw*0.04, 3)}" height="${Math.min(ph*0.12, 24)}" fill="${color.border}" opacity="0.4" rx="0.5" />
+                `;
+            } else {
+                realisticPath = `<rect width="${pw}" height="${ph}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />`;
+            }
+
             piecesSvg += `
                 <g class="piece-group" transform="translate(${piece.x}, ${piece.y})">
-                    <rect width="${piece.width}" height="${piece.height}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" rx="0.5" />
+                    ${realisticPath}
                     <!-- Label: Door Number -->
                     <text x="${piece.width / 2}" y="${piece.height / 2 - (piece.part_name ? subFontSize * 0.6 : 0)}" font-size="${fontSize}" font-weight="bold" fill="${color.text}" text-anchor="middle" dominant-baseline="central">
                         ${piece.door_number || 'باب'}
