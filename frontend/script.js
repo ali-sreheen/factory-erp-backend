@@ -5326,39 +5326,10 @@ window.renderSheetNestingContent = function(tab) {
             const pName = piece.part_name || '';
 
             if (pName.includes('قائم') && ph > pw) {
-                // Vertical Post (Jamb) with authentic CAD top miter cutouts and bottom floor anchors
                 const notchD = Math.min(pw * 0.16, ph * 0.08, 6.0);
-                const postTopContour = [
-                    [0.0, 0.0], [0.0299, 0.0], [0.0377, 0.0248], [0.1225, 0.5868],
-                    [0.1304, 0.6364], [0.1603, 0.6364], [0.1603, 0.4876], [0.1678, 0.438],
-                    [0.1778, 0.438], [0.1852, 0.4876], [0.1852, 0.6364], [0.2239, 0.6364],
-                    [0.2239, 0.4876], [0.2314, 0.438], [0.2414, 0.438], [0.2488, 0.4876],
-                    [0.2488, 0.6364], [0.2788, 0.6364], [0.2866, 0.6612], [0.3078, 0.8017],
-                    [0.3156, 0.8512], [0.3343, 0.8512], [0.3421, 0.876], [0.3533, 0.9504],
-                    [0.3612, 1.0], [0.3911, 1.0], [0.3911, 0.8512], [0.3986, 0.8017],
-                    [0.4085, 0.8017], [0.416, 0.8512], [0.416, 1.0], [0.7599, 1.0],
-                    [0.7599, 0.8512], [0.7674, 0.8017], [0.7774, 0.8017], [0.7848, 0.8512],
-                    [0.7848, 1.0], [0.8148, 1.0], [0.8226, 0.9504], [0.9623, 0.0248],
-                    [0.9701, 0.0], [1.0, 0.0]
-                ];
+                const isLockPost = pName.includes('قفل') || (!pName.includes('فصالات') && (pIdx % 2 === 1));
 
-                let d = `M 0,${ph} `;
-                postTopContour.forEach(pt => {
-                    d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
-                });
-                d += `L ${pw},${ph} Z`;
-
-                // Hinge cutouts along hinge side (left rabbet, X ~ 12% - 20% of pw)
-                const hx = Math.max(1, pw * 0.12);
-                const hw = Math.min(pw * 0.08, 3.2);
-                const hh = Math.min(ph * 0.05, 10.2);
-                const hPositions = [ph * 0.08, ph * 0.18, ph * 0.53, ph * 0.88];
-                let hingesSvg = '';
-                hPositions.forEach(hy => {
-                    hingesSvg += `<rect x="${hx.toFixed(2)}" y="${hy.toFixed(2)}" width="${hw.toFixed(2)}" height="${hh.toFixed(2)}" fill="${color.border}" opacity="0.5" rx="0.4" />`;
-                });
-
-                // Lock cutout indicators (if opposite jamb) and bend lines
+                // Bend lines along post length
                 const bendX1 = (pw * 0.28).toFixed(2);
                 const bendX2 = (pw * 0.72).toFixed(2);
                 const bendLines = `
@@ -5366,11 +5337,81 @@ window.renderSheetNestingContent = function(tab) {
                     <line x1="${bendX2}" y1="${notchD}" x2="${bendX2}" y2="${ph}" stroke="${color.border}" stroke-width="0.4" stroke-dasharray="2,2" opacity="0.45" />
                 `;
 
-                realisticPath = `
-                    <path d="${d}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
-                    ${bendLines}
-                    ${hingesSvg}
-                `;
+                if (isLockPost) {
+                    // --- قائم القفل (Lock Post) ---
+                    const lockTopContour = [
+                        [0.0, 0.0], [0.0299, 0.0], [0.0377, 0.0248], [0.1774, 0.9504],
+                        [0.1852, 1.0], [0.2152, 1.0], [0.2152, 0.8512], [0.2226, 0.8017],
+                        [0.2326, 0.8017], [0.2401, 0.8512], [0.2401, 1.0], [0.5840, 1.0],
+                        [0.5840, 0.8512], [0.5915, 0.8017], [0.6014, 0.8017], [0.6089, 0.8512],
+                        [0.6089, 1.0], [0.6388, 1.0], [0.6467, 0.9504], [0.6579, 0.876],
+                        [0.6657, 0.8512], [0.6844, 0.8512], [0.6922, 0.8017], [0.7134, 0.6612],
+                        [0.7212, 0.6364], [0.7512, 0.6364], [0.7512, 0.4876], [0.7586, 0.438],
+                        [0.7686, 0.438], [0.7761, 0.4876], [0.7761, 0.6364], [0.8148, 0.6364],
+                        [0.8148, 0.4876], [0.8222, 0.438], [0.8322, 0.438], [0.8397, 0.4876],
+                        [0.8397, 0.6364], [0.8696, 0.6364], [0.8775, 0.5868], [0.9623, 0.0248],
+                        [0.9701, 0.0], [1.0, 0.0]
+                    ];
+
+                    let d = `M 0,${ph} `;
+                    lockTopContour.forEach(pt => {
+                        d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
+                    });
+                    d += `L ${pw},${ph} Z`;
+
+                    // Single prominent lock strike plate cutout (تفريغ فتحة لسان القفل / الكيلون) near center/latch height
+                    const lockX = Math.max(1, pw * 0.76);
+                    const lockW = Math.min(pw * 0.12, 4.2);
+                    const lockH = Math.min(ph * 0.09, 16.0);
+                    const lockY = (ph * 0.48).toFixed(2);
+                    const lockCutout = `
+                        <rect x="${lockX.toFixed(2)}" y="${lockY}" width="${lockW.toFixed(2)}" height="${lockH.toFixed(2)}" fill="${color.border}" opacity="0.6" rx="0.5" />
+                        <rect x="${(lockX + lockW * 0.2).toFixed(2)}" y="${(parseFloat(lockY) + lockH * 0.25).toFixed(2)}" width="${(lockW * 0.6).toFixed(2)}" height="${(lockH * 0.5).toFixed(2)}" fill="${color.text}" opacity="0.8" rx="0.3" />
+                    `;
+
+                    realisticPath = `
+                        <path d="${d}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                        ${bendLines}
+                        ${lockCutout}
+                    `;
+                } else {
+                    // --- قائم الفصالات (Hinge Post) ---
+                    const hingeTopContour = [
+                        [0.0, 0.0], [0.0299, 0.0], [0.0377, 0.0248], [0.1225, 0.5868],
+                        [0.1304, 0.6364], [0.1603, 0.6364], [0.1603, 0.4876], [0.1678, 0.438],
+                        [0.1778, 0.438], [0.1852, 0.4876], [0.1852, 0.6364], [0.2239, 0.6364],
+                        [0.2239, 0.4876], [0.2314, 0.438], [0.2414, 0.438], [0.2488, 0.4876],
+                        [0.2488, 0.6364], [0.2788, 0.6364], [0.2866, 0.6612], [0.3078, 0.8017],
+                        [0.3156, 0.8512], [0.3343, 0.8512], [0.3421, 0.876], [0.3533, 0.9504],
+                        [0.3612, 1.0], [0.3911, 1.0], [0.3911, 0.8512], [0.3986, 0.8017],
+                        [0.4085, 0.8017], [0.416, 0.8512], [0.416, 1.0], [0.7599, 1.0],
+                        [0.7599, 0.8512], [0.7674, 0.8017], [0.7774, 0.8017], [0.7848, 0.8512],
+                        [0.7848, 1.0], [0.8148, 1.0], [0.8226, 0.9504], [0.9623, 0.0248],
+                        [0.9701, 0.0], [1.0, 0.0]
+                    ];
+
+                    let d = `M 0,${ph} `;
+                    hingeTopContour.forEach(pt => {
+                        d += `L ${(pt[0] * pw).toFixed(2)},${(pt[1] * notchD).toFixed(2)} `;
+                    });
+                    d += `L ${pw},${ph} Z`;
+
+                    // 4 hinge cutouts along hinge rabbet (X ~ 12% - 20% of pw)
+                    const hx = Math.max(1, pw * 0.12);
+                    const hw = Math.min(pw * 0.08, 3.2);
+                    const hh = Math.min(ph * 0.05, 10.2);
+                    const hPositions = [ph * 0.08, ph * 0.18, ph * 0.53, ph * 0.88];
+                    let hingesSvg = '';
+                    hPositions.forEach(hy => {
+                        hingesSvg += `<rect x="${hx.toFixed(2)}" y="${hy.toFixed(2)}" width="${hw.toFixed(2)}" height="${hh.toFixed(2)}" fill="${color.border}" opacity="0.5" rx="0.4" />`;
+                    });
+
+                    realisticPath = `
+                        <path d="${d}" fill="${color.bg}" stroke="${color.border}" stroke-width="0.7" />
+                        ${bendLines}
+                        ${hingesSvg}
+                    `;
+                }
             } else if (pName.includes('رأس') && ph > pw) {
                 // Header (رأس) with accurate CAD end cutouts on BOTH ends (top & bottom)
                 const notchD = Math.min(pw * 0.16, ph * 0.08, 6.0);

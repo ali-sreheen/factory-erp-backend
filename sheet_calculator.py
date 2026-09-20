@@ -52,8 +52,8 @@ def calculate_sheets(db, project_details, manufacturing_type: str = ""):
             w_halaq = depth + architrave + architrave_2 + 5.9
             if w_halaq > 0:
                 if height > 0:
-                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم"})
-                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم"})
+                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم فصالات"})
+                    rects_1_5.append({"w": w_halaq, "h": height + under_tile, "door_number": door_no, "part_name": "قائم قفل"})
                 if width > 0:
                     rects_1_5.append({"w": w_halaq, "h": width, "door_number": door_no, "part_name": "رأس"})
 
