@@ -4650,61 +4650,60 @@
     </div>
 
     <!-- Clean White Door & Profile Studio Modal (معاينة وتعديل شكل الباب والمقطع) -->
-    <div id="profileEditorModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-6xl w-full max-h-[95vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-slate-800">
+    <div id="profileEditorModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-1 sm:p-4 animate-fade-in">
+        <div class="bg-white rounded-2xl sm:rounded-3xl max-w-6xl w-full h-[96vh] sm:h-auto max-h-[98vh] sm:max-h-[95vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-slate-800">
             <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white flex-wrap gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="px-3 py-2 sm:px-6 sm:py-3.5 border-b border-slate-200 flex justify-between items-center bg-white flex-wrap gap-2">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-50 text-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-xs">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v10m8-10v10M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" />
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-1.5 sm:gap-2">
                             <span id="lblStudioTitle">معاينة وتعديل شكل الباب</span>
-                            <span id="lblProfileDoorTag" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">باب</span>
+                            <span id="lblProfileDoorTag" class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">باب</span>
                         </h3>
-                        <p id="lblProfileSubtitle" class="text-xs text-slate-500 mt-0.5">انقر مباشرة على أبعاد العرض أو الطول في الرسم أو استخدم أدوات التحكم لتعديل المقاسات مباشرة</p>
+                        <p id="lblProfileSubtitle" class="text-xs text-slate-500 mt-0.5 hidden sm:block">انقر مباشرة على أبعاد العرض أو الطول في الرسم للتعديل المباشر</p>
                     </div>
                 </div>
 
                 <!-- Studio Switcher Tabs (شكل الباب / مقطع الحلق) -->
-                <div class="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner">
-                    <button type="button" id="btnStudioTabElevation" onclick="switchStudioTab('elevation')" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all bg-white text-indigo-700 shadow-sm flex items-center gap-1.5 cursor-pointer">
+                <div class="flex items-center p-1 bg-slate-100 rounded-xl sm:rounded-2xl border border-slate-200 shadow-inner">
+                    <button type="button" id="btnStudioTabElevation" onclick="switchStudioTab('elevation')" class="px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-bold transition-all bg-white text-indigo-700 shadow-sm flex items-center gap-1.5 cursor-pointer">
                         <span class="text-sm">🚪</span>
                         <span>واجهة وشكل الباب</span>
                     </button>
-                    <button type="button" id="btnStudioTabProfile" onclick="switchStudioTab('profile')" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer">
+                    <button type="button" id="btnStudioTabProfile" onclick="switchStudioTab('profile')" class="px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer">
                         <span class="text-sm">📐</span>
                         <span>مقطع الحلق (Profile)</span>
                     </button>
                 </div>
 
                 <!-- Right Corner Badges -->
-                <div class="flex items-center gap-3">
-                    <!-- Elevation Dimensions Badge -->
-                    <div id="badgeDoorElevationStats" class="bg-slate-50 border-2 border-indigo-500/40 px-3.5 py-1.5 rounded-xl shadow-xs text-right">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Elevation Dimensions Badge (Desktop only) -->
+                    <div id="badgeDoorElevationStats" class="hidden sm:block bg-slate-50 border-2 border-indigo-500/40 px-3 py-1 rounded-xl shadow-xs text-right">
                         <span class="text-[10px] font-bold text-slate-500 block">المقاس الكلي (عرض × طول)</span>
                         <div class="flex items-baseline justify-end gap-1">
-                            <span id="lblDoorStatsWidth" class="text-xl font-black text-indigo-700 font-mono tracking-tight">100</span>
+                            <span id="lblDoorStatsWidth" class="text-lg font-black text-indigo-700 font-mono tracking-tight">100</span>
                             <span class="text-xs font-bold text-slate-400">×</span>
-                            <span id="lblDoorStatsHeight" class="text-xl font-black text-indigo-700 font-mono tracking-tight">220</span>
+                            <span id="lblDoorStatsHeight" class="text-lg font-black text-indigo-700 font-mono tracking-tight">220</span>
                             <span class="text-xs font-bold text-indigo-600 mr-1">سم</span>
                         </div>
                     </div>
 
                     <!-- Profile Unfolded Width Badge (Shown on profile tab) -->
-                    <div id="badgeProfileUnfolded" class="hidden bg-slate-50 border-2 border-emerald-500/50 px-3.5 py-1.5 rounded-xl shadow-xs text-right">
-                        <span class="text-[10px] font-bold text-slate-500 block">عرض الإفراد الكلي للصاج (Flat Width)</span>
+                    <div id="badgeProfileUnfolded" class="hidden bg-slate-50 border-2 border-emerald-500/50 px-3 py-1 rounded-xl shadow-xs text-right">
+                        <span class="text-[10px] font-bold text-slate-500 block">عرض الإفراد الكلي</span>
                         <div class="flex items-baseline justify-end gap-1">
-                            <span id="lblTotalUnfoldedWidth" class="text-xl font-black text-emerald-700 font-mono tracking-tight">315.9</span>
+                            <span id="lblTotalUnfoldedWidth" class="text-lg font-black text-emerald-700 font-mono tracking-tight">315.9</span>
                             <span class="text-xs font-bold text-emerald-600">مم</span>
-                            <span id="lblTotalUnfoldedCm" class="text-xs text-slate-400 font-semibold mr-1.5">(31.6 سم)</span>
                         </div>
                     </div>
 
-                    <button onclick="closeInteractiveProfileEditor()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <button onclick="closeInteractiveProfileEditor()" class="text-slate-400 hover:text-slate-700 p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -4712,49 +4711,23 @@
 
             <!-- Viewport 1: Door Elevation Interactive Container -->
             <div id="doorElevationContainer" class="flex-1 flex flex-col overflow-hidden bg-slate-100">
-                <!-- Interactive Controls Bar -->
-                <div id="doorElevationControls" class="w-full bg-white px-6 py-2.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3 text-xs font-bold shadow-xs">
+                <!-- Interactive Controls Bar (Direction only, minimal) -->
+                <div id="doorElevationControls" class="w-full bg-white px-3 sm:px-6 py-1.5 sm:py-2 border-b border-slate-200 flex items-center justify-center text-xs font-bold shadow-xs">
                     <!-- Quick Direction Toggle -->
                     <div class="flex items-center gap-2">
-                        <span class="text-slate-600 flex items-center gap-1 font-bold">
-                            <svg class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            <span>اتجاه فتح الباب:</span>
-                        </span>
+                        <span class="text-slate-600 font-bold">اتجاه فتح الباب:</span>
                         <div class="flex border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
-                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">يمين RH</button>
-                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">يسار LH</button>
-                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">دبل Double</button>
+                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">يمين RH</button>
+                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">يسار LH</button>
+                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">دبل Double</button>
                         </div>
-                    </div>
-
-                    <!-- Direct Edit Instruction Badge -->
-                    <div class="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200/80 rounded-xl text-indigo-800">
-                        <span class="text-base">📐</span>
-                        <span class="text-xs font-bold">انقر مباشرة على رقم العرض أو الارتفاع في الرسم لتعديل القياس</span>
                     </div>
                 </div>
 
                 <!-- SVG Viewport for Door Elevation -->
-                <div class="p-4 sm:p-6 overflow-hidden flex-1 flex flex-col items-center justify-center">
-                    <div id="doorElevationSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[460px] bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-2xl relative select-none overflow-hidden">
+                <div class="p-1 sm:p-3 overflow-hidden flex-1 flex flex-col items-center justify-center">
+                    <div id="doorElevationSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[350px] sm:min-h-[460px] h-full bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-xl sm:rounded-2xl relative select-none overflow-hidden">
                         <!-- Dynamic SVG rendered by renderDoorElevationSvg -->
-                    </div>
-                </div>
-
-                <!-- Bottom Stats Bar for Door Elevation -->
-                <div id="doorElevationStats" class="w-full bg-white px-6 py-2.5 border-t border-slate-200 text-xs flex justify-between items-center text-slate-600 font-medium flex-wrap gap-2">
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <span>درفة 1 (عرض × طول): <strong id="lblStatsLeaf1" class="text-indigo-700 font-bold">91.3 × 215.0 سم</strong></span>
-                        <span id="boxStatsLeaf2" class="hidden">درفة 2 (عرض × طول): <strong id="lblStatsLeaf2" class="text-indigo-700 font-bold">-</strong></span>
-                        <span>نوع الباب: <strong id="lblStatsDoorType" class="text-slate-800 font-bold">Single leaf metal</strong></span>
-                        <span>كشفة (A1): <strong id="lblStatsArchitrave" class="text-slate-800 font-bold">4.0 سم</strong></span>
-                        <span>محور ثقب اليد: <strong id="lblStatsHandleHole" class="text-emerald-700 font-bold">1050 ملم (1043 ملم عن قاع الدرفة)</strong></span>
-                        <span>فراغ الحلق/الأرض: <strong class="text-amber-700 font-bold">أعلى 3 ملم | أسفل 7 ملم</strong></span>
-                        <span>القفل: <strong id="lblStatsLock" class="text-slate-800 font-bold">Mortise</strong></span>
-                        <span>الفصالات: <strong id="lblStatsHinges" class="text-slate-800 font-bold">4 فصالات</strong></span>
-                    </div>
-                    <div class="text-[11px] text-slate-400">
-                        • انقر مباشرة على الأرقام في خطوط الأبعاد للتعديل المباشر
                     </div>
                 </div>
             </div>
@@ -4803,19 +4776,19 @@
             </div>
 
             <!-- Modal Footer -->
-            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm flex-wrap gap-3">
+            <div class="px-3 py-2.5 sm:px-6 sm:py-3.5 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm flex-wrap gap-2">
                 <div class="flex items-center gap-2">
-                    <button id="btnProfileReset" type="button" onclick="resetStudioCurrentTab()" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer shadow-xs">
+                    <button id="btnProfileReset" type="button" onclick="resetStudioCurrentTab()" class="hidden sm:inline-block px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer shadow-xs">
                         إعادة ضبط القياس الافتراضي
                     </button>
-                    <span id="lblProfileFooterNote" class="text-xs text-slate-400 mr-2">• المقاسات المعروضة بالسنتيمتر والملمتر</span>
+                    <span id="lblProfileFooterNote" class="hidden sm:inline-block text-xs text-slate-400 mr-2">• المقاسات المعروضة بالسنتيمتر</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="btnProfileApply" type="button" onclick="applyStudioChangesToSource()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow cursor-pointer">
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button id="btnProfileApply" type="button" onclick="applyStudioChangesToSource()" class="flex-1 sm:flex-none px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow cursor-pointer text-center">
                         حفظ واعتماد التعديلات
                     </button>
                     <button id="btnProfileCancel" type="button" onclick="closeInteractiveProfileEditor()" class="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl transition cursor-pointer">
-                        إلغاء
+                        إغلاق
                     </button>
                 </div>
             </div>
