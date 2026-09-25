@@ -136,6 +136,7 @@ class Project(Base):
     step_installation = Column(String, default="لم يتم البدء")
     expected_completion_date = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    signed_handover_url = Column(String, nullable=True)
 
     executive_manager = relationship("User", foreign_keys=[executive_manager_id], back_populates="managed_projects")
     details = relationship("ProjectDetail", back_populates="project", cascade="all, delete-orphan")
@@ -143,6 +144,8 @@ class Project(Base):
     tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan")
     transactions = relationship("Transaction", back_populates="project")
     reservations = relationship("Reservation", back_populates="project")
+    change_orders = relationship("ProjectChangeOrder", back_populates="project", cascade="all, delete-orphan")
+    punch_list = relationship("ProjectPunchListItem", back_populates="project", cascade="all, delete-orphan")
 
 class ProjectDetail(Base):
     __tablename__ = "project_details"
@@ -410,3 +413,73 @@ class FireDoorRule(Base):
     door_type = Column(String, nullable=True, default="الجميع")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    type = Column(String, default="info") # project_created, project_status_changed, etc.
+    reference_id = Column(Integer, nullable=True) # e.g. project_id
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user_notifications = relationship("UserNotification", back_populates="notification", cascade="all, delete-orphan")
+
+
+class UserNotification(Base):
+    __tablename__ = "user_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    notification_id = Column(Integer, ForeignKey("notifications.id"), nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    read_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User")
+    notification = relationship("Notification", back_populates="user_notifications")
+
+
+class UserNotificationSetting(Base):
+    __tablename__ = "user_notification_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    setting_key = Column(String, nullable=False, index=True)
+    is_enabled = Column(Boolean, default=True, nullable=False)
+
+    user = relationship("User")
+
+
+class ProjectChangeOrder(Base):
+    __tablename__ = "project_change_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    order_number = Column(String, nullable=False) # e.g. CO-01
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    requested_by = Column(String, nullable=True) # e.g. مهندس الموقع / المقاول
+    cost_impact = Column(String, nullable=True, default="بدون تكلفة")
+    time_impact = Column(String, nullable=True, default="بدون تأخير")
+    status = Column(String, default="معتمد") # معتمد, قيد المراجعة, مرفوض
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    project = relationship("Project", back_populates="change_orders")
+
+
+class ProjectPunchListItem(Base):
+    __tablename__ = "project_punch_list"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    door_number = Column(String, nullable=True)
+    description = Column(String, nullable=False)
+    priority = Column(String, default="عادي") # عادي, عاجل
+    status = Column(String, default="قيد المعالجة") # قيد المعالجة, تم الإصلاح, معتمد
+    photo_url = Column(String, nullable=True)
+    assigned_to = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+    project = relationship("Project", back_populates="punch_list")

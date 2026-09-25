@@ -322,6 +322,7 @@ class ProjectBase(BaseModel):
     step_accessories: Optional[str] = "لم يتم البدء"
     step_installation: Optional[str] = "لم يتم البدء"
     expected_completion_date: Optional[datetime] = None
+    signed_handover_url: Optional[str] = None
 
 class ProjectCreate(ProjectBase):
     pass
@@ -350,12 +351,75 @@ class ProjectUpdate(BaseModel):
     step_accessories: Optional[str] = None
     step_installation: Optional[str] = None
     expected_completion_date: Optional[datetime] = None
+    signed_handover_url: Optional[str] = None
+
+# Project Change Orders
+class ProjectChangeOrderBase(BaseModel):
+    order_number: str
+    title: str
+    description: str
+    requested_by: Optional[str] = None
+    cost_impact: Optional[str] = "بدون تكلفة"
+    time_impact: Optional[str] = "بدون تأخير"
+    status: Optional[str] = "معتمد"
+
+class ProjectChangeOrderCreate(ProjectChangeOrderBase):
+    pass
+
+class ProjectChangeOrderUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    requested_by: Optional[str] = None
+    cost_impact: Optional[str] = None
+    time_impact: Optional[str] = None
+    status: Optional[str] = None
+
+class ProjectChangeOrderResponse(ProjectChangeOrderBase):
+    id: int
+    project_id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Project Punch List
+class ProjectPunchListItemBase(BaseModel):
+    door_number: Optional[str] = None
+    description: str
+    priority: Optional[str] = "عادي"
+    status: Optional[str] = "قيد المعالجة"
+    photo_url: Optional[str] = None
+    assigned_to: Optional[str] = None
+
+class ProjectPunchListItemCreate(ProjectPunchListItemBase):
+    pass
+
+class ProjectPunchListItemUpdate(BaseModel):
+    door_number: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    photo_url: Optional[str] = None
+    assigned_to: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+
+class ProjectPunchListItemResponse(ProjectPunchListItemBase):
+    id: int
+    project_id: int
+    created_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 class ProjectResponse(ProjectBase):
     id: int
+    signed_handover_url: Optional[str] = None
     details: List[ProjectDetailResponse] = []
     attachments: List[ProjectAttachmentResponse] = []
     tasks: List[ProjectTaskResponse] = []
+    change_orders: List[ProjectChangeOrderResponse] = []
+    punch_list: List[ProjectPunchListItemResponse] = []
 
     class Config:
         from_attributes = True
@@ -667,6 +731,42 @@ class FireDoorRuleResponse(FireDoorRuleBase):
 
     class Config:
         from_attributes = True
+
+
+# --- NOTIFICATION SCHEMAS ---
+
+class NotificationResponse(BaseModel):
+    id: int
+    notification_id: int
+    title: str
+    message: str
+    type: str
+    reference_id: Optional[int] = None
+    is_read: bool
+    created_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UnreadCountResponse(BaseModel):
+    unread_count: int
+
+
+class NotificationSettingItem(BaseModel):
+    key: str
+    label: str
+    group: str
+    is_enabled: bool
+
+
+class NotificationSettingsResponse(BaseModel):
+    settings: List[NotificationSettingItem]
+
+
+class NotificationSettingsUpdate(BaseModel):
+    settings: dict[str, bool]
 
 
 UserResponse.update_forward_refs()

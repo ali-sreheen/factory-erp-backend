@@ -117,9 +117,413 @@ function closeAnyOpenModal() {
     return false;
 }
 
-// ----------------- USER MENU DROPDOWN -----------------
+// ----------------- USER MENU & NOTIFICATIONS DROPDOWN -----------------
+
+let notificationPollingInterval = null;
+let lastUnreadCount = null;
+let isFirstNotificationCheck = true;
+
+function playNotificationSound() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {
+        // AudioContext might be restricted until user gesture, ignore safely
+    }
+}
+
+function toggleNotificationsMenu(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('notificationsDropdown');
+    if (!dropdown) return;
+    const isHidden = dropdown.classList.contains('hidden');
+    
+    // Close user menu if open
+    const userMenu = document.getElementById('userMenuDropdown');
+    if (userMenu && !userMenu.classList.contains('hidden')) {
+        userMenu.classList.add('hidden');
+    }
+    
+    if (isHidden) {
+        dropdown.classList.remove('hidden');
+        loadNotifications();
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function formatNotificationTime(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diffSec = Math.floor((now - d) / 1000);
+        if (diffSec < 60) return 'الآن';
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `منذ ${diffMin} د`;
+        const diffHours = Math.floor(diffMin / 60);
+        if (diffHours < 24) return `منذ ${diffHours} س`;
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays < 7) return `منذ ${diffDays} يوم`;
+        return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+async function fetchUnreadNotificationsCount() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await authFetch(`${API_HOST}/api/notifications/unread-count`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = data.unread_count || 0;
+        
+        const badge = document.getElementById('unreadNotificationsBadge');
+        const headerCount = document.getElementById('notificationsHeaderCount');
+        
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+        if (headerCount) {
+            headerCount.textContent = count;
+        }
+
+        // If count increased and not first check, alert user!
+        if (!isFirstNotificationCheck && lastUnreadCount !== null && count > lastUnreadCount) {
+            playNotificationSound();
+            try {
+                const listRes = await authFetch(`${API_HOST}/api/notifications/?limit=1`);
+                if (listRes.ok) {
+                    const items = await listRes.json();
+                    if (items && items.length > 0) {
+                        showToast(`🔔 ${items[0].title}: ${items[0].message}`, 'bg-indigo-600', '🔔');
+                    }
+                }
+            } catch (err) {
+                showToast(`🔔 لديك ${count - lastUnreadCount} إشعار جديد`, 'bg-indigo-600', '🔔');
+            }
+        }
+        
+        lastUnreadCount = count;
+        isFirstNotificationCheck = false;
+    } catch (e) {
+        console.error('Failed to fetch unread count', e);
+    }
+}
+
+async function loadNotifications() {
+    const listEl = document.getElementById('notificationsList');
+    if (!listEl) return;
+    
+    try {
+        const res = await authFetch(`${API_HOST}/api/notifications/?limit=30`);
+        if (!res.ok) throw new Error('فشل جلب الإشعارات');
+        const items = await res.json();
+        
+        if (!items || items.length === 0) {
+            listEl.innerHTML = `
+                <div class="p-8 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+                    <svg class="w-10 h-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    <p class="text-xs font-semibold">لا توجد إشعارات حتى الآن</p>
+                </div>
+            `;
+            return;
+        }
+        
+        listEl.innerHTML = items.map(n => {
+            const isUnread = !n.is_read;
+            const timeStr = formatNotificationTime(n.created_at);
+            
+            // Icon & colors based on type
+            let iconSvg = '';
+            let iconBg = 'bg-indigo-100 text-indigo-600';
+            if (n.type === 'project_created') {
+                iconBg = 'bg-emerald-100 text-emerald-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>`;
+            } else if (n.type === 'project_status_changed') {
+                iconBg = 'bg-amber-100 text-amber-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`;
+            } else if (n.type && n.type.startsWith('inventory_add')) {
+                iconBg = 'bg-teal-100 text-teal-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>`;
+            } else if (n.type && n.type.startsWith('inventory_sub')) {
+                iconBg = 'bg-rose-100 text-rose-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>`;
+            } else if (n.type === 'low_stock_alert') {
+                iconBg = 'bg-red-100 text-red-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
+            } else if (n.type && n.type.startsWith('purchase_request')) {
+                iconBg = 'bg-blue-100 text-blue-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>`;
+            } else if (n.type && n.type.startsWith('service_job')) {
+                iconBg = 'bg-purple-100 text-purple-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`;
+            } else if (n.type && n.type.startsWith('hr_request')) {
+                iconBg = 'bg-cyan-100 text-cyan-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`;
+            } else {
+                iconBg = 'bg-indigo-100 text-indigo-600';
+                iconSvg = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+            }
+            
+            return `
+                <div onclick="handleNotificationClick(${n.id}, '${n.type || 'info'}', ${n.reference_id || 'null'})" 
+                     class="p-3.5 flex items-start gap-3 hover:bg-slate-50 transition cursor-pointer ${isUnread ? 'bg-indigo-50/50' : 'bg-white'}">
+                    <div class="w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        ${iconSvg}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-1 mb-1">
+                            <span class="text-xs font-bold text-slate-800 truncate">${n.title}</span>
+                            <span class="text-[10px] text-slate-400 shrink-0">${timeStr}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed break-words">${n.message}</p>
+                    </div>
+                    ${isUnread ? '<span class="w-2 h-2 rounded-full bg-indigo-600 shrink-0 mt-2"></span>' : ''}
+                </div>
+            `;
+        }).join('');
+        
+    } catch (e) {
+        listEl.innerHTML = `
+            <div class="p-6 text-center text-xs text-rose-500">
+                ${e.message || 'حدث خطأ أثناء تحميل الإشعارات'}
+            </div>
+        `;
+    }
+}
+
+async function handleNotificationClick(userNotifId, notifType, referenceId) {
+    try {
+        await authFetch(`${API_HOST}/api/notifications/${userNotifId}/read`, { method: 'PUT' });
+        fetchUnreadNotificationsCount();
+    } catch (e) {
+        console.error('Failed to mark notification read', e);
+    }
+    
+    // Close dropdown
+    const dropdown = document.getElementById('notificationsDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    
+    // Navigation based on notification type and reference
+    if (referenceId && (notifType === 'project_created' || notifType === 'project_status_changed' || String(notifType).startsWith('project'))) {
+        try {
+            if (typeof viewProjectDetails === 'function') {
+                viewProjectDetails(referenceId);
+            }
+        } catch (err) {
+            console.error('Failed to open project from notification', err);
+        }
+    }
+}
+
+async function markAllNotificationsAsRead(event) {
+    if (event) event.stopPropagation();
+    try {
+        const res = await authFetch(`${API_HOST}/api/notifications/mark-all-read`, { method: 'POST' });
+        if (res.ok) {
+            showToast('تم تحديد جميع الإشعارات كمقروءة', 'bg-indigo-600', '✓');
+            fetchUnreadNotificationsCount();
+            loadNotifications();
+        }
+    } catch (e) {
+        showToast('فشل تحديد الإشعارات كمقروءة', 'bg-rose-500', '✗');
+    }
+}
+
+async function openNotificationSettingsModal(event) {
+    if (event) event.stopPropagation();
+    // Close notifications dropdown
+    const dropdown = document.getElementById('notificationsDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+
+    const modal = document.getElementById('notificationSettingsModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    const listEl = document.getElementById('notificationSettingsList');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="text-center py-8 text-xs text-slate-400">جاري تحميل الإعدادات...</div>';
+
+    try {
+        const res = await authFetch(`${API_HOST}/api/notifications/settings`);
+        if (!res.ok) throw new Error('فشل تحميل تفضيلات الإشعارات');
+        const data = await res.json();
+        const settings = data.settings || [];
+
+        // Group settings by category
+        const groups = {};
+        settings.forEach(s => {
+            const grp = s.group || 'أخرى';
+            if (!groups[grp]) groups[grp] = [];
+            groups[grp].push(s);
+        });
+
+        // Category badges & icons
+        const groupMeta = {
+            'المستودعات والمخازن': { icon: '📦', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+            'المشاريع': { icon: '🏗️', color: 'text-blue-700 bg-blue-50 border-blue-200' },
+            'المشتريات': { icon: '🛒', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+            'خدمات التشغيل': { icon: '⚙️', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+            'الموارد البشرية': { icon: '👥', color: 'text-purple-700 bg-purple-50 border-purple-200' }
+        };
+
+        let html = '';
+        for (const [grpName, items] of Object.entries(groups)) {
+            const meta = groupMeta[grpName] || { icon: '🔔', color: 'text-slate-700 bg-slate-50 border-slate-200' };
+            html += `
+                <div class="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-3.5 shadow-xs">
+                    <div class="flex items-center gap-2 mb-2.5 pb-2 border-b border-slate-200/60">
+                        <span class="text-sm">${meta.icon}</span>
+                        <span class="text-xs font-bold text-slate-800">${grpName}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full border ${meta.color} mr-auto font-medium">${items.length} خيارات</span>
+                    </div>
+                    <div class="space-y-2">
+            `;
+
+            items.forEach(item => {
+                html += `
+                    <label class="flex items-center justify-between p-2.5 rounded-xl bg-white hover:bg-slate-100/70 border border-slate-200/60 transition cursor-pointer select-none">
+                        <span class="text-xs font-medium text-slate-700">${item.label}</span>
+                        <div class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" 
+                                   id="notif_pref_${item.key}" 
+                                   data-setting-key="${item.key}" 
+                                   class="notif-pref-toggle sr-only peer" 
+                                   ${item.is_enabled ? 'checked' : ''}>
+                            <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </div>
+                    </label>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+
+        listEl.innerHTML = html;
+    } catch (e) {
+        console.error('Failed to load notification settings', e);
+        listEl.innerHTML = `<div class="text-center py-6 text-xs text-rose-500 font-semibold">${e.message || 'تعذر تحميل الإعدادات'}</div>`;
+    }
+}
+
+function closeNotificationSettingsModal() {
+    const modal = document.getElementById('notificationSettingsModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function setAllNotificationSettings(enableBoolean) {
+    const toggles = document.querySelectorAll('.notif-pref-toggle');
+    toggles.forEach(t => {
+        t.checked = !!enableBoolean;
+    });
+}
+
+async function saveNotificationSettings() {
+    const btn = document.getElementById('btnSaveNotificationSettings');
+    const toggles = document.querySelectorAll('.notif-pref-toggle');
+    if (!toggles || toggles.length === 0) {
+        closeNotificationSettingsModal();
+        return;
+    }
+
+    const payload = {};
+    toggles.forEach(t => {
+        const key = t.getAttribute('data-setting-key');
+        if (key) {
+            payload[key] = t.checked;
+        }
+    });
+
+    let origHtml = '';
+    if (btn) {
+        origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span>جاري الحفظ...</span>';
+    }
+
+    try {
+        const res = await authFetch(`${API_HOST}/api/notifications/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: payload })
+        });
+        if (!res.ok) throw new Error('فشل حفظ الإعدادات');
+        showToast('تم حفظ إعدادات وتفضيلات الإشعارات بنجاح', 'bg-emerald-600', '✓');
+        closeNotificationSettingsModal();
+    } catch (e) {
+        console.error('Failed to save notification settings', e);
+        showToast('فشل حفظ الإعدادات: ' + (e.message || 'خطأ غير متوقع'), 'bg-rose-600', '✗');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+}
+
+function startNotificationPolling() {
+    stopNotificationPolling();
+    isFirstNotificationCheck = true;
+    fetchUnreadNotificationsCount();
+    notificationPollingInterval = setInterval(() => {
+        fetchUnreadNotificationsCount();
+    }, 20000);
+}
+
+function stopNotificationPolling() {
+    if (notificationPollingInterval) {
+        clearInterval(notificationPollingInterval);
+        notificationPollingInterval = null;
+    }
+}
+
+// Click outside listener for notifications
+document.addEventListener('click', function(e) {
+    const notifContainer = document.getElementById('notificationsDropdownContainer');
+    const notifDropdown = document.getElementById('notificationsDropdown');
+    if (notifContainer && notifDropdown && !notifContainer.contains(e.target)) {
+        notifDropdown.classList.add('hidden');
+    }
+});
+
+// ESC key listener to close notification modal if open
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('notificationSettingsModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeNotificationSettingsModal();
+        }
+    }
+});
 
 function toggleUserMenu() {
+    const notifDropdown = document.getElementById('notificationsDropdown');
+    if (notifDropdown && !notifDropdown.classList.contains('hidden')) {
+        notifDropdown.classList.add('hidden');
+    }
     userMenuDropdown.classList.toggle('hidden');
 }
 
@@ -226,6 +630,7 @@ async function showAppView(username) {
 
     loadProjectOptions();
     loadSheetSizes();
+    startNotificationPolling();
     if (!history.state) {
         history.replaceState({ view: 'moduleSelector', params: {} }, '', '#/moduleSelector');
     }
@@ -250,7 +655,7 @@ function setupAuthForms() {
     // Login
     loginForm.onsubmit = async (e) => {
         e.preventDefault();
-        const username = document.getElementById('loginUsername').value;
+        const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value;
         
         const formData = new URLSearchParams();
@@ -265,15 +670,14 @@ function setupAuthForms() {
             });
             
             if (!response.ok) {
-                if (response.status === 403) {
-                    try {
-                        const errData = await response.json();
-                        throw new Error(errData.detail || 'الحساب معلق وبانتظار موافقة الإدارة');
-                    } catch (e) {
-                        throw new Error(e.message || 'الحساب معلق وبانتظار موافقة الإدارة');
+                let errorMsg = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+                try {
+                    const errData = await response.json();
+                    if (errData && errData.detail) {
+                        errorMsg = errData.detail;
                     }
-                }
-                throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+                } catch (e) {}
+                throw new Error(errorMsg);
             }
             
             const data = await response.json();
@@ -316,6 +720,7 @@ function setupAuthForms() {
 }
 
 function handleLogout() {
+    stopNotificationPolling();
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     showToast('تم تسجيل الخروج بنجاح', 'bg-slate-700', '✓');
@@ -2576,40 +2981,51 @@ window.switchProjectsTab = function(tabName) {
     
     const projectsTableContainer = document.getElementById('projectsTableContainer');
     const projectContractorsTableContainer = document.getElementById('projectContractorsTableContainer');
+    const projectsGanttContainer = document.getElementById('projectsGanttContainer');
     const projectActionButtons = document.getElementById('projectActionButtons');
     const lblProjectsMainAction = document.getElementById('lblProjectsMainAction');
     const tabProjectsTable = document.getElementById('tabProjectsTable');
     const tabContractorsList = document.getElementById('tabContractorsList');
+    const tabProjectsGantt = document.getElementById('tabProjectsGantt');
     const subTitleEl = document.getElementById('projectsViewSubTitle');
+
+    const activeTabClass = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
+    const inactiveTabClass = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
+    
+    if (tabProjectsTable) tabProjectsTable.className = inactiveTabClass;
+    if (tabContractorsList) tabContractorsList.className = inactiveTabClass;
+    if (tabProjectsGantt) tabProjectsGantt.className = inactiveTabClass;
     
     if (tabName === 'contractors') {
         if (projectsTableContainer) projectsTableContainer.classList.add('hidden');
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.remove('hidden');
+        if (projectsGanttContainer) projectsGanttContainer.classList.add('hidden');
         if (projectActionButtons) projectActionButtons.classList.add('hidden');
         if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مقاول جديد';
         if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المقاولين المسجلين في النظام.';
-        
-        if (tabContractorsList) {
-            tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
-        }
-        if (tabProjectsTable) {
-            tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
-        }
+        if (tabContractorsList) tabContractorsList.className = activeTabClass;
         
         loadContractors();
+    } else if (tabName === 'gantt') {
+        if (projectsTableContainer) projectsTableContainer.classList.add('hidden');
+        if (projectContractorsTableContainer) projectContractorsTableContainer.classList.add('hidden');
+        if (projectsGanttContainer) projectsGanttContainer.classList.remove('hidden');
+        if (projectActionButtons) projectActionButtons.classList.remove('hidden');
+        if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مشروع جديد';
+        if (subTitleEl) subTitleEl.textContent = 'مخطط زمني تفاعلي لتتبع مراحل تصنيع الأبواب ومواعيد التسليم.';
+        if (tabProjectsGantt) tabProjectsGantt.className = activeTabClass;
+        
+        renderProjectsGantt();
     } else {
         if (projectsTableContainer) projectsTableContainer.classList.remove('hidden');
         if (projectContractorsTableContainer) projectContractorsTableContainer.classList.add('hidden');
+        if (projectsGanttContainer) projectsGanttContainer.classList.add('hidden');
         if (projectActionButtons) projectActionButtons.classList.remove('hidden');
         if (lblProjectsMainAction) lblProjectsMainAction.textContent = 'إضافة مشروع جديد';
         if (subTitleEl) subTitleEl.textContent = 'قائمة بجميع المشاريع المسجلة في النظام.';
+        if (tabProjectsTable) tabProjectsTable.className = activeTabClass;
         
-        if (tabProjectsTable) {
-            tabProjectsTable.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow';
-        }
-        if (tabContractorsList) {
-            tabContractorsList.className = 'px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900';
-        }
+        loadProjects();
     }
 };
 
@@ -3160,6 +3576,79 @@ function toggleWindowInputs(element) {
 }
 window.toggleWindowInputs = toggleWindowInputs;
 
+// Standard Profile Types and Options Builder
+window.buildProfileSelectOptions = function(selectedVal) {
+    const std = [
+        { id: "single rabbit with rubber", label: "single rabbit with rubber" },
+        { id: "single rabbit without rubber", label: "single rabbit without rubber" },
+        { id: "double rabbit with rubber", label: "double rabbit with rubber" },
+        { id: "double rabbit without rubber", label: "double rabbit without rubber" }
+    ];
+    let opts = `<option value="" disabled ${!selectedVal ? 'selected' : ''}>المقطع</option>`;
+    const added = new Set();
+    const norm = (selectedVal || '').trim().toLowerCase();
+
+    std.forEach(p => {
+        added.add(p.id.toLowerCase());
+        let isSel = norm === p.id.toLowerCase();
+        if (!isSel && norm === 'single rabbit' && p.id === 'single rabbit without rubber') isSel = true;
+        if (!isSel && norm === 'double rabbit' && p.id === 'double rabbit without rubber') isSel = true;
+        opts += `<option value="${p.id}" ${isSel ? 'selected' : ''}>${p.id}</option>`;
+    });
+
+    if (Array.isArray(dbProfileOptions)) {
+        dbProfileOptions.forEach(opt => {
+            const optLower = (opt.name || '').trim().toLowerCase();
+            if (!added.has(optLower) && optLower !== 'single rabbit' && optLower !== 'double rabbit') {
+                added.add(optLower);
+                const isSel = norm === optLower;
+                opts += `<option value="${opt.name}" ${isSel ? 'selected' : ''}>${opt.name}</option>`;
+            }
+        });
+    }
+    return opts;
+};
+
+// Automatic Dimension Defaults when Profile Type is changed in Door Row
+window.onDoorRowProfileChange = function(selectEl) {
+    if (!selectEl) return;
+    const tr = selectEl.closest('tr');
+    if (!tr) return;
+    const pType = (selectEl.value || '').toLowerCase();
+    const arch1Input = tr.querySelector('.pd-architrave-input') || tr.querySelector('input[placeholder="الكشفة"]');
+    const arch2Input = tr.querySelector('.pd-architrave-2-input') || tr.querySelector('input[placeholder="الكشفة 2"]');
+    const depthInput = tr.querySelector('input[placeholder="عمق"]') || tr.querySelectorAll('input')[4];
+
+    if (pType.includes('without') || pType.includes('بدون')) {
+        if (pType.includes('double') || pType.includes('مزدوج')) {
+            // Double rabbit without rubber
+            if (arch1Input) arch1Input.value = "4.0";
+            if (arch2Input) arch2Input.value = "4.0";
+            if (depthInput && (!depthInput.value || parseFloat(depthInput.value) <= 0)) depthInput.value = "15.0";
+        } else {
+            // Single rabbit without rubber
+            if (arch1Input) arch1Input.value = "5.5";
+            if (arch2Input) arch2Input.value = "4.0";
+            if (depthInput && (!depthInput.value || parseFloat(depthInput.value) <= 0)) depthInput.value = "15.0";
+        }
+    } else if (pType.includes('double') || pType.includes('مزدوج')) {
+        // Double rabbit with rubber
+        if (arch1Input) arch1Input.value = "5.0";
+        if (arch2Input) arch2Input.value = "5.0";
+        if (depthInput && (!depthInput.value || parseFloat(depthInput.value) <= 0)) depthInput.value = "16.0";
+    } else {
+        // Single rabbit with rubber
+        if (arch1Input) arch1Input.value = "4.0";
+        if (arch2Input) arch2Input.value = "6.2";
+        if (depthInput && (!depthInput.value || parseFloat(depthInput.value) <= 0)) depthInput.value = "15.0";
+    }
+
+    if (typeof autoCalculateLeafSizes === 'function') {
+        const widthInput = tr.querySelector('.pd-width-input');
+        if (widthInput) autoCalculateLeafSizes(widthInput);
+    }
+};
+
 let projectDetailsCount = 0;
 function addProjectDetailRow() {
     projectDetailsCount++;
@@ -3216,19 +3705,7 @@ function addProjectDetailRow() {
         `;
     }
 
-    let profileSelectOpts = `<option value="" disabled ${!currentDefaultProfile ? 'selected' : ''}>المقطع</option>`;
-    dbProfileOptions.forEach(opt => {
-        const isSelected = opt.name === currentDefaultProfile;
-        profileSelectOpts += `<option value="${opt.name}" ${isSelected ? 'selected' : ''}>${opt.name}</option>`;
-    });
-    if (dbProfileOptions.length === 0) {
-        profileSelectOpts += `
-            <option value="single rabbit with rubber" ${currentDefaultProfile === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
-            <option value="double rabbit with rubber" ${currentDefaultProfile === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
-            <option value="single rabbit" ${currentDefaultProfile === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
-            <option value="double rabbit" ${currentDefaultProfile === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
-        `;
-    }
+    let profileSelectOpts = window.buildProfileSelectOptions(currentDefaultProfile);
 
     let doorTypeSelectOpts = `<option value="" disabled ${!currentDefaultDoorType ? 'selected' : ''}>نوع الدرفة</option>`;
     dbDoorTypeOptions.forEach(opt => {
@@ -3291,7 +3768,7 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2">
-            <select class="w-full px-2 py-1 border rounded bg-white text-sm">
+            <select class="pd-profile-type w-full px-2 py-1 border rounded bg-white text-sm" onchange="onDoorRowProfileChange(this)">
                 ${profileSelectOpts}
             </select>
         </td>
@@ -3316,8 +3793,8 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);" value="${currentDefaultArchitrave || ''}"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
+        <td class="p-2"><input type="text" class="pd-architrave-input w-full px-2 py-1 border rounded" placeholder="الكشفة" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);" value="${currentDefaultArchitrave || ''}"></td>
+        <td class="p-2"><input type="text" class="pd-architrave-2-input w-full px-2 py-1 border rounded" placeholder="الكشفة 2" value="${currentDefaultArchitrave ? (parseFloat(currentDefaultArchitrave) + 2.2).toFixed(1) : ''}"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="تحت البلاط" value="${currentDefaultUnderTile || ''}"></td>
         <td class="p-2"><input type="number" step="0.1" class="pd-window-width w-20 px-2 py-1 border rounded text-center bg-slate-100 cursor-not-allowed" placeholder="العرض" disabled></td>
         <td class="p-2"><input type="number" step="0.1" class="pd-window-height w-20 px-2 py-1 border rounded text-center bg-slate-100 cursor-not-allowed" placeholder="الارتفاع" disabled></td>
@@ -3330,6 +3807,18 @@ function addProjectDetailRow() {
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
         <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
+        <td class="p-2 text-center">
+            <div class="flex items-center justify-center gap-1">
+                <button type="button" onclick="openDoorElevationFromWizardRow(this)" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-xs" title="معاينة وتعديل شكل الباب">
+                    <span>🚪</span>
+                    <span>الباب</span>
+                </button>
+                <button type="button" onclick="openDoorProfileFromWizardRow(this)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-slate-200 shadow-xs" title="معاينة وتعديل مقطع الحلق">
+                    <span>📐</span>
+                    <span>المقطع</span>
+                </button>
+            </div>
+        </td>
         <td class="p-2 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-rose-500 hover:text-rose-700 font-bold p-1">&times;</button></td>
     `;
     
@@ -3398,25 +3887,29 @@ function addProjectDetailRow() {
         }
     });
 
-    // Profile select (selects[4])
-    selects[4].addEventListener('change', function() {
-        const isFirstRow = (tr.previousElementSibling === null);
-        if (isFirstRow) {
-            firstRowProfileChangeCount++;
-            if (firstRowProfileChangeCount === 1) {
-                currentDefaultProfile = this.value;
-                const rows = tbody.querySelectorAll('tr');
-                rows.forEach((row, idx) => {
-                    if (idx > 0) {
-                        const rowSelects = row.querySelectorAll('select');
-                        if (rowSelects[4]) {
-                            rowSelects[4].value = currentDefaultProfile;
+    // Profile select
+    const profSel = tr.querySelector('.pd-profile-type') || selects[4];
+    if (profSel) {
+        profSel.addEventListener('change', function() {
+            const isFirstRow = (tr.previousElementSibling === null);
+            if (isFirstRow) {
+                firstRowProfileChangeCount++;
+                if (firstRowProfileChangeCount === 1) {
+                    currentDefaultProfile = this.value;
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach((row, idx) => {
+                        if (idx > 0) {
+                            const targetSel = row.querySelector('.pd-profile-type') || row.querySelectorAll('select')[4];
+                            if (targetSel) {
+                                targetSel.value = currentDefaultProfile;
+                                window.onDoorRowProfileChange(targetSel);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
-        }
-    });
+        });
+    }
 
     // Under Tile input (inputs[9])
     inputs[9].addEventListener('change', function() {
@@ -3550,6 +4043,7 @@ async function loadProjects() {
         const response = await authFetch(PROJECTS_URL + '/');
         if (response.ok) {
             const projects = await response.json();
+            window.allProjectsData = projects;
             projects.forEach(p => {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-slate-50 transition text-sm cursor-pointer';
@@ -3564,6 +4058,14 @@ async function loadProjects() {
                 } else if (p.status === 'completed') {
                     statusBadge = '<span class="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs">منتهي</span>';
                 }
+
+                const risk = calculateProjectDelayRisk(p);
+                let riskBadgeClass = 'bg-slate-50 text-slate-600 border-slate-200';
+                if (risk.level === 'danger') riskBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                else if (risk.level === 'warning') riskBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                else if (risk.level === 'completed') riskBadgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+                else if (risk.level === 'safe') riskBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                const riskBadge = `<span class="px-2.5 py-1 rounded-lg font-bold text-xs border ${riskBadgeClass}">${risk.label}</span>`;
                 
                 tr.innerHTML = `
                     <td class="p-4 font-bold text-slate-800">${p.project_number || '-'}</td>
@@ -3571,6 +4073,7 @@ async function loadProjects() {
                     <td class="p-4 text-slate-500">${p.contractor_name || '-'}</td>
                     <td class="p-4 text-slate-500" dir="ltr">${p.delivery_date ? new Date(p.delivery_date).toLocaleDateString() : '-'}</td>
                     <td class="p-4">${statusBadge}</td>
+                    <td class="p-4">${riskBadge}</td>
                     <td class="p-4 text-center">
                         <button onclick="openProjectTracking(${p.id})" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition font-bold text-xs border border-indigo-200">متابعة</button>
                     </td>
@@ -3578,7 +4081,7 @@ async function loadProjects() {
                 tbody.appendChild(tr);
             });
             if(projects.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">لا يوجد مشاريع مسجلة حالياً.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">لا يوجد مشاريع مسجلة حالياً.</td></tr>`;
             }
         }
     } catch (e) {
@@ -3675,11 +4178,28 @@ async function viewProjectDetails(id, fromHistory = false) {
         const tbody = document.getElementById('pdEngineeringTableBody');
         tbody.innerHTML = '';
         if (p.details && p.details.length > 0) {
-            p.details.forEach(d => {
+            p.details.forEach((d, dIdx) => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-slate-50 transition text-sm';
+                tr.className = 'border-b hover:bg-indigo-50/50 transition text-sm cursor-pointer group';
+                tr.title = 'انقر على الباب لمعاينة رسمة وواجهة الباب التفاعلية';
+                tr.onclick = (e) => {
+                    if (e && e.target && e.target.closest('input, select, textarea, button')) return;
+                    window.openDoorElevationFromProject(dIdx, d);
+                };
                 tr.innerHTML = `
-                    <td class="p-3 font-bold">${d.door_number || '-'}</td>
+                    <td class="p-3 font-bold text-indigo-600 group-hover:text-indigo-900 flex items-center justify-between gap-2 font-mono">
+                        <div class="flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-indigo-400 group-hover:text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <span>${d.door_number || '-'}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="event.stopPropagation(); window.openDoorElevationFromProject(${dIdx});" class="text-[11px] font-sans px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md border border-indigo-200 transition font-bold cursor-pointer flex items-center gap-1 shadow-xs" title="معاينة شكل الباب التفاعلي">🚪 الباب</button>
+                            <button type="button" onclick="event.stopPropagation(); window.openDoorProfileFromProject(${dIdx});" class="text-[11px] font-sans px-2 py-0.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md border border-slate-200 transition font-bold cursor-pointer flex items-center gap-1 shadow-xs" title="معاينة مقطع الحلق">📐 المقطع</button>
+                        </div>
+                    </td>
                     <td class="p-3">${d.quantity !== null && d.quantity !== undefined ? d.quantity : 1}</td>
                     <td class="p-3">${d.width || '-'}</td>
                     <td class="p-3">${d.height || '-'}</td>
@@ -3708,7 +4228,7 @@ async function viewProjectDetails(id, fromHistory = false) {
                 tbody.appendChild(tr);
             });
         } else {
-            tbody.innerHTML = '<tr><td colspan="20" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="25" class="p-4 text-center text-slate-500">لا يوجد تفاصيل هندسية مسجلة</td></tr>';
         }
         
         const attachContainer = document.getElementById('pdAttachments');
@@ -3739,6 +4259,12 @@ async function viewProjectDetails(id, fromHistory = false) {
         window.currentSheetNestingData = null;
         const resActions = document.getElementById('projectReservationActions');
         if (resActions) resActions.classList.add('hidden');
+
+        // New Project Enhancements: Delay Alert, Handover, Change Orders, Punch List
+        checkAndDisplayDelayAlert(p);
+        renderSignedHandoverCard(p);
+        loadProjectChangeOrders(p.id, p);
+        loadProjectPunchList(p.id, p);
         
     } catch (e) {
         showToast(e.message, 'bg-rose-500', '✗');
@@ -3809,6 +4335,8 @@ if (projectWizardForm) {
                 const inputs = tr.querySelectorAll('input, select');
                 const qtyVal = parseInt(inputs[1].value);
                 const hingesCountVal = parseInt(inputs[8].value);
+                const arch1El = tr.querySelector('.pd-architrave-input') || tr.querySelector('input[placeholder="الكشفة"]');
+                const arch2El = tr.querySelector('.pd-architrave-2-input') || tr.querySelector('input[placeholder="الكشفة 2"]');
                 const detailPayload = {
                     door_number: inputs[0].value || null,
                     quantity: isNaN(qtyVal) ? 1 : qtyVal,
@@ -3827,8 +4355,8 @@ if (projectWizardForm) {
                     leaf_thickness: inputs[14].value || "4.5",
                     qashatah: inputs[15].checked ? 'YES' : 'NO',
                     fire_resistance: inputs[16].checked ? 'Yes' : 'No',
-                    architrave: inputs[17].value || null,
-                    architrave_2: inputs[18].value || null,
+                    architrave: arch1El ? (arch1El.value || null) : (inputs[17] ? inputs[17].value : null),
+                    architrave_2: arch2El ? (arch2El.value || null) : (inputs[18] ? inputs[18].value : null),
                     under_tile: inputs[19].value || null,
                     window_width: inputs[20].value || null,
                     window_height: inputs[21].value || null,
@@ -4034,6 +4562,45 @@ function downloadEngineeringCSV() {
     document.body.removeChild(link);
 }
 
+window.downloadProjectDXF = async function() {
+    if (!window.currentProjectData || !window.currentProjectData.details || window.currentProjectData.details.length === 0) {
+        showToast('لا توجد تفاصيل هندسية لتصديرها كملف DXF', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const projectId = window.currentProjectData.id;
+    const projectNumber = window.currentProjectData.project_number || projectId;
+
+    showToast('جاري توليد ملف DXF ومخططات القطع...', 'bg-blue-600', '⏳');
+
+    try {
+        const response = await authFetch(`/api/projects/${projectId}/dxf`, {
+            method: 'GET'
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || 'فشل توليد وتصدير ملف الـ DXF');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Project_${projectNumber}_CAD.dxf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showToast('تم تصدير ملف الـ DXF بنجاح', 'bg-emerald-600', '✓');
+    } catch (err) {
+        console.error('DXF export error:', err);
+        showToast(err.message || 'حدث خطأ أثناء تصدير ملف DXF', 'bg-rose-500', '✗');
+    }
+};
+
 // Delete Project With Confirmation
 window.deleteProjectWithConfirmation = async function(projectId) {
     if (confirm("هل أنت متأكد أنك تريد حذف هذا المشروع بشكل نهائي؟ لا يمكن التراجع عن هذا الإجراء.")) {
@@ -4149,18 +4716,7 @@ window.editProject = async function(projectId, fromHistory = false) {
                     `;
                 }
 
-                let profileSelectOpts = `<option value="" disabled ${!d.profile_type ? 'selected' : ''}>المقطع</option>`;
-                dbProfileOptions.forEach(opt => {
-                    profileSelectOpts += `<option value="${opt.name}" ${d.profile_type === opt.name ? 'selected' : ''}>${opt.name}</option>`;
-                });
-                if (dbProfileOptions.length === 0) {
-                    profileSelectOpts += `
-                        <option value="single rabbit with rubber" ${d.profile_type === 'single rabbit with rubber' ? 'selected' : ''}>single rabbit with rubber</option>
-                        <option value="double rabbit with rubber" ${d.profile_type === 'double rabbit with rubber' ? 'selected' : ''}>double rabbit with rubber</option>
-                        <option value="single rabbit" ${d.profile_type === 'single rabbit' ? 'selected' : ''}>single rabbit</option>
-                        <option value="double rabbit" ${d.profile_type === 'double rabbit' ? 'selected' : ''}>double rabbit</option>
-                    `;
-                }
+                let profileSelectOpts = window.buildProfileSelectOptions(d.profile_type || currentDefaultProfile);
 
                 let doorTypeSelectOpts = `<option value="" disabled ${!d.door_type ? 'selected' : ''}>نوع الدرفة</option>`;
                 dbDoorTypeOptions.forEach(opt => {
@@ -4223,7 +4779,7 @@ window.editProject = async function(projectId, fromHistory = false) {
                         </select>
                     </td>
                     <td class="p-2">
-                        <select class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <select class="pd-profile-type w-full p-2 border border-slate-300 rounded-lg text-sm bg-white" onchange="onDoorRowProfileChange(this)">
                             ${profileSelectOpts}
                         </select>
                     </td>
@@ -4249,7 +4805,7 @@ window.editProject = async function(projectId, fromHistory = false) {
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.qashatah === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.fire_resistance === 'Yes' || d.fire_resistance === 'نعم' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="pd-architrave-input w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة" value="${d.architrave || ''}" oninput="autoCalculateArchitrave2(this); autoCalculateLeafSizes(this);"></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
+                    <td class="p-2"><input type="text" class="pd-architrave-2-input w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="الكشفة 2" value="${d.architrave_2 || ''}"></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.under_tile || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="pd-window-width w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" placeholder="العرض" value="${d.window_width || ''}"></td>
                     <td class="p-2"><input type="number" step="0.1" class="pd-window-height w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm text-center" placeholder="الارتفاع" value="${d.window_height || ''}"></td>
@@ -4262,6 +4818,18 @@ window.editProject = async function(projectId, fromHistory = false) {
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.raddad === 'YES' ? 'checked' : ''}></td>
                     <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
+                    <td class="p-2 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <button type="button" onclick="openDoorElevationFromWizardRow(this)" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-xs" title="معاينة وتعديل شكل الباب">
+                                <span>🚪</span>
+                                <span>الباب</span>
+                            </button>
+                            <button type="button" onclick="openDoorProfileFromWizardRow(this)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-slate-200 shadow-xs" title="معاينة وتعديل مقطع الحلق">
+                                <span>📐</span>
+                                <span>المقطع</span>
+                            </button>
+                        </div>
+                    </td>
                     <td class="p-2 text-center">
                         <button type="button" onclick="this.closest('tr').remove()" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="حذف السطر">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -4543,8 +5111,1643 @@ async function updateExpectedDate() {
 }
 
 // ==========================================
+//   PROJECT ENHANCEMENTS: DELAY RISK, GANTT,
+//   CHANGE ORDERS, PUNCH LIST, HANDOVER & PRINT
+// ==========================================
+
+function calculateProjectDelayRisk(p) {
+    if (!p) return { level: 'safe', label: '-', color: 'slate', percent: 0, text: '' };
+    if (p.status === 'completed') {
+        return { level: 'completed', label: 'مكتمل ✓', color: 'blue', percent: 100, daysLeft: 0, text: 'تم إنجاز وتسليم المشروع بالكامل.' };
+    }
+
+    const steps = ['step_design', 'step_cutting', 'step_forming', 'step_assembly', 'step_painting', 'step_accessories', 'step_installation'];
+    let stepScore = 0;
+    steps.forEach(k => {
+        const val = p[k] || '';
+        if (val === 'مكتمل') stepScore += 100;
+        else if (val === 'قيد التنفيذ') stepScore += 50;
+    });
+    const percent = Math.round(stepScore / steps.length);
+
+    if (!p.delivery_date) {
+        return { level: 'normal', label: `${percent}% منجز`, color: 'slate', percent, daysLeft: null, text: `نسبة الإنجاز الحالية ${percent}% (لم يحدد موعد تسليم نهائي)` };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(p.delivery_date);
+    targetDate.setHours(0, 0, 0, 0);
+    const diffTime = targetDate - today;
+    const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+        return {
+            level: 'danger',
+            label: `متأخر ${Math.abs(daysLeft)} يوم`,
+            color: 'rose',
+            percent,
+            daysLeft,
+            text: `المشروع متأخر عن موعد التسليم بـ ${Math.abs(daysLeft)} يوم! نسبة الإنجاز الحالية: ${percent}% فقط.`
+        };
+    } else if (daysLeft <= 3 && percent < 90) {
+        return {
+            level: 'danger',
+            label: `حرج (متبقي ${daysLeft} يوم)`,
+            color: 'rose',
+            percent,
+            daysLeft,
+            text: `تنبيه حرج: متبقي ${daysLeft} أيام فقط على موعد التسليم ونسبة الإنجاز ${percent}%. يتطلب تدخلاً فورياً لتفادي التأخير.`
+        };
+    } else if (daysLeft <= 7 && percent < 70) {
+        return {
+            level: 'warning',
+            label: `تحذير (متبقي ${daysLeft} يوم)`,
+            color: 'amber',
+            percent,
+            daysLeft,
+            text: `اقتراب موعد التسليم (متبقي ${daysLeft} أيام) مع تبقي مراحل رئيسية غير مكتملة (إنجاز ${percent}%).`
+        };
+    } else if (daysLeft <= 14 && percent < 40) {
+        return {
+            level: 'warning',
+            label: `تنبيه (متبقي ${daysLeft} يوم)`,
+            color: 'amber',
+            percent,
+            daysLeft,
+            text: `متبقي أسبوعين على موعد التسليم ومعدل التقدم الحالي ${percent}%. يرجى تسريع وتيرة الإنتاج.`
+        };
+    } else {
+        return {
+            level: 'safe',
+            label: `متبقي ${daysLeft} يوم (${percent}%)`,
+            color: 'emerald',
+            percent,
+            daysLeft,
+            text: `الجدول الزمني يسير بصورة طبيعية. متبقي ${daysLeft} يوم ومعدل الإنجاز ${percent}%.`
+        };
+    }
+}
+
+function checkAndDisplayDelayAlert(p) {
+    const banner = document.getElementById('pdEarlyWarningBanner');
+    if (!banner) return;
+
+    const risk = calculateProjectDelayRisk(p);
+    const iconEl = document.getElementById('pdDelayAlertIcon');
+    const titleEl = document.getElementById('pdDelayAlertTitle');
+    const msgEl = document.getElementById('pdDelayAlertMsg');
+    const actionEl = document.getElementById('pdDelayAlertAction');
+
+    if (risk.level === 'danger') {
+        banner.className = 'rounded-2xl p-4 border flex items-center justify-between gap-4 animate-fade-in bg-rose-50 border-rose-200 text-rose-900';
+        if (iconEl) {
+            iconEl.className = 'w-10 h-10 rounded-xl bg-rose-200 text-rose-700 flex items-center justify-center shrink-0';
+            iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+        }
+        if (titleEl) titleEl.textContent = 'تنبيه مبكر: خطر تأخير موعد التسليم!';
+        if (msgEl) msgEl.textContent = risk.text;
+        if (actionEl) actionEl.innerHTML = `<button onclick="openProjectTracking(${p.id})" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer">متابعة مراحل الإنتاج</button>`;
+        banner.classList.remove('hidden');
+    } else if (risk.level === 'warning') {
+        banner.className = 'rounded-2xl p-4 border flex items-center justify-between gap-4 animate-fade-in bg-amber-50 border-amber-200 text-amber-900';
+        if (iconEl) {
+            iconEl.className = 'w-10 h-10 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center shrink-0';
+            iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        }
+        if (titleEl) titleEl.textContent = 'ملاحظة: اقتراب موعد التسليم مع وجود مراحل غير منتهية';
+        if (msgEl) msgEl.textContent = risk.text;
+        if (actionEl) actionEl.innerHTML = `<button onclick="openProjectTracking(${p.id})" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer">تسريع الإنجاز</button>`;
+        banner.classList.remove('hidden');
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+function renderSignedHandoverCard(p) {
+    const badge = document.getElementById('pdHandoverStatusBadge');
+    const content = document.getElementById('pdHandoverContent');
+    if (!badge || !content) return;
+
+    if (p.signed_handover_url) {
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200';
+        badge.textContent = 'تم رفع المحضر الموقع ✓';
+        content.innerHTML = `
+            <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">نسخة محضر الاستلام الموقع محفوظة</div>
+                        <div class="text-[10px] text-slate-500">تم اعتماده وتوثيقه ضمن مستندات المشروع</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="${API_HOST}${p.signed_handover_url}" target="_blank" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        <span>معاينة الملف</span>
+                    </a>
+                    <button onclick="openUploadHandoverModal()" class="px-2.5 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition" title="رفع ملف بديل">تحديث</button>
+                </div>
+            </div>
+        `;
+    } else {
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200';
+        badge.textContent = 'بانتظار الرفع';
+        content.innerHTML = `
+            <div class="p-3.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl space-y-2.5">
+                <p class="text-xs text-slate-600 leading-relaxed">لم يتم رفع نسخة محضر الاستلام الموقعة من مهندس الموقع حتى الآن.</p>
+                <div class="flex items-center gap-2 pt-1">
+                    <button onclick="openUploadHandoverModal()" class="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        <span>رفع المحضر الموقع الآن</span>
+                    </button>
+                    <button onclick="generateProjectHandoverPdf(window.currentProjectData ? window.currentProjectData.id : null)" class="py-2 px-3 border border-slate-200 hover:bg-white text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                        <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        <span>طباعة النموذج</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Handover Modal Handlers
+window.openUploadHandoverModal = function() {
+    const modal = document.getElementById('uploadHandoverModal');
+    if (modal) {
+        document.getElementById('handoverFileInput').value = '';
+        document.getElementById('handoverFileName').textContent = 'اضغط لاختيار ملف المحضر (PDF أو صورة)';
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeUploadHandoverModal = function() {
+    const modal = document.getElementById('uploadHandoverModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.previewHandoverFileName = function(input) {
+    const nameEl = document.getElementById('handoverFileName');
+    if (input.files && input.files[0]) {
+        nameEl.textContent = input.files[0].name;
+    } else {
+        nameEl.textContent = 'اضغط لاختيار ملف المحضر (PDF أو صورة)';
+    }
+};
+
+window.submitSignedHandover = async function(e) {
+    e.preventDefault();
+    if (!window.currentProjectData || !window.currentProjectData.id) {
+        showToast('لم يتم تحديد المشروع', 'bg-rose-500', '✗');
+        return;
+    }
+    const fileInput = document.getElementById('handoverFileInput');
+    if (!fileInput.files || !fileInput.files[0]) {
+        showToast('يرجى اختيار ملف المحضر أولاً', 'bg-rose-500', '⚠️');
+        return;
+    }
+
+    const btn = document.getElementById('btnSubmitHandover');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> جاري الرفع...';
+    btn.disabled = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        const response = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/upload-handover`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'فشل رفع محضر الاستلام');
+        }
+
+        const updatedProject = await response.json();
+        window.currentProjectData.signed_handover_url = updatedProject.signed_handover_url;
+        renderSignedHandoverCard(window.currentProjectData);
+        closeUploadHandoverModal();
+        showToast('تم رفع واعتماد محضر الاستلام بنجاح', 'bg-emerald-500', '✓');
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+// Change Orders Handlers
+window.loadProjectChangeOrders = async function(projectId, cachedProject = null) {
+    const tbody = document.getElementById('pdChangeOrdersBody');
+    const countBadge = document.getElementById('pdChangeOrdersCount');
+    if (!tbody) return;
+
+    try {
+        let orders = null;
+        if (cachedProject && cachedProject.change_orders) {
+            orders = cachedProject.change_orders;
+        } else {
+            const res = await authFetch(`${PROJECTS_URL}/${projectId}/change-orders`);
+            if (res.ok) orders = await res.json();
+        }
+
+        if (!orders || orders.length === 0) {
+            if (countBadge) countBadge.textContent = '0';
+            tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">لا توجد أوامر تعديل مسجلة لهذا المشروع.</td></tr>';
+            return;
+        }
+
+        if (countBadge) countBadge.textContent = orders.length;
+        tbody.innerHTML = '';
+        orders.forEach(o => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition text-xs';
+            let statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200">قيد المراجعة</span>';
+            if (o.status === 'معتمد') {
+                statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">معتمد ✓</span>';
+            } else if (o.status === 'مرفوض') {
+                statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200">مرفوض ✗</span>';
+            }
+
+            tr.innerHTML = `
+                <td class="p-3 font-bold font-mono text-indigo-700">${o.order_number || '-'}</td>
+                <td class="p-3 font-semibold text-slate-800">${o.title || '-'}</td>
+                <td class="p-3 text-slate-600 max-w-xs truncate" title="${o.description || ''}">${o.description || '-'}</td>
+                <td class="p-3 text-slate-600">${o.requested_by || '-'}</td>
+                <td class="p-3 font-mono font-bold text-slate-700">${o.cost_impact || 'بدون تكلفة'}</td>
+                <td class="p-3 font-mono text-slate-700">${o.time_impact || 'بدون تأخير'}</td>
+                <td class="p-3">${statusBadge}</td>
+                <td class="p-3 text-slate-400" dir="ltr">${o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Failed to load change orders', e);
+    }
+};
+
+window.openNewChangeOrderModal = function() {
+    const modal = document.getElementById('newChangeOrderModal');
+    if (modal) {
+        const count = document.getElementById('pdChangeOrdersCount') ? parseInt(document.getElementById('pdChangeOrdersCount').textContent || '0') : 0;
+        document.getElementById('coOrderNumber').value = `CO-${String(count + 1).padStart(2, '0')}`;
+        document.getElementById('coTitle').value = '';
+        document.getElementById('coDescription').value = '';
+        document.getElementById('coRequestedBy').value = '';
+        document.getElementById('coCostImpact').value = 'بدون تكلفة إضافية';
+        document.getElementById('coTimeImpact').value = 'بدون تأخير';
+        document.getElementById('coStatus').value = 'معتمد';
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeNewChangeOrderModal = function() {
+    const modal = document.getElementById('newChangeOrderModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.submitNewChangeOrder = async function(e) {
+    e.preventDefault();
+    if (!window.currentProjectData || !window.currentProjectData.id) {
+        showToast('لم يتم تحديد المشروع', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const btn = document.getElementById('btnSubmitChangeOrder');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> جاري الحفظ...';
+    btn.disabled = true;
+
+    try {
+        const payload = {
+            order_number: document.getElementById('coOrderNumber').value.trim(),
+            title: document.getElementById('coTitle').value.trim(),
+            description: document.getElementById('coDescription').value.trim(),
+            requested_by: document.getElementById('coRequestedBy').value.trim() || null,
+            cost_impact: document.getElementById('coCostImpact').value.trim() || null,
+            time_impact: document.getElementById('coTimeImpact').value.trim() || null,
+            status: document.getElementById('coStatus').value
+        };
+
+        const res = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/change-orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'فشل حفظ أمر التعديل');
+        }
+
+        closeNewChangeOrderModal();
+        showToast('تم تسجيل أمر التعديل بنجاح', 'bg-emerald-500', '✓');
+        loadProjectChangeOrders(window.currentProjectData.id);
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+// Punch List Handlers
+window.loadProjectPunchList = async function(projectId, cachedProject = null) {
+    const tbody = document.getElementById('pdPunchListBody');
+    const countBadge = document.getElementById('pdPunchCount');
+    if (!tbody) return;
+
+    try {
+        let items = null;
+        if (cachedProject && cachedProject.punch_list) {
+            items = cachedProject.punch_list;
+        } else {
+            const res = await authFetch(`${PROJECTS_URL}/${projectId}/punch-list`);
+            if (res.ok) items = await res.json();
+        }
+
+        if (!items || items.length === 0) {
+            if (countBadge) countBadge.textContent = '0';
+            tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">لا توجد ملاحظات مسجلة على التسليم.</td></tr>';
+            return;
+        }
+
+        if (countBadge) countBadge.textContent = items.length;
+        tbody.innerHTML = '';
+        items.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b hover:bg-slate-50 transition text-xs';
+
+            const priorityBadge = item.priority === 'عاجل'
+                ? '<span class="px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200">عاجل ⚠️</span>'
+                : '<span class="px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">عادي</span>';
+
+            let statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200">معلق</span>';
+            if (item.status === 'جاري الإصلاح') {
+                statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">جاري الإصلاح 🛠️</span>';
+            } else if (item.status === 'تم الإصلاح') {
+                statusBadge = '<span class="px-2 py-0.5 rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">تم الإصلاح ✓</span>';
+            }
+
+            tr.innerHTML = `
+                <td class="p-3 font-bold font-mono text-indigo-700">${item.door_number || '-'}</td>
+                <td class="p-3 font-medium text-slate-800">${item.description || '-'}</td>
+                <td class="p-3">${priorityBadge}</td>
+                <td class="p-3">${statusBadge}</td>
+                <td class="p-3 text-slate-400" dir="ltr">${item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+                <td class="p-3 text-slate-400" dir="ltr">${item.resolved_at ? new Date(item.resolved_at).toLocaleDateString() : '-'}</td>
+                <td class="p-3 text-center">
+                    <button onclick="togglePunchItemStatus(${item.id}, '${item.status}')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                        item.status === 'تم الإصلاح'
+                            ? 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }">
+                        ${item.status === 'تم الإصلاح' ? 'إعادة فتح' : 'اعتماد الإصلاح ✓'}
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error('Failed to load punch list', e);
+    }
+};
+
+window.openNewPunchItemModal = function() {
+    const modal = document.getElementById('newPunchItemModal');
+    if (modal) {
+        document.getElementById('plDoorNumber').value = '';
+        document.getElementById('plDescription').value = '';
+        document.getElementById('plPriority').value = 'عادي';
+        document.getElementById('plAssignedTo').value = '';
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closeNewPunchItemModal = function() {
+    const modal = document.getElementById('newPunchItemModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.submitNewPunchItem = async function(e) {
+    e.preventDefault();
+    if (!window.currentProjectData || !window.currentProjectData.id) {
+        showToast('لم يتم تحديد المشروع', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const btn = document.getElementById('btnSubmitPunchItem');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> جاري الحفظ...';
+    btn.disabled = true;
+
+    try {
+        const payload = {
+            door_number: document.getElementById('plDoorNumber').value.trim() || null,
+            description: document.getElementById('plDescription').value.trim(),
+            priority: document.getElementById('plPriority').value,
+            assigned_to: document.getElementById('plAssignedTo').value.trim() || null,
+            status: 'معلق'
+        };
+
+        const res = await authFetch(`${PROJECTS_URL}/${window.currentProjectData.id}/punch-list`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'فشل تسجيل الملاحظة');
+        }
+
+        closeNewPunchItemModal();
+        showToast('تم تسجيل ملاحظة التسليم بنجاح', 'bg-emerald-500', '✓');
+        loadProjectPunchList(window.currentProjectData.id);
+    } catch (err) {
+        showToast(err.message, 'bg-rose-500', '✗');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+window.togglePunchItemStatus = async function(itemId, currentStatus) {
+    const newStatus = currentStatus === 'تم الإصلاح' ? 'معلق' : 'تم الإصلاح';
+    try {
+        const res = await authFetch(`${PROJECTS_URL}/punch-list/${itemId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        if (!res.ok) throw new Error('فشل تحديث حالة الملاحظة');
+        showToast(newStatus === 'تم الإصلاح' ? 'تم اعتماد إغلاق الملاحظة بنجاح' : 'تمت إعادة فتح الملاحظة', 'bg-emerald-500', '✓');
+        if (window.currentProjectData) {
+            loadProjectPunchList(window.currentProjectData.id);
+        }
+    } catch (e) {
+        showToast(e.message, 'bg-rose-500', '✗');
+    }
+};
+
+// ==========================================
+//  INTERACTIVE GANTT CHART & TIMELINE ENGINE
+// ==========================================
+
+window.ganttState = {
+    viewMode: 'month', // 'week', 'month', 'quarter'
+    offsetDays: -7,
+    filter: 'all',
+    searchQuery: '',
+    expandedProjects: new Set()
+};
+
+window.setGanttViewMode = function(mode) {
+    window.ganttState.viewMode = mode;
+    const btnWeek = document.getElementById('btnGanttModeWeek');
+    const btnMonth = document.getElementById('btnGanttModeMonth');
+    const btnQuarter = document.getElementById('btnGanttModeQuarter');
+    
+    const activeCls = 'px-2.5 py-1 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs cursor-pointer';
+    const inactiveCls = 'px-2.5 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer';
+    
+    if (btnWeek) btnWeek.className = mode === 'week' ? activeCls : inactiveCls;
+    if (btnMonth) btnMonth.className = mode === 'month' ? activeCls : inactiveCls;
+    if (btnQuarter) btnQuarter.className = mode === 'quarter' ? activeCls : inactiveCls;
+
+    renderProjectsGantt();
+};
+
+window.navigateGanttTime = function(delta) {
+    if (delta === 'today') {
+        window.ganttState.offsetDays = window.ganttState.viewMode === 'week' ? -3 : window.ganttState.viewMode === 'month' ? -7 : -15;
+    } else {
+        window.ganttState.offsetDays += delta;
+    }
+    renderProjectsGantt();
+};
+
+window.onGanttSearchInput = function(val) {
+    window.ganttState.searchQuery = (val || '').trim().toLowerCase();
+    renderProjectsGantt();
+};
+
+window.filterGanttProjects = function(filterType) {
+    window.ganttState.filter = filterType;
+    document.querySelectorAll('.gantt-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === filterType) {
+            btn.className = 'gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs cursor-pointer';
+        } else {
+            btn.className = 'gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer';
+        }
+    });
+    renderProjectsGantt();
+};
+
+window.toggleGanttProjectExpand = function(projectId, event) {
+    if (event) event.stopPropagation();
+    const pid = Number(projectId);
+    if (window.ganttState.expandedProjects.has(pid)) {
+        window.ganttState.expandedProjects.delete(pid);
+    } else {
+        window.ganttState.expandedProjects.add(pid);
+    }
+    renderProjectsGantt();
+};
+
+window.toggleAllGanttStages = function() {
+    const projects = window.allProjectsData || [];
+    const allExpanded = projects.length > 0 && projects.every(p => window.ganttState.expandedProjects.has(p.id));
+    const lbl = document.getElementById('lblToggleAllStages');
+    
+    if (allExpanded) {
+        window.ganttState.expandedProjects.clear();
+        if (lbl) lbl.textContent = 'توسيع المراحل';
+    } else {
+        projects.forEach(p => window.ganttState.expandedProjects.add(p.id));
+        if (lbl) lbl.textContent = 'طي المراحل';
+    }
+    renderProjectsGantt();
+};
+
+window.openGanttSetDeliveryModal = function(projectId, projectName, currentVal) {
+    const modal = document.getElementById('ganttSetDeliveryModal');
+    const inputId = document.getElementById('ganttModalProjectId');
+    const inputDate = document.getElementById('ganttModalDeliveryDate');
+    const titleEl = document.getElementById('ganttModalProjectTitle');
+    
+    if (inputId) inputId.value = projectId;
+    if (titleEl) titleEl.textContent = projectName ? `مشروع: ${projectName}` : 'تحديد موعد التسليم';
+    
+    if (inputDate) {
+        if (currentVal && currentVal !== 'null' && currentVal !== 'undefined') {
+            try {
+                inputDate.value = new Date(currentVal).toISOString().split('T')[0];
+            } catch(e) {
+                inputDate.value = '';
+            }
+        } else {
+            const defDate = new Date();
+            defDate.setDate(defDate.getDate() + 21);
+            inputDate.value = defDate.toISOString().split('T')[0];
+        }
+    }
+    
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeGanttSetDeliveryModal = function() {
+    const modal = document.getElementById('ganttSetDeliveryModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.submitGanttSetDeliveryDate = async function(event) {
+    if (event) event.preventDefault();
+    const projectId = document.getElementById('ganttModalProjectId')?.value;
+    const dateVal = document.getElementById('ganttModalDeliveryDate')?.value;
+    if (!projectId || !dateVal) return;
+    
+    const btn = document.getElementById('btnSubmitGanttDelivery');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin inline-block mr-1">⌛</span> جاري الحفظ...';
+    }
+    
+    try {
+        const payload = { delivery_date: new Date(dateVal).toISOString() };
+        const res = await authFetch(`${PROJECTS_URL}/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('فشل تحديث موعد التسليم');
+        showToast('تم تحديث موعد التسليم بنجاح', 'bg-emerald-500', '✓');
+        closeGanttSetDeliveryModal();
+        
+        const pRes = await authFetch(PROJECTS_URL + '/');
+        if (pRes.ok) {
+            window.allProjectsData = await pRes.json();
+        }
+        renderProjectsGantt();
+    } catch (e) {
+        showToast(e.message || 'حدث خطأ أثناء حفظ موعد التسليم', 'bg-rose-500', '✗');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>حفظ الموعد</span>';
+        }
+    }
+};
+
+window.renderProjectsGantt = async function() {
+    const container = document.getElementById('ganttChartBody');
+    if (!container) return;
+
+    let projects = window.allProjectsData;
+    if (!projects || projects.length === 0) {
+        container.innerHTML = '<div class="text-center py-16 text-slate-400 text-xs flex flex-col items-center justify-center gap-2"><span class="text-2xl animate-spin">⏳</span><span>جاري تحميل بيانات المشاريع والمخطط الزمني...</span></div>';
+        try {
+            const res = await authFetch(PROJECTS_URL + '/');
+            if (res.ok) {
+                projects = await res.json();
+                window.allProjectsData = projects;
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="text-center py-16 text-rose-500 text-xs">فشل تحميل بيانات المشاريع. يرجى إعادة المحاولة.</div>';
+            return;
+        }
+    }
+
+    if (!projects || projects.length === 0) {
+        container.innerHTML = '<div class="text-center py-16 text-slate-400 text-xs">لا يوجد مشاريع مسجلة حالياً لعرضها في المخطط الزمني.</div>';
+        return;
+    }
+
+    // 1. Calculate KPI Metrics
+    let countTotal = projects.length;
+    let countOnTrack = 0;
+    let countDelayed = 0;
+    let countPending = 0;
+    let countCompleted = 0;
+
+    projects.forEach(p => {
+        const risk = calculateProjectDelayRisk(p);
+        const st = (p.status || '').toLowerCase();
+        if (st === 'completed') {
+            countCompleted++;
+        } else if (st === 'pending') {
+            countPending++;
+        } else {
+            if (risk.level === 'danger' || risk.level === 'warning') {
+                countDelayed++;
+            } else {
+                countOnTrack++;
+            }
+        }
+    });
+
+    const elTotal = document.getElementById('ganttStatTotal');
+    const elOnTrack = document.getElementById('ganttStatOnTrack');
+    const elDelayed = document.getElementById('ganttStatDelayed');
+    const elPending = document.getElementById('ganttStatPending');
+    const elCompleted = document.getElementById('ganttStatCompleted');
+
+    if (elTotal) elTotal.textContent = countTotal;
+    if (elOnTrack) elOnTrack.textContent = countOnTrack;
+    if (elDelayed) elDelayed.textContent = countDelayed;
+    if (elPending) elPending.textContent = countPending;
+    if (elCompleted) elCompleted.textContent = countCompleted;
+
+    // 2. Filter & Search
+    const currentFilter = window.ganttState.filter || 'all';
+    const query = window.ganttState.searchQuery || '';
+
+    const filtered = projects.filter(p => {
+        const risk = calculateProjectDelayRisk(p);
+        const st = (p.status || '').toLowerCase();
+        
+        if (currentFilter === 'active' && st !== 'active') return false;
+        if (currentFilter === 'completed' && st !== 'completed') return false;
+        if (currentFilter === 'delayed' && risk.level !== 'danger' && risk.level !== 'warning') return false;
+        
+        if (query) {
+            const num = (p.project_number || '').toLowerCase();
+            const name = (p.name || '').toLowerCase();
+            const contractor = (p.contractor_name || '').toLowerCase();
+            const loc = (p.location || '').toLowerCase();
+            if (!num.includes(query) && !name.includes(query) && !contractor.includes(query) && !loc.includes(query)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center py-16 text-slate-400 text-xs">لا توجد مشاريع مطابقة لمعايير البحث والتصفية المحددة.</div>';
+        return;
+    }
+
+    // 3. Manufacturing Stages Definition
+    const MANUFACTURING_STAGES = [
+        { key: 'step_design', label: 'التصميم والتفصيل', short: 'تصميم' },
+        { key: 'step_cutting', label: 'قص الصاج والحديد', short: 'قص' },
+        { key: 'step_forming', label: 'التشكيل والدرفلة', short: 'تشكيل' },
+        { key: 'step_assembly', label: 'التجميع واللحام', short: 'تجميع' },
+        { key: 'step_painting', label: 'المعالجة والدهان', short: 'دهان' },
+        { key: 'step_accessories', label: 'الإكسسوارات والزجاج', short: 'إكسسوار' },
+        { key: 'step_installation', label: 'التسليم والتركيب', short: 'تسليم' }
+    ];
+
+    // 4. View Mode & Grid Scale Configuration
+    const mode = window.ganttState.viewMode || 'month';
+    let totalDays = 42;
+    let dayWidth = 36;
+    if (mode === 'week') {
+        totalDays = 21;
+        dayWidth = 54;
+    } else if (mode === 'quarter') {
+        totalDays = 90;
+        dayWidth = 22;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() + (window.ganttState.offsetDays || -7));
+    startDate.setHours(0, 0, 0, 0);
+
+    const arabicMonths = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const arabicDaysShort = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+
+    // Generate Month groups & Day columns
+    const daysData = [];
+    const monthGroups = [];
+    let currentMonthGroup = null;
+
+    for (let i = 0; i < totalDays; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        const mKey = `${d.getFullYear()}-${d.getMonth()}`;
+        const isToday = d.getTime() === today.getTime();
+        const dayOfWeek = d.getDay();
+        const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Friday, Saturday
+
+        daysData.push({
+            date: d,
+            isToday,
+            isWeekend,
+            dayNum: d.getDate(),
+            dayLabel: arabicDaysShort[dayOfWeek]
+        });
+
+        if (!currentMonthGroup || currentMonthGroup.key !== mKey) {
+            currentMonthGroup = {
+                key: mKey,
+                label: `${arabicMonths[d.getMonth()]} ${d.getFullYear()}`,
+                daysCount: 1
+            };
+            monthGroups.push(currentMonthGroup);
+        } else {
+            currentMonthGroup.daysCount++;
+        }
+    }
+
+    // Calculate Today vertical line X coordinate
+    const todayDiffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+    const showTodayLine = todayDiffDays >= 0 && todayDiffDays < totalDays;
+    const todayLineX = showTodayLine ? (todayDiffDays * dayWidth) + Math.round(dayWidth / 2) : -999;
+
+    const timelineTotalWidth = totalDays * dayWidth;
+
+    // Build Month Header HTML
+    const monthHeaderHtml = monthGroups.map(mg => `
+        <div class="h-6 flex items-center justify-center font-bold text-[11px] text-slate-700 border-r border-slate-200 bg-slate-100/90 truncate px-2" style="width: ${mg.daysCount * dayWidth}px">
+            ${mg.label}
+        </div>
+    `).join('');
+
+    // Build Days Header HTML
+    const daysHeaderHtml = daysData.map(d => {
+        let bg = 'bg-white';
+        let txt = 'text-slate-600';
+        if (d.isToday) {
+            bg = 'bg-indigo-100/80';
+            txt = 'text-indigo-800 font-black';
+        } else if (d.isWeekend) {
+            bg = 'bg-slate-100/60';
+            txt = 'text-slate-400';
+        }
+        return `
+            <div class="h-7 flex flex-col items-center justify-center text-[10px] border-r border-slate-200 ${bg} ${txt}" style="width: ${dayWidth}px; flex-shrink: 0;" title="${d.date.toLocaleDateString('ar-EG')}">
+                <span class="font-bold leading-none">${d.dayNum}</span>
+                <span class="text-[8px] leading-tight opacity-75">${d.dayLabel}</span>
+            </div>
+        `;
+    }).join('');
+
+    // Build Rows for both panels
+    let leftPanelRowsHtml = '';
+    let rightPanelRowsHtml = '';
+
+    filtered.forEach(p => {
+        const isExpanded = window.ganttState.expandedProjects.has(p.id);
+        const risk = calculateProjectDelayRisk(p);
+        const st = (p.status || '').toLowerCase();
+
+        // Project dates calculation
+        let pStart = p.activated_at ? new Date(p.activated_at) : null;
+        if (!pStart && p.created_at) {
+            try { pStart = new Date(p.created_at); } catch(e) {}
+        }
+        if (!pStart) {
+            pStart = new Date(today);
+            pStart.setDate(pStart.getDate() - 7);
+        }
+        pStart.setHours(0, 0, 0, 0);
+
+        let isEstimatedDelivery = false;
+        let pEnd = p.delivery_date ? new Date(p.delivery_date) : null;
+        if (!pEnd) {
+            isEstimatedDelivery = true;
+            pEnd = new Date(pStart);
+            pEnd.setDate(pEnd.getDate() + 21); // Default estimate: 3 weeks
+        }
+        pEnd.setHours(0, 0, 0, 0);
+
+        if (pEnd.getTime() <= pStart.getTime()) {
+            pEnd = new Date(pStart);
+            pEnd.setDate(pEnd.getDate() + 7);
+        }
+
+        // Timeline Bar coordinate calculations
+        const pStartOffsetDays = (pStart - startDate) / (1000 * 60 * 60 * 24);
+        const pDurationDays = Math.max(1, (pEnd - pStart) / (1000 * 60 * 60 * 24));
+        const barLeft = Math.round(pStartOffsetDays * dayWidth);
+        const barWidth = Math.max(24, Math.round(pDurationDays * dayWidth));
+
+        // Styling based on risk & status
+        let barBg = 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white';
+        let badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        let statusDot = 'bg-emerald-500';
+
+        if (st === 'completed') {
+            barBg = 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white';
+            badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+            statusDot = 'bg-blue-500';
+        } else if (risk.level === 'danger') {
+            barBg = 'bg-gradient-to-r from-rose-500 to-rose-600 text-white';
+            badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+            statusDot = 'bg-rose-500 animate-ping';
+        } else if (risk.level === 'warning') {
+            barBg = 'bg-gradient-to-r from-amber-500 to-amber-600 text-white';
+            badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+            statusDot = 'bg-amber-500';
+        } else if (st === 'pending') {
+            barBg = 'bg-gradient-to-r from-slate-400 to-slate-500 text-white';
+            badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+            statusDot = 'bg-slate-400';
+        }
+
+        const estimatedBadge = isEstimatedDelivery ? `
+            <button type="button" onclick="openGanttSetDeliveryModal(${p.id}, '${escapeHtml(p.name)}', null)" class="mr-1 px-1.5 py-0.5 rounded text-[9px] bg-amber-100 text-amber-900 border border-amber-300 font-bold hover:bg-amber-200 transition cursor-pointer" title="تاريخ مقدر - اضغط لتحديد موعد التسليم">
+                ⚠️ مقدّر
+            </button>
+        ` : '';
+
+        // Left Panel Project Row (h-[62px])
+        leftPanelRowsHtml += `
+            <div class="h-[62px] px-3 border-b border-slate-200 bg-white hover:bg-slate-50/80 transition flex items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2 min-w-0 flex-1">
+                    <button type="button" onclick="toggleGanttProjectExpand(${p.id}, event)" class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-center text-[10px] text-slate-500 transition cursor-pointer flex-shrink-0" title="${isExpanded ? 'طي المراحل' : 'عرض المراحل السبع'}">
+                        <span>${isExpanded ? '▼' : '◀'}</span>
+                    </button>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-bold text-slate-800 hover:text-indigo-600 cursor-pointer truncate max-w-[150px]" onclick="viewProjectDetails(${p.id})" title="${p.name}">
+                                ${p.name}
+                            </span>
+                            <span class="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1 py-0.2 rounded border border-indigo-100 flex-shrink-0">#${p.project_number || p.id}</span>
+                            ${estimatedBadge}
+                        </div>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-400 truncate mt-0.5">
+                            <span class="truncate">${p.contractor_name || 'بدون مقاول'}</span>
+                            <span>•</span>
+                            <span class="font-bold ${risk.level === 'danger' ? 'text-rose-600' : 'text-slate-600'}">${risk.label}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <div class="w-12 text-left" dir="ltr">
+                        <div class="text-[10px] font-black text-slate-700">${risk.percent}%</div>
+                        <div class="w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-0.5">
+                            <div class="bg-indigo-600 h-1 rounded-full" style="width: ${risk.percent}%"></div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="openGanttSetDeliveryModal(${p.id}, '${escapeHtml(p.name)}', '${p.delivery_date || ''}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition cursor-pointer" title="تعديل موعد التسليم">
+                        📅
+                    </button>
+                    <button type="button" onclick="openProjectTracking(${p.id})" class="p-1 rounded-lg hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition cursor-pointer" title="لوحة المتابعة">
+                        📊
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Right Panel Project Row (h-[62px])
+        rightPanelRowsHtml += `
+            <div class="h-[62px] border-b border-slate-200 relative bg-white hover:bg-slate-50/50 transition" style="width: ${timelineTotalWidth}px;">
+                <!-- Vertical grid weekend backgrounds -->
+                <div class="absolute inset-0 flex pointer-events-none">
+                    ${daysData.map(d => `<div style="width: ${dayWidth}px; flex-shrink: 0;" class="h-full border-r border-slate-100 ${d.isWeekend ? 'bg-slate-50/60' : ''}"></div>`).join('')}
+                </div>
+
+                <!-- Main Project Gantt Bar -->
+                <div class="absolute top-[13px] h-[36px] rounded-xl shadow-xs cursor-pointer group flex items-center px-3 z-10 transition-all hover:shadow-md hover:scale-[1.01] ${barBg} ${isEstimatedDelivery ? 'border-2 border-dashed border-amber-300' : ''}" 
+                     style="left: ${barLeft}px; width: ${barWidth}px;" 
+                     onclick="openProjectTracking(${p.id})"
+                     title="${p.name} - الإنجاز: ${risk.percent}% | البدء: ${pStart.toLocaleDateString()} | التسليم: ${pEnd.toLocaleDateString()} ${isEstimatedDelivery ? '(تقديري)' : ''}">
+                    
+                    <div class="flex items-center justify-between w-full overflow-hidden text-xs gap-2 select-none">
+                        <span class="font-bold truncate text-[11px] drop-shadow-xs">${p.name}</span>
+                        <span class="text-[10px] font-mono bg-black/20 px-1.5 py-0.5 rounded font-black flex-shrink-0">${risk.percent}%</span>
+                    </div>
+
+                    <!-- Tooltip on hover -->
+                    <div class="opacity-0 group-hover:opacity-100 pointer-events-none absolute bottom-full mb-2 right-1/2 translate-x-1/2 z-30 transition bg-slate-900 text-white rounded-xl py-1.5 px-3 text-[10px] shadow-xl whitespace-nowrap">
+                        <div class="font-bold">${p.name} (${risk.percent}%)</div>
+                        <div class="text-slate-300 font-mono text-[9px] mt-0.5">البدء: ${pStart.toLocaleDateString()} ➔ التسليم: ${pEnd.toLocaleDateString()} ${isEstimatedDelivery ? '⚠️ (تاريخ مقدر)' : ''}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Sub-rows for 7 Manufacturing Stages when expanded
+        if (isExpanded) {
+            MANUFACTURING_STAGES.forEach((stage, sIdx) => {
+                const stepVal = p[stage.key] || 'لم يتم البدء';
+                let stepStatusClass = 'bg-slate-100 text-slate-500 border-slate-200';
+                let stepBarClass = 'bg-slate-200 text-slate-600 border border-slate-300';
+                let stepIcon = '○';
+
+                if (stepVal === 'مكتمل') {
+                    stepStatusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    stepBarClass = 'bg-emerald-500 text-white shadow-xs';
+                    stepIcon = '✓';
+                } else if (stepVal === 'قيد التنفيذ') {
+                    stepStatusClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                    stepBarClass = 'bg-amber-400 text-amber-950 font-bold animate-pulse shadow-xs';
+                    stepIcon = '⏳';
+                }
+
+                // Stage timeline slice calculation (distributed evenly along the project timeline)
+                const stageDurationDays = pDurationDays / 7;
+                const stageStartOffsetDays = pStartOffsetDays + (sIdx * stageDurationDays);
+                const stageBarLeft = Math.round(stageStartOffsetDays * dayWidth);
+                const stageBarWidth = Math.max(16, Math.round(stageDurationDays * dayWidth));
+
+                // Left Panel Sub-row (h-[34px])
+                leftPanelRowsHtml += `
+                    <div class="h-[34px] px-3 pl-4 border-b border-slate-100 bg-slate-50/70 hover:bg-slate-100/60 transition flex items-center justify-between text-[11px]">
+                        <div class="flex items-center gap-2 pr-5">
+                            <span class="text-slate-300 text-[10px]">└─</span>
+                            <span class="text-slate-700 font-medium">${stage.label}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-md text-[9px] font-bold border ${stepStatusClass} flex items-center gap-1">
+                            <span>${stepIcon}</span>
+                            <span>${stepVal}</span>
+                        </span>
+                    </div>
+                `;
+
+                // Right Panel Sub-row (h-[34px])
+                rightPanelRowsHtml += `
+                    <div class="h-[34px] border-b border-slate-100 relative bg-slate-50/30" style="width: ${timelineTotalWidth}px;">
+                        <!-- Vertical grid weekend backgrounds -->
+                        <div class="absolute inset-0 flex pointer-events-none">
+                            ${daysData.map(d => `<div style="width: ${dayWidth}px; flex-shrink: 0;" class="h-full border-r border-slate-100 ${d.isWeekend ? 'bg-slate-100/40' : ''}"></div>`).join('')}
+                        </div>
+
+                        <!-- Stage Sub-bar -->
+                        <div class="absolute top-[7px] h-[20px] rounded-lg shadow-2xs flex items-center justify-center text-[9px] font-bold z-10 ${stepBarClass} cursor-pointer hover:opacity-90 transition"
+                             style="left: ${stageBarLeft}px; width: ${stageBarWidth}px;"
+                             onclick="openProjectTracking(${p.id})"
+                             title="${stage.label}: ${stepVal}">
+                            <span class="truncate px-1">${stage.short}: ${stepIcon}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    });
+
+    // Render Combined Split View
+    container.innerHTML = `
+        <div class="flex flex-col md:flex-row w-full border border-slate-200 rounded-2xl bg-white shadow-xs overflow-hidden">
+            <!-- Left Fixed Table Panel -->
+            <div class="w-full md:w-[360px] lg:w-[400px] flex-shrink-0 border-b md:border-b-0 md:border-l border-slate-200 bg-white z-20 shadow-xs">
+                <!-- Header -->
+                <div class="h-[53px] px-4 border-b border-slate-200 bg-slate-100/80 flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span class="flex items-center gap-1.5">
+                        <span>📋</span>
+                        <span>المشروع / المقاول / الحالة</span>
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-semibold">(${filtered.length} مشروع)</span>
+                </div>
+                <!-- Rows Container -->
+                <div class="overflow-y-hidden">
+                    ${leftPanelRowsHtml}
+                </div>
+            </div>
+
+            <!-- Right Scrollable Timeline Grid -->
+            <div class="flex-1 overflow-x-auto relative bg-white" id="ganttTimelineScrollArea" dir="ltr">
+                <div style="width: ${timelineTotalWidth}px; min-width: 100%; position: relative;">
+                    <!-- Today Vertical Marker Line -->
+                    ${showTodayLine ? `
+                        <div class="absolute top-0 bottom-0 z-30 pointer-events-none" style="left: ${todayLineX}px; width: 2px;">
+                            <div class="w-[2px] h-full bg-rose-500 shadow-sm relative">
+                                <span class="absolute top-1 -left-4 px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[8px] font-black shadow-md tracking-wider">اليوم</span>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Month Header Row -->
+                    <div class="flex border-b border-slate-200 sticky top-0 z-20">
+                        ${monthHeaderHtml}
+                    </div>
+
+                    <!-- Days Header Row -->
+                    <div class="flex border-b border-slate-200 sticky top-6 z-20 shadow-2xs">
+                        ${daysHeaderHtml}
+                    </div>
+
+                    <!-- Timeline Rows Body -->
+                    <div class="relative">
+                        ${rightPanelRowsHtml}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Automatically scroll timeline area so "Today" is in view
+    setTimeout(() => {
+        const scrollArea = document.getElementById('ganttTimelineScrollArea');
+        if (scrollArea && showTodayLine) {
+            const targetScroll = Math.max(0, todayLineX - 160);
+            scrollArea.scrollLeft = targetScroll;
+        }
+    }, 50);
+};
+
+// ==========================================
+//  PRINTING FUNCTIONS (Work Order, Cards, Handover)
+// ==========================================
+
+async function getProjectForPrint(projectId) {
+    if (window.currentProjectData && window.currentProjectData.id === projectId) {
+        return window.currentProjectData;
+    }
+    try {
+        const res = await authFetch(`${PROJECTS_URL}/${projectId}`);
+        if (res.ok) return await res.json();
+    } catch (e) {
+        console.error('Failed to fetch project for print', e);
+    }
+    return window.currentProjectData || null;
+}
+
+window.printProjectWorkOrder = async function(projectId) {
+    const p = await getProjectForPrint(projectId);
+    if (!p) {
+        showToast('تعذر جلب بيانات المشروع للطباعة', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast('يرجى السماح بالنوافذ المنبثقة للطباعة', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    let rowsHtml = '';
+    if (p.details && p.details.length > 0) {
+        p.details.forEach((d, idx) => {
+            rowsHtml += `
+                <tr>
+                    <td style="font-weight:bold; font-family:monospace; background:#f8fafc;">${d.door_number || ('D-' + (idx+1))}</td>
+                    <td style="font-weight:bold; text-align:center;">${d.quantity || 1}</td>
+                    <td style="text-align:center;">${d.width || '-'}</td>
+                    <td style="text-align:center;">${d.height || '-'}</td>
+                    <td style="text-align:center;">${d.depth || '-'}</td>
+                    <td style="text-align:center;">${d.direction || '-'}</td>
+                    <td>${d.door_type || '-'}</td>
+                    <td style="text-align:center;">${d.leaf_size || '-'}</td>
+                    <td style="text-align:center;">${d.leaf_size_2 || '-'}</td>
+                    <td style="text-align:center;">${d.leaf_thickness || '4.5'}</td>
+                    <td>${d.lock_type || '-'}</td>
+                    <td style="text-align:center;">${d.hinges || '-'} (${d.hinges_count || '4'})</td>
+                    <td style="text-align:center;">${d.fire_resistance || '-'}</td>
+                    <td>${d.architrave || '-'}</td>
+                    <td style="text-align:center;">${d.under_tile || '-'}</td>
+                    <td>${d.window_width ? `${d.window_width}×${d.window_height} (${d.window_position || ''})` : 'بدون'}</td>
+                    <td style="font-size:10px;">${d.notes || '-'}</td>
+                </tr>
+            `;
+        });
+    } else {
+        rowsHtml = `<tr><td colspan="17" style="text-align:center; padding:20px; color:#94a3b8;">لا توجد تفاصيل هندسية مسجلة</td></tr>`;
+    }
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <title>أمر تشغيل وتصنيع - ${p.project_number || ''} ${p.name || ''}</title>
+        <style>
+            @page { size: A4 landscape; margin: 8mm; }
+            * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+            body { margin: 0; padding: 10px; color: #1e293b; background: #fff; font-size: 11px; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            .header-table td { padding: 4px; vertical-align: middle; }
+            .factory-title { font-size: 18px; font-weight: bold; color: #0f172a; margin: 0; }
+            .sub-title { font-size: 13px; color: #4338ca; font-weight: bold; margin-top: 2px; }
+            .doc-box { border: 2px solid #4338ca; border-radius: 8px; padding: 6px 12px; text-align: center; background: #eef2ff; }
+            .meta-grid { width: 100%; border-collapse: collapse; margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; }
+            .meta-grid td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+            .meta-label { color: #64748b; font-weight: bold; width: 13%; }
+            .meta-val { color: #0f172a; font-weight: bold; width: 20%; }
+            .data-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+            .data-table th, .data-table td { border: 1px solid #cbd5e1; padding: 4px 5px; }
+            .data-table th { background: #1e293b; color: #fff; font-weight: bold; text-align: center; }
+            .data-table tr:nth-child(even) { background: #f8fafc; }
+            .stages-box { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+            .stages-box th, .stages-box td { border: 1px dashed #94a3b8; padding: 6px; text-align: center; font-size: 10px; }
+            .stages-box th { background: #f1f5f9; font-weight: bold; color: #334155; }
+            .sign-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .sign-table td { width: 33.33%; text-align: center; padding: 10px; font-weight: bold; }
+            .sign-line { border-bottom: 1px dashed #64748b; margin: 25px auto 5px auto; width: 60%; }
+            @media print {
+                button { display: none; }
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+        </style>
+    </head>
+    <body>
+        <table class="header-table">
+            <tr>
+                <td style="width: 50%;">
+                    <h1 class="factory-title">مصنع أبواب الطوارئ والحديد المتخصص</h1>
+                    <div class="sub-title">إدارة العمليات والإنتاج - أمر تشغيل ورشة (Factory Work Order)</div>
+                </td>
+                <td style="width: 50%; text-align: left;">
+                    <div class="doc-box" style="display:inline-block;">
+                        <div style="font-size: 14px; font-weight: bold;">أمر تشغيل رقم: WO-${p.project_number || p.id}</div>
+                        <div style="font-size: 10px; color: #475569;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="meta-grid">
+            <tr>
+                <td class="meta-label">رقم المشروع:</td>
+                <td class="meta-val">${p.project_number || '-'}</td>
+                <td class="meta-label">اسم المشروع:</td>
+                <td class="meta-val">${p.name || '-'}</td>
+                <td class="meta-label">المقاول:</td>
+                <td class="meta-val">${p.contractor_name || '-'}</td>
+            </tr>
+            <tr>
+                <td class="meta-label">مسؤول الموقع:</td>
+                <td class="meta-val">${p.engineer_name || '-'} (${p.engineer_phone || '-'})</td>
+                <td class="meta-label">تاريخ التسليم:</td>
+                <td class="meta-val" style="color: #b91c1c;">${p.delivery_date ? new Date(p.delivery_date).toLocaleDateString('ar-EG') : '-'}</td>
+                <td class="meta-label">لون الدهان:</td>
+                <td class="meta-val">${p.paint_color || '-'}</td>
+            </tr>
+            <tr>
+                <td class="meta-label">نوع التصنيع:</td>
+                <td class="meta-val">${p.manufacturing_type || '-'}</td>
+                <td class="meta-label">طبيعة التركيب:</td>
+                <td class="meta-val">${p.installation_type || '-'}</td>
+                <td class="meta-label">ملاحظات عامة:</td>
+                <td class="meta-val" style="font-size: 10px;">${p.notes || '-'}</td>
+            </tr>
+        </table>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>رقم الباب</th>
+                    <th>العدد</th>
+                    <th>العرض</th>
+                    <th>الارتفاع</th>
+                    <th>العمق</th>
+                    <th>الاتجاه</th>
+                    <th>نوع الباب</th>
+                    <th>درفة 1</th>
+                    <th>درفة 2</th>
+                    <th>السماكة</th>
+                    <th>الزرفيل</th>
+                    <th>الفصالات</th>
+                    <th>حريق</th>
+                    <th>الكشفة</th>
+                    <th>تحت البلاط</th>
+                    <th>الشباك</th>
+                    <th>ملاحظات</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+            </tbody>
+        </table>
+
+        <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px; color: #1e293b;">متابعة اعتماد مراحل التصنيع (Production Quality Sign-off):</div>
+        <table class="stages-box">
+            <thead>
+                <tr>
+                    <th>1. البرمجة والقص</th>
+                    <th>2. الثني والتشكيل</th>
+                    <th>3. التجميع واللحام</th>
+                    <th>4. فرن الدهان</th>
+                    <th>5. الإكسسوارات</th>
+                    <th>6. مراقبة الجودة (QC)</th>
+                    <th>7. التغليف والتحميل</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>[  ] مكتمل<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] مكتمل<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] مكتمل<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] مكتمل<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] مكتمل<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] معتمد<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                    <td>[  ] تم التوريد<div style="font-size:9px; color:#64748b; margin-top:10px;">التوقيع: .........</div></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="sign-table">
+            <tr>
+                <td>
+                    مهندس الإنتاج والورشة
+                    <div class="sign-line"></div>
+                </td>
+                <td>
+                    مسؤول مراقبة الجودة
+                    <div class="sign-line"></div>
+                </td>
+                <td>
+                    اعتماد مدير المصنع
+                    <div class="sign-line"></div>
+                </td>
+            </tr>
+        </table>
+
+        <script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+};
+
+window.printProjectCuttingCards = async function(projectId) {
+    const p = await getProjectForPrint(projectId);
+    if (!p) {
+        showToast('تعذر جلب بيانات المشروع للطباعة', 'bg-rose-500', '✗');
+        return;
+    }
+
+    if (!p.details || p.details.length === 0) {
+        showToast('لا توجد تفاصيل أبواب مسجلة لطباعة بطاقات القص', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast('يرجى السماح بالنوافذ المنبثقة للطباعة', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    let cardsHtml = '';
+    p.details.forEach((d, idx) => {
+        const qty = d.quantity || 1;
+        cardsHtml += `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-pname">${p.name} <span class="p-num">(${p.project_number || '-'})</span></div>
+                    <div class="door-num">${d.door_number || ('D-' + (idx+1))}</div>
+                </div>
+                <div class="card-body">
+                    <div class="field-row">
+                        <span class="f-lbl">الكمية:</span> <span class="f-val highlight">${qty}</span> | 
+                        <span class="f-lbl">المقاس:</span> <span class="f-val highlight" dir="ltr">${d.width || '-'} × ${d.height || '-'} × ${d.depth || '-'}</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">الاتجاه:</span> <span class="f-val">${d.direction || '-'}</span> | 
+                        <span class="f-lbl">نوع الباب:</span> <span class="f-val">${d.door_type || '-'}</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">قياس الدرفة 1:</span> <span class="f-val bold">${d.leaf_size || '-'}</span> | 
+                        <span class="f-lbl">درفة 2:</span> <span class="f-val bold">${d.leaf_size_2 || '-'}</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">سماكة الدرفة:</span> <span class="f-val">${d.leaf_thickness || '4.5'}</span> | 
+                        <span class="f-lbl">المقطع:</span> <span class="f-val">${d.profile_type || '-'}</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">الزرفيل:</span> <span class="f-val">${d.lock_type || '-'}</span> | 
+                        <span class="f-lbl">الفصالات:</span> <span class="f-val">${d.hinges || '-'} (${d.hinges_count || '4'})</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">الكشفة:</span> <span class="f-val">${d.architrave || '-'}</span> | 
+                        <span class="f-lbl">تحت البلاط:</span> <span class="f-val">${d.under_tile || '-'}</span>
+                    </div>
+                    <div class="field-row">
+                        <span class="f-lbl">الشباك:</span> <span class="f-val">${d.window_width ? `${d.window_width}×${d.window_height} (${d.window_position || ''})` : 'بدون'}</span> | 
+                        <span class="f-lbl">حريق:</span> <span class="f-val">${d.fire_resistance || '-'}</span>
+                    </div>
+                    ${d.notes ? `<div class="field-row notes"><span class="f-lbl">ملاحظات:</span> ${d.notes}</div>` : ''}
+                </div>
+                <div class="card-footer">
+                    <div class="check-box">[ ] قص صاج</div>
+                    <div class="check-box">[ ] ثني وتشكيل</div>
+                    <div class="check-box">[ ] لحام وتجميع</div>
+                    <div class="check-box">[ ] دهان</div>
+                </div>
+            </div>
+        `;
+    });
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <title>بطاقات القص وستيكرات الأبواب - ${p.project_number || ''}</title>
+        <style>
+            @page { size: A4 portrait; margin: 8mm; }
+            * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+            body { margin: 0; padding: 5px; color: #1e293b; background: #fff; font-size: 11px; }
+            .page-title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #4338ca; border-bottom: 2px solid #e0e7ff; padding-bottom: 5px; }
+            .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .card {
+                border: 2px dashed #64748b;
+                border-radius: 8px;
+                padding: 8px;
+                background: #fff;
+                break-inside: avoid;
+                page-break-inside: avoid;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                position: relative;
+            }
+            .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1.5px solid #0f172a;
+                padding-bottom: 4px;
+                margin-bottom: 6px;
+            }
+            .card-pname { font-size: 10px; font-weight: bold; color: #475569; max-width: 65%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .p-num { color: #4338ca; font-family: monospace; }
+            .door-num { font-size: 18px; font-weight: 900; color: #0f172a; font-family: monospace; }
+            .card-body { font-size: 10px; line-height: 1.45; }
+            .field-row { margin-bottom: 2px; }
+            .f-lbl { color: #64748b; font-weight: bold; }
+            .f-val { color: #0f172a; }
+            .highlight { font-weight: bold; color: #1e1b4b; background: #f1f5f9; padding: 1px 4px; border-radius: 4px; }
+            .bold { font-weight: bold; color: #4338ca; }
+            .notes { color: #b91c1c; font-size: 9px; font-weight: bold; }
+            .card-footer {
+                margin-top: 6px;
+                padding-top: 4px;
+                border-top: 1px solid #e2e8f0;
+                display: flex;
+                justify-content: space-between;
+                font-size: 9px;
+                font-weight: bold;
+                color: #475569;
+            }
+            .check-box { white-space: nowrap; }
+            @media print {
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page-title">بطاقات القص والتشغيل لأبواب مشروع: ${p.name} (${p.project_number || '-'})</div>
+        <div class="grid-container">
+            ${cardsHtml}
+        </div>
+        <script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+};
+
+window.generateProjectHandoverPdf = async function(projectId) {
+    const p = await getProjectForPrint(projectId);
+    if (!p) {
+        showToast('تعذر جلب بيانات المشروع لتوليد محضر الاستلام', 'bg-rose-500', '✗');
+        return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast('يرجى السماح بالنوافذ المنبثقة لطباعة محضر الاستلام', 'bg-amber-500', '⚠️');
+        return;
+    }
+
+    let doorsSummaryHtml = '';
+    let totalDoorsCount = 0;
+    if (p.details && p.details.length > 0) {
+        p.details.forEach((d, idx) => {
+            const qty = d.quantity || 1;
+            totalDoorsCount += qty;
+            doorsSummaryHtml += `
+                <tr>
+                    <td style="text-align:center; font-weight:bold; font-family:monospace;">${d.door_number || ('D-' + (idx+1))}</td>
+                    <td style="text-align:center; font-weight:bold;">${qty}</td>
+                    <td style="text-align:center;" dir="ltr">${d.width || '-'} × ${d.height || '-'} × ${d.depth || '-'}</td>
+                    <td style="text-align:center;">${d.direction || '-'}</td>
+                    <td style="text-align:center;">${d.fire_resistance || 'عادي'}</td>
+                    <td>${d.lock_type || '-'} / ${d.hinges || '-'}</td>
+                    <td style="text-align:center; color:#15803d; font-weight:bold;">تم التوريد والمطابقة ✓</td>
+                </tr>
+            `;
+        });
+    }
+
+    // Punch list items to be noted on handover if any
+    let punchItemsHtml = '';
+    if (p.punch_list && p.punch_list.length > 0) {
+        punchItemsHtml += `<div style="font-weight:bold; margin-top:10px; margin-bottom:4px; color:#b91c1c;">ملاحظات ونواقص تم رصدها بالموقع للمتابعة والإصلاح:</div>`;
+        punchItemsHtml += `<ul style="margin:0; padding-right:20px; font-size:11px; color:#334155;">`;
+        p.punch_list.forEach(item => {
+            punchItemsHtml += `<li><strong>[${item.door_number || 'عام'}]:</strong> ${item.description} (الحالة: ${item.status})</li>`;
+        });
+        punchItemsHtml += `</ul>`;
+    } else {
+        punchItemsHtml = `
+            <div style="border: 1px dashed #cbd5e1; border-radius:6px; padding:8px 12px; margin-top:8px; font-size:11px; color:#475569;">
+                <strong>ملاحظات مهندس الموقع / الملاحظات الفنية:</strong>
+                <div style="height:35px; border-bottom:1px dotted #cbd5e1;"></div>
+            </div>
+        `;
+    }
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <title>محضر استلام وتسليم أعمال - ${p.name || ''}</title>
+        <style>
+            @page { size: A4 portrait; margin: 15mm; }
+            * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+            body { margin: 0; padding: 10px; color: #1e293b; background: #fff; font-size: 12px; line-height: 1.6; }
+            .doc-border { border: 2px solid #0f172a; padding: 20px; border-radius: 12px; }
+            .header-box { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px; }
+            .header-title { font-size: 20px; font-weight: 900; color: #0f172a; margin: 0; }
+            .header-sub { font-size: 14px; font-weight: bold; color: #047857; margin-top: 4px; }
+            .doc-meta { display: flex; justify-content: space-between; font-size: 11px; margin-top: 10px; color: #475569; }
+            .section-p { margin-bottom: 12px; text-align: justify; }
+            .parties-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+            .parties-table td { padding: 8px 12px; border: 1px solid #e2e8f0; vertical-align: top; }
+            .doors-table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; font-size: 11px; }
+            .doors-table th, .doors-table td { border: 1px solid #cbd5e1; padding: 6px 8px; }
+            .doors-table th { background: #1e293b; color: #fff; text-align: center; }
+            .terms-list { padding-right: 20px; margin: 10px 0; font-size: 11px; color: #334155; }
+            .terms-list li { margin-bottom: 4px; }
+            .sign-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+            .sign-table td { width: 33.33%; text-align: center; vertical-align: top; padding: 10px; }
+            .sign-title { font-weight: bold; color: #0f172a; margin-bottom: 5px; }
+            .sign-space { border-bottom: 1px dashed #64748b; height: 50px; width: 80%; margin: 10px auto; }
+            @media print {
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="doc-border">
+            <div class="header-box">
+                <h1 class="header-title">شركة فراس وطارق الجدع وشريكهم</h1>
+                <div style="font-size: 13px; font-weight: bold; color: #475569; margin-top: 3px;">للأبواب المعدنية والأبواب المقاومة للحريق</div>
+                <div class="header-sub" style="margin-top: 6px;">محضر فحص واستلام أعمال وتوريد أبواب الموقع</div>
+                <div class="doc-meta">
+                    <div><strong>رقم المشروع:</strong> ${p.project_number || '-'}</div>
+                    <div><strong>رقم المحضر:</strong> REC-${p.project_number || p.id}</div>
+                    <div><strong>تاريخ التحرير:</strong> ${new Date().toLocaleDateString('ar-EG')} م</div>
+                </div>
+            </div>
+
+            <div class="section-p">
+                إنه في يوم ......................... الموافق &nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp; / 202... م، بموقع مشروع <strong>(${p.name})</strong> الكائن في <strong>(${p.location || 'الموقع المعتمد'})</strong>، تم بحضور كل من:
+            </div>
+
+            <table class="parties-table">
+                <tr>
+                    <td style="width: 50%;">
+                        <strong style="color:#0f172a;">الطرف الأول (المصنع المورد والمنفذ):</strong><br>
+                        شركة فراس وطارق الجدع وشريكهم<br>
+                        <span style="font-size: 10px; color: #64748b;">للأبواب المعدنية والأبواب المقاومة للحريق</span><br>
+                        يمثله المشرف: ............................................
+                    </td>
+                    <td style="width: 50%;">
+                        <strong style="color:#0f172a;">الطرف الثاني (المقاول / الجهة المستلمة):</strong><br>
+                        السادة / ${p.contractor_name || 'المقاول المعتمد'}<br>
+                        يمثله المهندس المشرف: ${p.engineer_name || '............................................'} (هاتف: ${p.engineer_phone || '-'})
+                    </td>
+                </tr>
+            </table>
+
+            <div class="section-p">
+                تمت معاينة وفحص واستلام الأبواب المعدنية الموردة والمنفذة طبقاً للمواصفات الفنية المعتمدة وأوامر التشغيل وبيانها كالتالي:
+            </div>
+
+            <table class="doors-table">
+                <thead>
+                    <tr>
+                        <th>رقم الباب</th>
+                        <th>العدد</th>
+                        <th>المقاس (عرض × ارتفاع × عمق)</th>
+                        <th>الاتجاه</th>
+                        <th>مقاومة الحريق</th>
+                        <th>الزرفيل والإكسسوار</th>
+                        <th>حالة الاستلام</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${doorsSummaryHtml}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f8fafc; font-weight:bold;">
+                        <td style="text-align:center;">الإجمالي</td>
+                        <td style="text-align:center;">${totalDoorsCount} باب</td>
+                        <td colspan="5" style="text-align:left; padding-left:10px; color:#475569;">لون الدهان المعتمد: ${p.paint_color || '-'}</td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div style="font-weight:bold; color:#0f172a; margin-top:8px;">إقرار وشروط الاستلام:</div>
+            <ol class="terms-list">
+                <li>يقر الطرف الثاني بأنه قد قام بفحص ومعاينة الأعمال والأبواب المذكورة أعلاه فحصاً نافياً للجهالة وتأكد من سلامتها ومطابقتها للمقاسات والمواصفات وألوان الدهان المعتمدة.</li>
+                <li>تخضع جميع الأبواب الموردة لضمان المصنع المعتمد ضد عيوب الصناعة وفقاً للعقد المبرم بين الطرفين.</li>
+                <li>يعد توقيع هذا المحضر إبراءً لذمة الطرف الأول بخصوص التوريد وسلامة الأبواب المذكورة واستحقاق الدفعة المالية المترتبة على التسليم.</li>
+            </ol>
+
+            ${punchItemsHtml}
+
+            <table class="sign-table">
+                <tr>
+                    <td>
+                        <div class="sign-title">مندوب الطرف الأول (الشركة)</div>
+                        <div style="font-size:10px; color:#64748b;">شركة فراس وطارق الجدع وشريكهم</div>
+                        <div class="sign-space"></div>
+                        <div>الاسم والتوقيع: ...........................</div>
+                    </td>
+                    <td>
+                        <div class="sign-title">مندوب الطرف الثاني (المقاول)</div>
+                        <div style="font-size:10px; color:#64748b;">مهندس الموقع المستلم</div>
+                        <div class="sign-space"></div>
+                        <div>الاسم والتوقيع: ...........................</div>
+                    </td>
+                    <td>
+                        <div class="sign-title">اعتماد الإدارة الهندسية والمشاريع</div>
+                        <div style="font-size:10px; color:#64748b;">الختم والاعتماد الرسمي</div>
+                        <div class="sign-space"></div>
+                        <div>التاريخ: ..... / ..... / 202... م</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <script>
+            window.onload = function() {
+                setTimeout(function() { window.print(); }, 500);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+};
+
+// ==========================================
 //           PURCHASING MODULE
 // ==========================================
+
 const SUPPLIERS_URL = `${API_HOST}/api/suppliers`;
 const PURCHASE_REQUESTS_URL = `${API_HOST}/api/purchase-requests`;
 
@@ -5471,9 +7674,9 @@ window.renderSheetNestingContent = function(tab) {
                     <line x1="${leafBendRight}" y1="0" x2="${leafBendRight}" y2="${ph}" stroke="${color.border}" stroke-width="0.35" stroke-dasharray="2,2" opacity="0.35" />
                 `;
 
-                // Handle and lock hardware on lock edge (right side)
+                // Handle and lock hardware on lock edge (right side) at 104.3 cm (1043 mm) from bottom of leaf
                 const handleX = pw - Math.min(pw * 0.10, 8.0);
-                const handleY = ph * 0.50;
+                const handleY = (ph > 110) ? (ph - 104.3) : (ph * 0.50);
                 const lockEdgeCutout = `
                     <circle cx="${handleX.toFixed(2)}" cy="${handleY.toFixed(2)}" r="${Math.min(pw * 0.025, 2.5).toFixed(2)}" fill="${color.border}" opacity="0.55" />
                     <rect x="${(pw - Math.min(pw * 0.035, 3.0)).toFixed(2)}" y="${(handleY - Math.min(ph * 0.06, 12)).toFixed(2)}" width="${Math.min(pw * 0.035, 3.0).toFixed(2)}" height="${(Math.min(ph * 0.06, 12) * 2).toFixed(2)}" fill="${color.border}" opacity="0.5" rx="0.4" />
@@ -5557,6 +7760,2382 @@ window.renderSheetNestingContent = function(tab) {
 
         container.appendChild(sheetCard);
     });
+};
+
+// =========================================================================
+// CLEAN INTERACTIVE PROFILE VIEWER & DIMENSION EDITOR (Single Rabbit with Rubber)
+// Faithful to: Single rabbit with ruber frame.dxf
+// =========================================================================
+
+window.profileEditorState = {
+    D: 150.0,       // Overall frame depth (top)
+    A_L: 40.0,      // Left architrave (upper height)
+    S: 22.0,        // Rabbet step height (lower left)
+    A_R: 62.0,      // Right architrave (total height = A_L + S = 62)
+    W_rab: 52.0,    // Rabbet width (bottom left)
+    W_step: 12.0,   // Step width before rubber (middle bottom)
+    W_web: 98.0,    // Web width (D - W_rab = 150 - 52 = 98)
+    H_step: 10.5,   // Step height
+    S_in: 14.5,     // Inner step height
+    R_L: 15.0,      // Left top return flange
+    R_R: 15.0,      // Right top return flange
+    T: 1.5,         // Sheet thickness
+    isReadOnly: false, // Read-only mode flag (true in project view, false in wizard)
+    // Source context
+    sourceType: null, // 'project' or 'wizard'
+    sourceDoorIdx: null,
+    sourceRowEl: null
+};
+
+// Check if profile type is supported (Always allow viewing)
+window.isProfileSupported = function(profileType) {
+    return true;
+};
+
+// Unsupported profile modal
+window.showUnsupportedProfileModal = function(profileName) {
+    const modal = document.getElementById('unsupportedProfileModal');
+    const msg = document.getElementById('unsupportedProfileMsg');
+    if (msg) {
+        msg.innerHTML = `المقطع المختار: <strong class="text-amber-700">${profileName || 'غير محدد'}</strong><br>المعاينة التفاعلية والتعديل المباشر متاحان حالياً لمقطع <strong class="text-slate-900">Single rabbit with rubber</strong> فقط.`;
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeUnsupportedProfileModal = function() {
+    const modal = document.getElementById('unsupportedProfileModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+// Calculate exact unfolded flat width (Sheet Metal Flat Pattern Width)
+window.calculateProfileUnfoldedWidth = function(s) {
+    const pType = (s.profileType || s.profile_type || '').toLowerCase();
+    const isDrnr = (pType.includes('double') || pType.includes('مزدوج')) && (pType.includes('without') || pType.includes('بدون'));
+    const isDouble = (pType.includes('double') || pType.includes('مزدوج')) && !isDrnr;
+    const isWithoutRubber = (pType.includes('without') || pType.includes('بدون') || pType === 'single rabbit') && !isDrnr;
+
+    const D = parseFloat(s.D) || (isDouble ? 160.0 : 150.0);
+    const A_L = parseFloat(s.A_L) || (isDrnr ? 40.0 : (isDouble ? 50.0 : (isWithoutRubber ? 55.0 : 40.0)));
+    const A_R = parseFloat(s.A_R) !== undefined ? parseFloat(s.A_R) : (isDrnr ? 40.0 : (isDouble ? 50.0 : (isWithoutRubber ? 40.0 : 62.0)));
+    const R_L = parseFloat(s.R_L) || 15.0;
+    const R_R = parseFloat(s.R_R) || 15.0;
+
+    if (isDrnr) {
+        // Double Rabbit Without Rubber Benchmark: D=150, A_L=40, A_R=40, R_L=15, R_R=15 => Unfolded Flat = 272.94 mm
+        const delta = (D - 150.0)
+                    + (A_L - 40.0)
+                    + (A_R - 40.0)
+                    + (R_L - 15.0)
+                    + (R_R - 15.0);
+        return Math.max(50.0, Math.round((272.94 + delta) * 10) / 10);
+    }
+
+    if (isDouble) {
+        // Double Rabbit with Rubber Benchmark: D=160, A_L=50, A_R=50, R_L=15, R_R=15 => Unfolded Flat = 338.34 mm
+        const delta = (D - 160.0)
+                    + (A_L - 50.0)
+                    + (A_R - 50.0)
+                    + (R_L - 15.0)
+                    + (R_R - 15.0);
+        return Math.max(50.0, Math.round((338.34 + delta) * 10) / 10);
+    }
+
+    if (isWithoutRubber) {
+        // Single Rabbit Without Rubber Benchmark: D=150, A_L=55, A_R=40, R_L=15, R_R=15 => Unfolded Flat = 275.80 mm
+        const delta = (D - 150.0)
+                    + (A_L - 55.0)
+                    + (A_R - 40.0)
+                    + (R_L - 15.0)
+                    + (R_R - 15.0);
+        return Math.max(50.0, Math.round((275.80 + delta) * 10) / 10);
+    }
+
+    // Single Rabbit With Rubber Benchmark: D=150, A_L=40, A_R=62, R_L=15, R_R=15 => Unfolded Flat = 315.9 mm
+    const delta = (D - 150.0)
+                + (A_L - 40.0)
+                + (A_R - 62.0)
+                + (R_L - 15.0)
+                + (R_R - 15.0);
+
+    const totalMm = Math.max(50.0, Math.round((315.9 + delta) * 10) / 10);
+    return totalMm;
+};
+
+// Update Unfolded Width Corner Badge
+function updateProfileUnfoldedBadge() {
+    const totalMm = window.calculateProfileUnfoldedWidth(window.profileEditorState);
+    const totalCm = (totalMm / 10.0).toFixed(1);
+
+    const lblMm = document.getElementById('lblTotalUnfoldedWidth');
+    const lblCm = document.getElementById('lblTotalUnfoldedCm');
+
+    if (lblMm) lblMm.textContent = totalMm.toFixed(1);
+    if (lblCm) lblCm.textContent = `(${totalCm} سم)`;
+}
+
+// Update Modal UI between Editable (Wizard) and Read-Only (Project View)
+window.updateProfileModalUI = function() {
+    const s = window.profileEditorState;
+    const subtitle = document.getElementById('lblProfileSubtitle');
+    const btnReset = document.getElementById('btnProfileReset');
+    const btnApply = document.getElementById('btnProfileApply');
+    const btnCancel = document.getElementById('btnProfileCancel');
+    const footerNote = document.getElementById('lblProfileFooterNote');
+
+    if (s.isReadOnly) {
+        if (subtitle) subtitle.textContent = 'معاينة مقطع الحلق وحساب الإفراد (للتعديل يرجى استخدام زر تعديل المشروع)';
+        if (btnReset) btnReset.classList.add('hidden');
+        if (btnApply) btnApply.classList.add('hidden');
+        if (btnCancel) btnCancel.textContent = 'إغلاق';
+        if (footerNote) footerNote.textContent = '• نمط العرض فقط: المقاسات معتمدة ومسجلة في المشروع';
+    } else {
+        if (subtitle) subtitle.textContent = 'انقر مباشرة على أي رقم أو خط بعد في الرسم لتعديل قياسه أو اختر مقطعاً آخر';
+        if (btnReset) btnReset.classList.remove('hidden');
+        if (btnApply) btnApply.classList.remove('hidden');
+        if (btnCancel) btnCancel.textContent = 'إلغاء';
+        if (footerNote) footerNote.textContent = '• المقاسات المعروضة بالملم وسماكة الصاج الافتراضية 1.5 ملم';
+    }
+
+    // Sync Profile Select in Studio Modal
+    const sel = document.getElementById('studioProfileSelect');
+    if (sel) {
+        const curP = (s.profileType || 'single rabbit with rubber').toLowerCase();
+        for (let i = 0; i < sel.options.length; i++) {
+            const optVal = sel.options[i].value.toLowerCase();
+            if (optVal === curP ||
+                (curP === 'single rabbit' && optVal.includes('single rabbit without rubber')) ||
+                (curP === 'double rabbit' && optVal.includes('double rabbit without rubber'))) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+        sel.disabled = !!s.isReadOnly;
+    }
+
+    // Sync labels in controls bar and bottom bar
+    const lblD = document.getElementById('lblStudioProfileD');
+    const lblA1 = document.getElementById('lblStudioProfileA1');
+    const lblA2 = document.getElementById('lblStudioProfileA2');
+    const lblName = document.getElementById('lblCurrentProfileName');
+    const lblThick = document.getElementById('lblCurrentProfileThickness');
+    const lblUnfolded = document.getElementById('lblCurrentProfileUnfolded');
+
+    if (lblD) lblD.textContent = ((s.D || 150) / 10).toFixed(1);
+    if (lblA1) lblA1.textContent = ((s.A_L || 40) / 10).toFixed(1);
+    if (lblA2) lblA2.textContent = ((s.A_R || 62) / 10).toFixed(1);
+    if (lblName) lblName.textContent = s.profileType || 'single rabbit with rubber';
+    if (lblThick) lblThick.textContent = (s.T || 1.5) + ' مم';
+    if (lblUnfolded) lblUnfolded.textContent = window.calculateProfileUnfoldedWidth(s) + ' مم';
+};
+
+// Studio Modal: Switch Profile Type
+window.onStudioProfileTypeChange = function(newProfile) {
+    const p = window.profileEditorState;
+    const s = window.doorElevationState;
+    p.profileType = newProfile;
+    s.profileType = newProfile;
+    const pType = (newProfile || '').toLowerCase();
+
+    const isDrnr = (pType.includes('double') || pType.includes('مزدوج')) && (pType.includes('without') || pType.includes('بدون'));
+    const isDouble = (pType.includes('double') || pType.includes('مزدوج')) && !isDrnr;
+    const isWithoutRubber = (pType.includes('without') || pType.includes('بدون') || pType === 'single rabbit') && !isDrnr;
+
+    if (isDrnr) {
+        // Double rabbit without rubber benchmark: D=150, A_L=40, A_R=40
+        p.D = 150.0;
+        p.A_L = 40.0;
+        p.A_R = 40.0;
+        p.R_L = 15.0;
+        p.R_R = 15.0;
+        p.W_rab1 = 47.0;
+        p.W_rab2 = 47.0;
+        p.S1 = 15.0;
+        p.S2 = 15.0;
+        p.W_web = 56.0;
+    } else if (isDouble) {
+        // Double rabbit with rubber benchmark: D=160, A_L=50, A_R=50
+        p.D = 160.0;
+        p.A_L = 50.0;
+        p.A_R = 50.0;
+        p.R_L = 15.0;
+        p.R_R = 15.0;
+        p.W_rab1 = 52.0;
+        p.W_step = 12.0;
+        p.H_step = 10.5;
+        p.S_in = 11.5;
+        p.W_rab2 = 47.0;
+        p.W_web = 61.0;
+    } else if (isWithoutRubber) {
+        // Single rabbit without rubber benchmark: D=150, A_L=55, A_R=40
+        p.D = 150.0;
+        p.A_L = 55.0;
+        p.A_R = 40.0;
+        p.R_L = 15.0;
+        p.R_R = 15.0;
+    } else {
+        // Single rabbit with rubber benchmark: D=150, A_L=40, A_R=62
+        p.D = 150.0;
+        p.A_L = 40.0;
+        p.A_R = 62.0;
+        p.W_rab = 52.0;
+        p.W_step = 12.0;
+        p.W_web = 98.0;
+        p.H_step = 10.5;
+        p.S_in = 14.5;
+        p.R_L = 15.0;
+        p.R_R = 15.0;
+    }
+
+    s.depth = p.D / 10.0;
+    s.architrave = p.A_L / 10.0;
+    s.architrave2 = p.A_R / 10.0;
+
+    window.updateProfileModalUI();
+    window.renderCleanProfileSvg();
+    if (typeof updateProfileUnfoldedBadge === 'function') updateProfileUnfoldedBadge();
+    if (typeof updateDoorElevationUI === 'function') updateDoorElevationUI();
+};
+
+// Reset to Default Factory Profile
+window.resetProfileToDefault = function() {
+    if (window.profileEditorState.isReadOnly) return;
+    const curP = window.profileEditorState.profileType || 'single rabbit with rubber';
+    window.onStudioProfileTypeChange(curP);
+    showToast('تمت إعادة ضبط المقطع إلى مقاسات الـ DXF القياسية', 'bg-slate-700', '↺');
+};
+
+// Close modal
+window.closeInteractiveProfileEditor = function() {
+    const modal = document.getElementById('profileEditorModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+// =========================================================================
+// INTERACTIVE DOOR ELEVATION & PROFILE CAD STUDIO
+// =========================================================================
+
+window.doorElevationState = {
+    width: 100.0,          // Total Width in cm
+    height: 220.0,         // Total Height in cm
+    depth: 15.0,           // Depth in cm
+    architrave: 4.0,       // Architrave 1 in cm
+    architrave2: 6.2,      // Architrave 2 in cm
+    direction: 'RH',       // 'RH', 'LH', 'Double'
+    doorType: 'Single leaf metal',
+    lockType: 'Mortise',   // 'Mortise', 'Panic Bar', etc.
+    hinges: 'Standard Stainless Steel',
+    hingesCount: 4,
+    hasWindow: false,
+    windowWidth: 20,
+    windowHeight: 60,
+    windowPosition: 'Center',
+    raddad: false,
+    doorNumber: 'باب',
+    isReadOnly: false,
+    sourceType: null,      // 'project' or 'wizard'
+    sourceDoorIdx: null,
+    sourceRowEl: null,
+    activeTab: 'elevation' // 'elevation' or 'profile'
+};
+
+// Studio Tab Switcher
+window.switchStudioTab = function(tabName) {
+    window.doorElevationState.activeTab = tabName;
+    const btnElev = document.getElementById('btnStudioTabElevation');
+    const btnProf = document.getElementById('btnStudioTabProfile');
+    const cElev = document.getElementById('doorElevationContainer');
+    const cProf = document.getElementById('doorProfileContainer');
+    const badgeElev = document.getElementById('badgeDoorElevationStats');
+    const badgeProf = document.getElementById('badgeProfileUnfolded');
+    const title = document.getElementById('lblStudioTitle');
+
+    if (tabName === 'profile') {
+        if (cElev) cElev.classList.add('hidden');
+        if (cProf) cProf.classList.remove('hidden');
+        if (badgeElev) badgeElev.classList.add('hidden');
+        if (badgeProf) badgeProf.classList.remove('hidden');
+
+        if (btnProf) {
+            btnProf.className = 'px-4 py-1.5 rounded-xl text-xs font-bold transition-all bg-white text-emerald-700 shadow-sm flex items-center gap-1.5 cursor-pointer';
+        }
+        if (btnElev) {
+            btnElev.className = 'px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer';
+        }
+        if (title) title.textContent = 'معاينة وتعديل مقطع الحلق (Profile CAD)';
+        window.updateProfileModalUI();
+        window.renderCleanProfileSvg();
+        if (typeof updateProfileUnfoldedBadge === 'function') updateProfileUnfoldedBadge();
+    } else {
+        if (cProf) cProf.classList.add('hidden');
+        if (cElev) cElev.classList.remove('hidden');
+        if (badgeProf) badgeProf.classList.add('hidden');
+        if (badgeElev) badgeElev.classList.remove('hidden');
+
+        if (btnElev) {
+            btnElev.className = 'px-4 py-1.5 rounded-xl text-xs font-bold transition-all bg-white text-indigo-700 shadow-sm flex items-center gap-1.5 cursor-pointer';
+        }
+        if (btnProf) {
+            btnProf.className = 'px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer';
+        }
+        if (title) title.textContent = 'معاينة وتعديل شكل الباب';
+        window.renderDoorElevationSvg();
+    }
+};
+
+// Calculate Leaf Sizes
+window.calculateDoorElevationLeafSizes = function() {
+    const s = window.doorElevationState;
+    let w = parseFloat(s.width) || 100.0;
+    let h = parseFloat(s.height) || 220.0;
+    let arch = parseFloat(s.architrave) || 4.0;
+    if (w > 350) w /= 10.0;
+    if (h > 450) h /= 10.0;
+    if (arch > 20) arch /= 10.0;
+
+    const dir = s.direction || '';
+    const dt = s.doorType || '';
+    const isDouble = dir === 'Double' || dir.includes('D/') || dir.includes('دبل') || dt.toLowerCase().includes('double') || dt.includes('دبل');
+
+    // Leaf height: Door height - Architrave (A1) - 3mm (frame gap) - 7mm (floor clearance) = H - A1 - 1.0 cm
+    const leafHeight = Math.max(10, Math.round((h - arch - 1.0) * 100) / 100);
+
+    if (isDouble) {
+        // Double door: clearances = 3.5mm (left) + 3.5mm (right) + 8.0mm (middle) = 15.0mm (1.5 cm)
+        const leafW = Math.max(10, Math.round(((w - (2 * arch) - 1.5) / 2) * 100) / 100);
+        const leafW_mm = leafW * 10;
+        const isRightActive = !dir.toUpperCase().includes('D/LA') && !dir.includes('يسار');
+        return {
+            isDouble: true,
+            leaf1: leafW,
+            leaf2: leafW,
+            leafHeight: leafHeight,
+            a1_unfolded_mm: Math.round((leafW_mm + 105.30) * 10) / 10,
+            a2_unfolded_mm: Math.round((leafW_mm + 79.65) * 10) / 10,
+            a4_unfolded_mm: Math.round((leafW_mm + 134.34) * 10) / 10,
+            a3_unfolded_mm: Math.round((leafW_mm + 51.86) * 10) / 10,
+            isRightActive: isRightActive
+        };
+    } else {
+        // Single door: clearance = 7.0mm (0.7 cm) total
+        const leaf1 = Math.max(10, Math.round((w - (2 * arch) - 0.7) * 100) / 100);
+        const leaf1_mm = leaf1 * 10;
+        const leaf1Unfolded_mm = Math.round((leaf1_mm + 140.12) * 10) / 10;
+        return {
+            isDouble: false,
+            leaf1: leaf1,
+            leaf2: null,
+            leafHeight: leafHeight,
+            leaf1Unfolded_mm: leaf1Unfolded_mm
+        };
+    }
+};
+
+// Update Door Elevation UI & Inputs
+window.updateDoorElevationUI = function() {
+    const s = window.doorElevationState;
+    const inpW = document.getElementById('doorCtrlWidth');
+    const inpH = document.getElementById('doorCtrlHeight');
+    const lblStatW = document.getElementById('lblDoorStatsWidth');
+    const lblStatH = document.getElementById('lblDoorStatsHeight');
+
+    if (inpW && document.activeElement !== inpW) inpW.value = s.width;
+    if (inpH && document.activeElement !== inpH) inpH.value = s.height;
+    if (lblStatW) lblStatW.textContent = s.width;
+    if (lblStatH) lblStatH.textContent = s.height;
+
+    // Direction buttons
+    const btnRH = document.getElementById('btnDirRH');
+    const btnLH = document.getElementById('btnDirLH');
+    const btnDouble = document.getElementById('btnDirDouble');
+    [btnRH, btnLH, btnDouble].forEach(b => {
+        if (b) b.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer text-slate-700 bg-white hover:bg-slate-50';
+    });
+    if (s.direction === 'RH' && btnRH) {
+        btnRH.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
+    } else if (s.direction === 'LH' && btnLH) {
+        btnLH.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
+    } else if ((s.direction === 'Double' || (s.direction || '').includes('D/')) && btnDouble) {
+        btnDouble.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
+    }
+
+    // Stats bar
+    const leafInfo = window.calculateDoorElevationLeafSizes();
+    const lblLeaf1 = document.getElementById('lblStatsLeaf1');
+    const lblLeaf2 = document.getElementById('lblStatsLeaf2');
+    const boxLeaf2 = document.getElementById('boxStatsLeaf2');
+    const lblDoorType = document.getElementById('lblStatsDoorType');
+    const lblArch = document.getElementById('lblStatsArchitrave');
+    const lblLock = document.getElementById('lblStatsLock');
+    const lblHinges = document.getElementById('lblStatsHinges');
+    const lblHandleHole = document.getElementById('lblStatsHandleHole');
+
+    if (leafInfo.isDouble) {
+        if (leafInfo.isRightActive) {
+            if (lblLeaf1) lblLeaf1.textContent = `درفة رئيسية (يمين): ${leafInfo.leaf1} × ${leafInfo.leafHeight} سم (إفراد A1: ${leafInfo.a1_unfolded_mm} مم | A2: ${leafInfo.a2_unfolded_mm} مم)`;
+            if (boxLeaf2 && lblLeaf2) {
+                boxLeaf2.classList.remove('hidden');
+                lblLeaf2.textContent = `درفة ثانوية (يسار): ${leafInfo.leaf2} × ${leafInfo.leafHeight} سم (إفراد A4: ${leafInfo.a4_unfolded_mm} مم | A3: ${leafInfo.a3_unfolded_mm} مم)`;
+            }
+        } else {
+            if (lblLeaf1) lblLeaf1.textContent = `درفة رئيسية (يسار): ${leafInfo.leaf1} × ${leafInfo.leafHeight} سم (إفراد A1: ${leafInfo.a1_unfolded_mm} مم | A2: ${leafInfo.a2_unfolded_mm} مم)`;
+            if (boxLeaf2 && lblLeaf2) {
+                boxLeaf2.classList.remove('hidden');
+                lblLeaf2.textContent = `درفة ثانوية (يمين): ${leafInfo.leaf2} × ${leafInfo.leafHeight} سم (إفراد A4: ${leafInfo.a4_unfolded_mm} مم | A3: ${leafInfo.a3_unfolded_mm} مم)`;
+            }
+        }
+    } else {
+        if (lblLeaf1) lblLeaf1.textContent = `${leafInfo.leaf1} × ${leafInfo.leafHeight} سم (إفراد: ${leafInfo.leaf1Unfolded_mm} مم)`;
+        if (boxLeaf2) boxLeaf2.classList.add('hidden');
+    }
+
+    if (lblDoorType) lblDoorType.textContent = s.doorType || (leafInfo.isDouble ? 'Double leaf metal' : 'Single leaf metal');
+    if (lblArch) lblArch.textContent = `${s.architrave} سم`;
+    if (lblLock) lblLock.textContent = s.lockType || 'Mortise';
+    if (lblHinges) lblHinges.textContent = `${s.hingesCount || 4} فصالات (${s.hinges || 'ستانلس'})`;
+    if (lblHandleHole) lblHandleHole.textContent = '1050 ملم (1043 ملم عن قاع الدرفة)';
+
+    // Mode handling (Read-only vs Editable)
+    const subtitle = document.getElementById('lblProfileSubtitle');
+    const btnReset = document.getElementById('btnProfileReset');
+    const btnApply = document.getElementById('btnProfileApply');
+    const btnCancel = document.getElementById('btnProfileCancel');
+    const footerNote = document.getElementById('lblProfileFooterNote');
+    const controlsBar = document.getElementById('doorElevationControls');
+
+    if (s.isReadOnly) {
+        if (subtitle) subtitle.textContent = 'معاينة تفاعلية لشكل الباب وأبعاده (للتعديل يرجى استخدام زر تعديل المشروع)';
+        if (btnReset) btnReset.classList.add('hidden');
+        if (btnApply) btnApply.classList.add('hidden');
+        if (btnCancel) btnCancel.textContent = 'إغلاق';
+        if (footerNote) footerNote.textContent = '• نمط العرض فقط: المقاسات معتمدة ومسجلة في المشروع';
+        if (controlsBar) controlsBar.classList.add('pointer-events-none', 'opacity-60');
+    } else {
+        if (subtitle) subtitle.textContent = 'انقر مباشرة على أبعاد العرض أو الطول في الرسم أو استخدم أدوات التحكم لتعديل المقاسات مباشرة';
+        if (btnReset) btnReset.classList.remove('hidden');
+        if (btnApply) btnApply.classList.remove('hidden');
+        if (btnCancel) btnCancel.textContent = 'إلغاء';
+        if (footerNote) footerNote.textContent = '• المقاسات المعروضة بالسنتيمتر، ويتم تحديث قياس الدرف والمقطع تلقائياً';
+        if (controlsBar) controlsBar.classList.remove('pointer-events-none', 'opacity-60');
+    }
+};
+
+// Steppers
+window.adjustDoorDimension = function(dim, delta) {
+    if (window.doorElevationState.isReadOnly) return;
+    const s = window.doorElevationState;
+    if (dim === 'width') {
+        s.width = Math.max(50, Math.min(350, Math.round((parseFloat(s.width) + delta) * 10) / 10));
+    } else if (dim === 'height') {
+        s.height = Math.max(120, Math.min(350, Math.round((parseFloat(s.height) + delta) * 10) / 10));
+    }
+    window.updateDoorElevationUI();
+    window.renderDoorElevationSvg();
+};
+
+window.onDoorDimensionInput = function(dim, val) {
+    if (window.doorElevationState.isReadOnly) return;
+    const num = parseFloat(val);
+    if (isNaN(num) || num <= 0) return;
+    const s = window.doorElevationState;
+    if (dim === 'width') {
+        s.width = Math.max(40, Math.min(400, Math.round(num * 10) / 10));
+    } else if (dim === 'height') {
+        s.height = Math.max(100, Math.min(400, Math.round(num * 10) / 10));
+    }
+    window.updateDoorElevationUI();
+    window.renderDoorElevationSvg();
+};
+
+window.setDoorElevationDirection = function(dir) {
+    if (window.doorElevationState.isReadOnly) return;
+    window.doorElevationState.direction = dir;
+    if (dir === 'Double') {
+        window.doorElevationState.doorType = 'Double leaf metal';
+    } else {
+        if ((window.doorElevationState.doorType || '').toLowerCase().includes('double') || (window.doorElevationState.doorType || '').includes('دبل')) {
+            window.doorElevationState.doorType = 'Single leaf metal';
+        }
+    }
+    window.updateDoorElevationUI();
+    window.renderDoorElevationSvg();
+};
+
+window.applyDoorPreset = function(w, h, dir) {
+    if (window.doorElevationState.isReadOnly) return;
+    const s = window.doorElevationState;
+    s.width = w;
+    s.height = h;
+    if (dir) {
+        s.direction = dir;
+        if (dir === 'Double') s.doorType = 'Double leaf metal';
+    }
+    window.updateDoorElevationUI();
+    window.renderDoorElevationSvg();
+};
+
+// In-place click on SVG dimension badge
+window.editDoorDimensionInPlace = function(dim, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    if (window.doorElevationState.isReadOnly) {
+        if (typeof showToast === 'function') {
+            showToast('نمط العرض فقط: للتعديل افتح نافذة تعديل المشروع', 'bg-slate-700', 'ℹ');
+        }
+        return;
+    }
+    const targetInputId = (dim === 'width') ? 'doorCtrlWidth' : 'doorCtrlHeight';
+    const input = document.getElementById(targetInputId);
+    if (input) {
+        input.focus();
+        input.select();
+        const container = input.closest('div');
+        if (container) {
+            container.classList.add('ring-4', 'ring-indigo-400');
+            setTimeout(() => {
+                container.classList.remove('ring-4', 'ring-indigo-400');
+            }, 1200);
+        }
+    }
+};
+
+// Render Door Elevation SVG (Architectural Elevation CAD View)
+window.renderDoorElevationSvg = function() {
+    const viewport = document.getElementById('doorElevationSvgViewport');
+    if (!viewport) return;
+
+    const s = window.doorElevationState;
+    const W = (parseFloat(s.width) || 100.0) * 10;   // Convert cm to mm
+    const H = (parseFloat(s.height) || 220.0) * 10;  // Convert cm to mm
+    const arch = (parseFloat(s.architrave) || 4.0) * 10; // Architrave width in mm
+    const isDouble = s.direction === 'Double' || (s.doorType || '').toLowerCase().includes('double') || (s.doorType || '').includes('دبل');
+    const dir = s.direction || 'RH';
+
+    // ViewBox Margins
+    const marginL = 230;
+    const marginR = 240;
+    const marginT = 170;
+    const marginB = 140;
+    const vbX = -marginL;
+    const vbY = -marginT;
+    const vbW = W + marginL + marginR;
+    const vbH = H + marginT + marginB;
+
+    // Leaf and Opening Geometry
+    const openingW = Math.max(100, W - 2 * arch);
+    const openingH = Math.max(200, H - arch);
+    const leafGapTop = 3;       // فراغ بين الباب والحلق من الأعلى = 3 ملم
+    const clearanceBottom = 7;  // فراغ بين الدرفة والأرض من الأسفل = 7 ملم
+    const leafGapSides = 3.5;   // خلوص جانبي = 3.5 ملم (إجمالي الخلوص الجانبي = 7 ملم)
+
+    // Leaf size calculations
+    const leafCalc = window.calculateDoorElevationLeafSizes();
+    const leaf1W = isDouble ? (leafCalc.leaf1 * 10) : (openingW - 7);
+    const leaf2W = isDouble ? (leafCalc.leaf2 * 10) : 0;
+    // طول الدرفة = طول الباب - كشفة A1 - 3 ملم (فراغ أعلى) - 7 ملم (فراغ أسفل)
+    const leafH = H - arch - leafGapTop - clearanceBottom;
+
+    // مكان ثقب اليد ثابت على ارتفاع 1050 ملم من الأرض التشطيبية إلى منتصف الدائرة (1043 ملم عن قاع الدرفة)
+    const handleHoleY = H - 1050;
+    const isPanic = (s.lockType || '').toLowerCase().includes('panic') || (s.lockType || '').includes('طوارئ');
+
+    // Hinges parameters
+    const hingeW = 18;
+    const hingeH = 95;
+    const hingeYPositions = [
+        arch + 160,
+        arch + 420,
+        Math.round((arch + 420 + H - 240) / 2),
+        H - 240
+    ];
+
+    let leavesSvg = '';
+    let hingesSvg = '';
+    let swingTrianglesSvg = '';
+    let hardwareSvg = '';
+    let windowSvg = '';
+    let closerSvg = '';
+
+    if (!isDouble) {
+        // SINGLE LEAF
+        const leafX = arch + leafGapSides;
+        const leafY = arch + leafGapTop;
+        const leafW = leaf1W;
+
+        leavesSvg = `
+            <!-- Single Leaf Body -->
+            <rect x="${leafX}" y="${leafY}" width="${leafW}" height="${leafH}" rx="3" fill="url(#doorLeafGrad)" stroke="#64748b" stroke-width="2" filter="url(#leafShadow)"/>
+            <!-- Inner leaf bevel line -->
+            <rect x="${leafX + 8}" y="${leafY + 8}" width="${leafW - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
+            <!-- Leaf size watermark -->
+            <g transform="translate(${leafX + leafW/2}, ${H - 140})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#475569" opacity="0.9">درفة: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم (إفراد: ${leafCalc.leaf1Unfolded_mm} مم)</text>
+                <text x="0" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="semibold" fill="#64748b" opacity="0.8">طول الدرفة = ${s.height} - ${s.architrave} - 0.3 - 0.7 = ${(leafH / 10).toFixed(1)} سم</text>
+            </g>
+        `;
+
+        // Swing Triangle
+        if (dir === 'RH') {
+            // Hinges on Right jamb, Handle on Left
+            const apexX = leafX + 55;
+            swingTrianglesSvg = `
+                <polygon points="${leafX + leafW},${leafY} ${apexX},${handleHoleY} ${leafX + leafW},${leafY + leafH}" fill="rgba(79, 70, 229, 0.04)" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="14,10"/>
+                <circle cx="${apexX}" cy="${handleHoleY}" r="4" fill="#4f46e5"/>
+            `;
+            // Hinges on Right
+            hingeYPositions.forEach(hy => {
+                hingesSvg += `
+                    <g transform="translate(${W - arch - hingeW + 2}, ${hy})">
+                        <rect x="0" y="0" width="${hingeW}" height="${hingeH}" rx="4" fill="url(#doorHingeGrad)" stroke="#334155" stroke-width="1.5"/>
+                        <line x1="${hingeW/2}" y1="2" x2="${hingeW/2}" y2="${hingeH - 2}" stroke="#475569" stroke-width="1.5"/>
+                        <line x1="2" y1="${hingeH/3}" x2="${hingeW - 2}" y2="${hingeH/3}" stroke="#64748b" stroke-width="1"/>
+                        <line x1="2" y1="${(hingeH/3)*2}" x2="${hingeW - 2}" y2="${(hingeH/3)*2}" stroke="#64748b" stroke-width="1"/>
+                    </g>
+                `;
+            });
+            // Hardware on Left
+            if (isPanic) {
+                const bX = leafX + 35;
+                const bW = leafW - 70;
+                hardwareSvg = `
+                    <g id="panicBarHardware">
+                        <rect x="${bX}" y="${handleHoleY - 24}" width="${bW}" height="48" rx="8" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                        <rect x="${bX + 25}" y="${handleHoleY - 16}" width="${bW - 50}" height="32" rx="6" fill="#ef4444" stroke="#b91c1c" stroke-width="1.5"/>
+                        <text x="${bX + bW/2}" y="${handleHoleY + 6}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#ffffff" letter-spacing="1">PUSH • بار طوارئ</text>
+                    </g>
+                `;
+            } else {
+                const hx = leafX + 55;
+                hardwareSvg = `
+                    <g id="mortiseLockHardware">
+                        <!-- Escutcheon Plate -->
+                        <rect x="${hx - 14}" y="${handleHoleY - 50}" width="28" height="155" rx="7" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+                        <!-- Lever handle pointing inward (right) -->
+                        <rect x="${hx}" y="${handleHoleY - 7.5}" width="65" height="15" rx="7" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
+                        <!-- Handle Spindle Hole / Center Circle (1050mm from floor, 1043mm from leaf bottom) -->
+                        <circle cx="${hx}" cy="${handleHoleY}" r="11" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                        <circle cx="${hx}" cy="${handleHoleY}" r="4" fill="#0f172a"/>
+                        <!-- Keyhole / Euro Cylinder (72mm below spindle) -->
+                        <circle cx="${hx}" cy="${handleHoleY + 72}" r="5" fill="#0f172a"/>
+                        <path d="M ${hx - 3} ${handleHoleY + 74} L ${hx + 3} ${handleHoleY + 74} L ${hx + 2} ${handleHoleY + 88} L ${hx - 2} ${handleHoleY + 88} Z" fill="#0f172a"/>
+                    </g>
+                `;
+            }
+        } else {
+            // LH: Hinges on Left jamb, Handle on Right
+            const apexX = leafX + leafW - 55;
+            swingTrianglesSvg = `
+                <polygon points="${leafX},${leafY} ${apexX},${handleHoleY} ${leafX},${leafY + leafH}" fill="rgba(79, 70, 229, 0.04)" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="14,10"/>
+                <circle cx="${apexX}" cy="${handleHoleY}" r="4" fill="#4f46e5"/>
+            `;
+            // Hinges on Left
+            hingeYPositions.forEach(hy => {
+                hingesSvg += `
+                    <g transform="translate(${arch - 2}, ${hy})">
+                        <rect x="0" y="0" width="${hingeW}" height="${hingeH}" rx="4" fill="url(#doorHingeGrad)" stroke="#334155" stroke-width="1.5"/>
+                        <line x1="${hingeW/2}" y1="2" x2="${hingeW/2}" y2="${hingeH - 2}" stroke="#475569" stroke-width="1.5"/>
+                        <line x1="2" y1="${hingeH/3}" x2="${hingeW - 2}" y2="${hingeH/3}" stroke="#64748b" stroke-width="1"/>
+                        <line x1="2" y1="${(hingeH/3)*2}" x2="${hingeW - 2}" y2="${(hingeH/3)*2}" stroke="#64748b" stroke-width="1"/>
+                    </g>
+                `;
+            });
+            // Hardware on Right
+            if (isPanic) {
+                const bX = leafX + 35;
+                const bW = leafW - 70;
+                hardwareSvg = `
+                    <g id="panicBarHardware">
+                        <rect x="${bX}" y="${handleHoleY - 24}" width="${bW}" height="48" rx="8" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                        <rect x="${bX + 25}" y="${handleHoleY - 16}" width="${bW - 50}" height="32" rx="6" fill="#ef4444" stroke="#b91c1c" stroke-width="1.5"/>
+                        <text x="${bX + bW/2}" y="${handleHoleY + 6}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#ffffff" letter-spacing="1">PUSH • بار طوارئ</text>
+                    </g>
+                `;
+            } else {
+                const hx = leafX + leafW - 55;
+                hardwareSvg = `
+                    <g id="mortiseLockHardware">
+                        <!-- Escutcheon Plate -->
+                        <rect x="${hx - 14}" y="${handleHoleY - 50}" width="28" height="155" rx="7" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+                        <!-- Lever handle pointing inward (left) -->
+                        <rect x="${hx - 65}" y="${handleHoleY - 7.5}" width="65" height="15" rx="7" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
+                        <!-- Handle Spindle Hole / Center Circle (1050mm from floor, 1043mm from leaf bottom) -->
+                        <circle cx="${hx}" cy="${handleHoleY}" r="11" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                        <circle cx="${hx}" cy="${handleHoleY}" r="4" fill="#0f172a"/>
+                        <!-- Keyhole -->
+                        <circle cx="${hx}" cy="${handleHoleY + 72}" r="5" fill="#0f172a"/>
+                        <path d="M ${hx - 3} ${handleHoleY + 74} L ${hx + 3} ${handleHoleY + 74} L ${hx + 2} ${handleHoleY + 88} L ${hx - 2} ${handleHoleY + 88} Z" fill="#0f172a"/>
+                    </g>
+                `;
+            }
+        }
+
+        // Window (Vision Panel)
+        if (s.hasWindow) {
+            const wW = (parseFloat(s.windowWidth) || 20) * 10;
+            const wH = (parseFloat(s.windowHeight) || 60) * 10;
+            const wX = (s.windowPosition === 'Side') ? (dir === 'RH' ? leafX + 80 : leafX + leafW - wW - 80) : (leafX + (leafW - wW)/2);
+            const wY = arch + 340;
+            windowSvg = `
+                <g id="visionPanel">
+                    <rect x="${wX}" y="${wY}" width="${wW}" height="${wH}" rx="6" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="${wX + 12}" y="${wY + 12}" width="${wW - 24}" height="${wH - 24}" rx="4" fill="url(#doorGlassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+                    <line x1="${wX + 22}" y1="${wY + wH - 22}" x2="${wX + wW - 22}" y2="${wY + 22}" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+                    <text x="${wX + wW/2}" y="${wY + wH + 28}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="bold" fill="#0284c7">زجاج: ${s.windowWidth}×${s.windowHeight} سم</text>
+                </g>
+            `;
+        }
+
+        // Door Closer (رداد)
+        if (s.raddad) {
+            const clW = 190;
+            const clH = 46;
+            const clX = (dir === 'RH') ? (W - arch - clW - 20) : (arch + 20);
+            const clY = arch + 14;
+            closerSvg = `
+                <g id="doorCloser">
+                    <rect x="${clX}" y="${clY}" width="${clW}" height="${clH}" rx="6" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                    <line x1="${clX + clW/2}" y1="${clY + clH/2}" x2="${clX + clW/2 + (dir === 'RH' ? -60 : 60)}" y2="${arch - 12}" stroke="#475569" stroke-width="4.5" stroke-linecap="round"/>
+                    <circle cx="${clX + clW/2 + (dir === 'RH' ? -60 : 60)}" cy="${arch - 12}" r="5" fill="#1e293b"/>
+                    <text x="${clX + clW/2}" y="${clY + 29}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="bold" fill="#ffffff">رداد هيدروليكي</text>
+                </g>
+            `;
+        }
+    } else {
+        // DOUBLE LEAF (دبل)
+        const gapBetween = 8;
+        const l1W = leafCalc.leaf1 * 10;
+        const l2W = leafCalc.leaf2 * 10;
+
+        const leaf1X = arch + leafGapSides;
+        const leaf1Y = arch + leafGapTop;
+        const leaf2X = leaf1X + l1W + gapBetween;
+        const leaf2Y = leaf1Y;
+        const isRightActive = leafCalc.isRightActive;
+
+        const leftTitle = isRightActive ? 'درفة ثانوية (خاملة)' : 'درفة رئيسية (نشطة)';
+        const rightTitle = isRightActive ? 'درفة رئيسية (نشطة)' : 'درفة ثانوية (خاملة)';
+        const leftUnfold = isRightActive ? `إفراد A4: ${leafCalc.a4_unfolded_mm} مم | A3: ${leafCalc.a3_unfolded_mm} مم` : `إفراد A1: ${leafCalc.a1_unfolded_mm} مم | A2: ${leafCalc.a2_unfolded_mm} مم`;
+        const rightUnfold = isRightActive ? `إفراد A1: ${leafCalc.a1_unfolded_mm} مم | A2: ${leafCalc.a2_unfolded_mm} مم` : `إفراد A4: ${leafCalc.a4_unfolded_mm} مم | A3: ${leafCalc.a3_unfolded_mm} مم`;
+
+        leavesSvg = `
+            <!-- Left Leaf -->
+            <rect x="${leaf1X}" y="${leaf1Y}" width="${l1W}" height="${leafH}" rx="3" fill="url(#doorLeafGrad)" stroke="#64748b" stroke-width="2" filter="url(#leafShadow)"/>
+            <rect x="${leaf1X + 8}" y="${leaf1Y + 8}" width="${l1W - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
+            <g transform="translate(${leaf1X + l1W/2}, ${H - 140})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" fill="#475569" opacity="0.9">${leftTitle}: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم</text>
+                <text x="0" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="semibold" fill="#64748b" opacity="0.85">${leftUnfold}</text>
+            </g>
+
+            <!-- Right Leaf -->
+            <rect x="${leaf2X}" y="${leaf2Y}" width="${l2W}" height="${leafH}" rx="3" fill="url(#doorLeafGrad)" stroke="#64748b" stroke-width="2" filter="url(#leafShadow)"/>
+            <rect x="${leaf2X + 8}" y="${leaf2Y + 8}" width="${l2W - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
+            <g transform="translate(${leaf2X + l2W/2}, ${H - 140})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" fill="#475569" opacity="0.9">${rightTitle}: ${leafCalc.leaf2} × ${(leafH / 10).toFixed(1)} سم</text>
+                <text x="0" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="semibold" fill="#64748b" opacity="0.85">${rightUnfold}</text>
+            </g>
+
+            <!-- Central Astragal (شفة الركوب 36.5 ملم) -->
+            <rect x="${isRightActive ? (leaf1X + l1W - 5) : (leaf2X - 31.5)}" y="${leaf1Y}" width="36.5" height="${leafH}" fill="#475569" stroke="#334155" stroke-width="1"/>
+            
+            <!-- Inactive Leaf Flush Bolts (ترابيس للأعلى والأسفل) -->
+            <rect x="${isRightActive ? (leaf1X + l1W - 25) : (leaf2X + 5)}" y="${leaf1Y + 30}" width="18" height="65" rx="3" fill="#cbd5e1" stroke="#475569" stroke-width="1.5"/>
+            <rect x="${isRightActive ? (leaf1X + l1W - 25) : (leaf2X + 5)}" y="${leaf1Y + leafH - 95}" width="18" height="65" rx="3" fill="#cbd5e1" stroke="#475569" stroke-width="1.5"/>
+        `;
+
+        // Double Triangles meeting at center
+        const apexX = leaf1X + l1W + (gapBetween / 2);
+        swingTrianglesSvg = `
+            <!-- Left leaf swing -->
+            <polygon points="${leaf1X},${leaf1Y} ${apexX - 15},${handleHoleY} ${leaf1X},${leaf1Y + leafH}" fill="rgba(79, 70, 229, 0.03)" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="14,10"/>
+            <!-- Right leaf swing -->
+            <polygon points="${leaf2X + l2W},${leaf2Y} ${apexX + 15},${handleHoleY} ${leaf2X + l2W},${leaf2Y + leafH}" fill="rgba(79, 70, 229, 0.03)" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="14,10"/>
+            <circle cx="${apexX}" cy="${handleHoleY}" r="5" fill="#4f46e5"/>
+        `;
+
+        // Hinges on BOTH left and right outer jambs
+        hingeYPositions.forEach(hy => {
+            // Left jamb hinges
+            hingesSvg += `
+                <g transform="translate(${arch - 2}, ${hy})">
+                    <rect x="0" y="0" width="${hingeW}" height="${hingeH}" rx="4" fill="url(#doorHingeGrad)" stroke="#334155" stroke-width="1.5"/>
+                    <line x1="${hingeW/2}" y1="2" x2="${hingeW/2}" y2="${hingeH - 2}" stroke="#475569" stroke-width="1.5"/>
+                </g>
+            `;
+            // Right jamb hinges
+            hingesSvg += `
+                <g transform="translate(${W - arch - hingeW + 2}, ${hy})">
+                    <rect x="0" y="0" width="${hingeW}" height="${hingeH}" rx="4" fill="url(#doorHingeGrad)" stroke="#334155" stroke-width="1.5"/>
+                    <line x1="${hingeW/2}" y1="2" x2="${hingeW/2}" y2="${hingeH - 2}" stroke="#475569" stroke-width="1.5"/>
+                </g>
+            `;
+        });
+
+        // Hardware on Active leaf (and passive leaf if panic)
+        if (isPanic) {
+            const b1W = l1W - 60;
+            const b2W = l2W - 60;
+            hardwareSvg = `
+                <g id="doublePanicBars">
+                    <rect x="${leaf1X + 30}" y="${handleHoleY - 24}" width="${b1W}" height="48" rx="8" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="${leaf1X + 50}" y="${handleHoleY - 16}" width="${b1W - 40}" height="32" rx="6" fill="#ef4444" stroke="#b91c1c" stroke-width="1.5"/>
+
+                    <rect x="${leaf2X + 30}" y="${handleHoleY - 24}" width="${b2W}" height="48" rx="8" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="${leaf2X + 50}" y="${handleHoleY - 16}" width="${b2W - 40}" height="32" rx="6" fill="#ef4444" stroke="#b91c1c" stroke-width="1.5"/>
+                    <text x="${W/2}" y="${handleHoleY + 6}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="17" font-weight="900" fill="#ffffff">PUSH • ذراعا طوارئ مزدوجان</text>
+                </g>
+            `;
+        } else {
+            const hx = leaf2X + 45;
+            hardwareSvg = `
+                <g id="doubleMortiseLock">
+                    <rect x="${hx - 14}" y="${handleHoleY - 50}" width="28" height="155" rx="7" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+                    <rect x="${hx}" y="${handleHoleY - 7.5}" width="65" height="15" rx="7" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
+                    <circle cx="${hx}" cy="${handleHoleY}" r="11" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                    <circle cx="${hx}" cy="${handleHoleY}" r="4" fill="#0f172a"/>
+                    <circle cx="${hx}" cy="${handleHoleY + 72}" r="5" fill="#0f172a"/>
+                    <path d="M ${hx - 3} ${handleHoleY + 74} L ${hx + 3} ${handleHoleY + 74} L ${hx + 2} ${handleHoleY + 88} L ${hx - 2} ${handleHoleY + 88} Z" fill="#0f172a"/>
+                </g>
+            `;
+        }
+
+        // Vision panels on both leaves if present
+        if (s.hasWindow) {
+            const wW = Math.min(l1W - 60, (parseFloat(s.windowWidth) || 20) * 10);
+            const wH = (parseFloat(s.windowHeight) || 60) * 10;
+            const w1X = leaf1X + (l1W - wW)/2;
+            const w2X = leaf2X + (l2W - wW)/2;
+            const wY = arch + 340;
+            windowSvg = `
+                <g id="doubleVisionPanels">
+                    <!-- Left window -->
+                    <rect x="${w1X}" y="${wY}" width="${wW}" height="${wH}" rx="6" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="${w1X + 10}" y="${wY + 10}" width="${wW - 20}" height="${wH - 20}" rx="4" fill="url(#doorGlassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+                    <!-- Right window -->
+                    <rect x="${w2X}" y="${wY}" width="${wW}" height="${wH}" rx="6" fill="#1e293b" stroke="#0f172a" stroke-width="2"/>
+                    <rect x="${w2X + 10}" y="${wY + 10}" width="${wW - 20}" height="${wH - 20}" rx="4" fill="url(#doorGlassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+                </g>
+            `;
+        }
+    }
+
+    // Outer Frame SVG (Mitered 45° corners)
+    const frameSvg = `
+        <g id="steelOuterFrame">
+            <!-- Left Jamb -->
+            <rect x="0" y="0" width="${arch}" height="${H}" fill="url(#doorFrameGrad)" stroke="#1e293b" stroke-width="2"/>
+            <!-- Right Jamb -->
+            <rect x="${W - arch}" y="0" width="${arch}" height="${H}" fill="url(#doorFrameGrad)" stroke="#1e293b" stroke-width="2"/>
+            <!-- Top Header -->
+            <rect x="${arch}" y="0" width="${W - 2*arch}" height="${arch}" fill="url(#doorFrameGrad)" stroke="#1e293b" stroke-width="2"/>
+            <!-- 45 Degree Corner Miters -->
+            <line x1="0" y1="0" x2="${arch}" y2="${arch}" stroke="#0f172a" stroke-width="2.5"/>
+            <line x1="${W}" y1="0" x2="${W - arch}" y2="${arch}" stroke="#0f172a" stroke-width="2.5"/>
+        </g>
+    `;
+
+    // Floor Line (F.F.L)
+    const floorSvg = `
+        <g id="floorLevelGroup">
+            <!-- Floor ground hatching -->
+            <rect x="-100" y="${H}" width="${W + 200}" height="40" fill="url(#floorHatchPattern)"/>
+            <!-- Solid floor level line -->
+            <line x1="-120" y1="${H}" x2="${W + 120}" y2="${H}" stroke="#475569" stroke-width="3"/>
+            <!-- Floor badge & text -->
+            <g transform="translate(${W + 20}, ${H + 18})">
+                <text x="0" y="0" font-family="system-ui, sans-serif" font-size="19" font-weight="900" fill="#334155">±0.00 F.F.L</text>
+                <text x="0" y="18" font-family="system-ui, sans-serif" font-size="14" font-weight="bold" fill="#64748b">منسوب البلاط التشطيبي</text>
+            </g>
+        </g>
+    `;
+
+    // Dimension Lines (Width & Height with interactive clickable badges, handle hole height, clearances)
+    const dimWidthY = -75;
+    const dimHeightX = -85;
+
+    const dimensionsSvg = `
+        <g id="architecturalDimensions">
+            <!-- Top Width Dimension -->
+            <line x1="0" y1="-10" x2="0" y2="${dimWidthY - 20}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
+            <line x1="${W}" y1="-10" x2="${W}" y2="${dimWidthY - 20}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
+            <line x1="0" y1="${dimWidthY}" x2="${W}" y2="${dimWidthY}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+
+            <!-- Top Width Interactive Badge -->
+            <g id="badgeDimWidth" class="cursor-pointer group" onclick="editDoorDimensionInPlace('width', event)">
+                <rect x="${W/2 - 130}" y="${dimWidthY - 28}" width="260" height="56" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" filter="url(#badgeShadow)"/>
+                <text x="${W/2}" y="${dimWidthY + 9}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#3730a3">العرض: ${s.width} سم ✎</text>
+            </g>
+
+            <!-- Left Height Dimension -->
+            <line x1="-10" y1="0" x2="${dimHeightX - 20}" y2="0" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
+            <line x1="-10" y1="${H}" x2="${dimHeightX - 20}" y2="${H}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
+            <line x1="${dimHeightX}" y1="0" x2="${dimHeightX}" y2="${H}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+
+            <!-- Left Height Interactive Badge (Rotated for architectural elegance) -->
+            <g id="badgeDimHeight" class="cursor-pointer group" onclick="editDoorDimensionInPlace('height', event)" transform="rotate(-90, ${dimHeightX}, ${H/2})">
+                <rect x="${dimHeightX - 135}" y="${H/2 - 28}" width="270" height="56" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" filter="url(#badgeShadow)"/>
+                <text x="${dimHeightX}" y="${H/2 + 9}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#3730a3">الارتفاع: ${s.height} سم ✎</text>
+            </g>
+
+            <!-- Architrave Dimension Annotation (Top Right) -->
+            <g transform="translate(${W - arch/2}, -20)">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" fill="#475569">كشفة (A1) ${s.architrave} سم</text>
+            </g>
+
+            <!-- Top Clearance Callout (3mm between frame header and leaf) -->
+            <g id="calloutTopClearance" transform="translate(${arch + 30}, ${arch + 1.5})">
+                <line x1="0" y1="0" x2="-20" y2="-22" stroke="#d97706" stroke-width="1.5"/>
+                <circle cx="0" cy="0" r="3" fill="#f59e0b"/>
+                <rect x="-115" y="-36" width="95" height="24" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1.2"/>
+                <text x="-67" y="-20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#b45309">فراغ أعلى: 3 ملم</text>
+            </g>
+
+            <!-- Bottom Clearance Callout (7mm between leaf and floor) -->
+            <g id="calloutBottomClearance" transform="translate(${arch + 30}, ${H - 3.5})">
+                <line x1="0" y1="0" x2="-20" y2="22" stroke="#d97706" stroke-width="1.5"/>
+                <circle cx="0" cy="0" r="3" fill="#f59e0b"/>
+                <rect x="-125" y="10" width="105" height="24" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1.2"/>
+                <text x="-72" y="26" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#b45309">خلوص أرض: 7 ملم</text>
+            </g>
+
+            <!-- Handle Hole Height Dimension Line (1050 mm from floor / 1043 mm from leaf bottom) -->
+            <g id="dimHandleHeightGroup">
+                <!-- Reference dashed lines extending to the right -->
+                <line x1="${W}" y1="${H}" x2="${W + 90}" y2="${H}" stroke="#10b981" stroke-dasharray="4,4" stroke-width="1.5"/>
+                <line x1="${isDouble ? (leaf2X + 45) : (dir === 'RH' ? (arch + leafGapSides + 55) : (arch + leafGapSides + leaf1W - 55))}" y1="${handleHoleY}" x2="${W + 90}" y2="${handleHoleY}" stroke="#10b981" stroke-dasharray="4,4" stroke-width="1.5"/>
+                
+                <!-- Dimension Line from floor to handle center -->
+                <line x1="${W + 80}" y1="${H}" x2="${W + 80}" y2="${handleHoleY}" stroke="#059669" stroke-width="2.5" marker-start="url(#arrowStartGreen)" marker-end="url(#arrowEndGreen)"/>
+                
+                <!-- Dimension Badge on the right -->
+                <g transform="translate(${W + 88}, ${handleHoleY + 525})">
+                    <rect x="0" y="-38" width="144" height="76" rx="12" fill="#ffffff" stroke="#059669" stroke-width="2.2" filter="url(#badgeShadow)"/>
+                    <text x="72" y="-16" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="900" fill="#065f46">محور ثقب اليد</text>
+                    <text x="72" y="6" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="900" fill="#047857">1050 ملم</text>
+                    <text x="72" y="24" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#64748b">1043 ملم عن القاع</text>
+                </g>
+            </g>
+        </g>
+    `;
+
+    viewport.innerHTML = `
+        <svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" class="w-full h-full max-h-[580px] drop-shadow-md select-none transition-all duration-200" style="display:block; margin:auto;" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <!-- Frame Steel Gradient -->
+                <linearGradient id="doorFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#334155" />
+                    <stop offset="50%" stop-color="#475569" />
+                    <stop offset="100%" stop-color="#334155" />
+                </linearGradient>
+
+                <!-- Leaf Powder-Coated Metal Gradient -->
+                <linearGradient id="doorLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#f8fafc" />
+                    <stop offset="50%" stop-color="#f1f5f9" />
+                    <stop offset="100%" stop-color="#e2e8f0" />
+                </linearGradient>
+
+                <!-- Stainless Steel Hinges Gradient -->
+                <linearGradient id="doorHingeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#94a3b8" />
+                    <stop offset="35%" stop-color="#ffffff" />
+                    <stop offset="65%" stop-color="#cbd5e1" />
+                    <stop offset="100%" stop-color="#64748b" />
+                </linearGradient>
+
+                <!-- Glass Gradient -->
+                <linearGradient id="doorGlassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.85" />
+                    <stop offset="50%" stop-color="#7dd3fc" stop-opacity="0.9" />
+                    <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.85" />
+                </linearGradient>
+
+                <!-- Dimension Arrows (Blue) -->
+                <marker id="arrowStart" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 10 1 L 1 5 L 10 9 z" fill="#4f46e5" />
+                </marker>
+                <marker id="arrowEnd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5" />
+                </marker>
+
+                <!-- Dimension Arrows (Green for Handle) -->
+                <marker id="arrowStartGreen" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 10 1 L 1 5 L 10 9 z" fill="#059669" />
+                </marker>
+                <marker id="arrowEndGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 1 L 9 5 L 0 9 z" fill="#059669" />
+                </marker>
+
+                <!-- Floor Hatch Pattern -->
+                <pattern id="floorHatchPattern" width="16" height="16" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="16" stroke="#94a3b8" stroke-width="2"/>
+                </pattern>
+
+                <!-- Shadows -->
+                <filter id="badgeShadow" x="-15%" y="-20%" width="130%" height="150%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#312e81" flood-opacity="0.18"/>
+                </filter>
+                <filter id="leafShadow" x="-5%" y="-2%" width="110%" height="106%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.12"/>
+                </filter>
+            </defs>
+
+            <!-- CAD Background Grid -->
+            <rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="#f8fafc" />
+
+            <!-- Floor Line & Hatch -->
+            ${floorSvg}
+
+            <!-- Steel Outer Frame -->
+            ${frameSvg}
+
+            <!-- Leaves (Single / Double) -->
+            ${leavesSvg}
+
+            <!-- Swing Direction Triangles -->
+            ${swingTrianglesSvg}
+
+            <!-- Hinges -->
+            ${hingesSvg}
+
+            <!-- Vision Panel / Window -->
+            ${windowSvg}
+
+            <!-- Locks / Handles / Panic Bar -->
+            ${hardwareSvg}
+
+            <!-- Door Closer -->
+            ${closerSvg}
+
+            <!-- Dimension Lines & Interactive Badges -->
+            ${dimensionsSvg}
+        </svg>
+    `;
+};
+
+// Reset Studio Tab
+window.resetStudioCurrentTab = function() {
+    const s = window.doorElevationState;
+    if (s.isReadOnly) return;
+    if (s.activeTab === 'elevation') {
+        s.width = 100.0;
+        s.height = 220.0;
+        window.updateDoorElevationUI();
+        window.renderDoorElevationSvg();
+        if (typeof showToast === 'function') {
+            showToast('تمت إعادة ضبط أبعاد الباب إلى 100 × 220 سم', 'bg-slate-700', '↺');
+        }
+    } else {
+        window.resetProfileToDefault();
+    }
+};
+
+// Apply Studio Changes to Source (Wizard or Edit Table Row)
+window.applyStudioChangesToSource = function() {
+    const s = window.doorElevationState;
+    const p = window.profileEditorState;
+
+    if (s.isReadOnly) {
+        window.closeInteractiveProfileEditor();
+        return;
+    }
+
+    if (s.sourceType === 'wizard' && s.sourceRowEl) {
+        const tr = s.sourceRowEl;
+
+        // 1. Width
+        const widthInput = tr.querySelector('.pd-width-input') || tr.querySelector('input[placeholder="عرض"]') || tr.querySelectorAll('input')[2];
+        if (widthInput) widthInput.value = s.width;
+
+        // 2. Height
+        const heightInput = tr.querySelector('input[placeholder="طول"]') || tr.querySelector('input[placeholder="الارتفاع"]') || tr.querySelectorAll('input')[3];
+        if (heightInput) heightInput.value = s.height;
+
+        // 3. Depth (from profile editor state)
+        const depthCm = Math.round((p.D / 10.0) * 10) / 10;
+        const depthInput = tr.querySelector('input[placeholder="عمق"]') || tr.querySelectorAll('input')[4];
+        if (depthInput) depthInput.value = depthCm;
+
+        // 4. Architrave 1
+        const arch1Cm = Math.round((p.A_L / 10.0) * 10) / 10;
+        const arch1Input = tr.querySelector('.pd-architrave-input') || tr.querySelector('input[placeholder="الكشفة"]');
+        if (arch1Input) arch1Input.value = arch1Cm;
+
+        // 5. Architrave 2
+        const arch2Cm = Math.round((p.A_R / 10.0) * 10) / 10;
+        const arch2Input = tr.querySelector('.pd-architrave-2-input') || tr.querySelector('input[placeholder="الكشفة 2"]');
+        if (arch2Input) arch2Input.value = arch2Cm;
+
+        // 5b. Profile select
+        const profSel = tr.querySelector('.pd-profile-type') || Array.from(tr.querySelectorAll('select')).find(sel => {
+            const opts = Array.from(sel.options).map(o => o.value);
+            return opts.includes('single rabbit with rubber') || opts.includes('single rabbit without rubber') || opts.includes('double rabbit with rubber') || opts.includes('double rabbit without rubber');
+        });
+        if (profSel && p.profileType) {
+            profSel.value = p.profileType;
+        }
+
+        // 6. Direction select
+        const selects = Array.from(tr.querySelectorAll('select'));
+        const dirSelect = selects.find(sel => {
+            const opts = Array.from(sel.options).map(o => o.value);
+            return opts.includes('RH') || opts.includes('LH');
+        }) || selects[0];
+        if (dirSelect) {
+            if (s.direction === 'RH' || s.direction === 'LH') {
+                dirSelect.value = s.direction;
+            }
+        }
+
+        // 7. Door Type select
+        const doorTypeSelect = tr.querySelector('.pd-doortype-select') || selects.find(sel => {
+            const html = (sel.innerHTML || '').toLowerCase();
+            return html.includes('single leaf') || html.includes('double leaf');
+        });
+        if (doorTypeSelect) {
+            const opts = Array.from(doorTypeSelect.options);
+            const matchingOpt = opts.find(o => o.value.toLowerCase().includes(s.doorType.toLowerCase()) || (s.doorType.toLowerCase().includes('double') && o.value.toLowerCase().includes('double')));
+            if (matchingOpt) doorTypeSelect.value = matchingOpt.value;
+        }
+
+        // 8. Auto calculate leaf sizes
+        if (typeof autoCalculateLeafSizes === 'function' && widthInput) {
+            autoCalculateLeafSizes(widthInput);
+        }
+
+        // 9. Recalculate sheet requirements if available
+        if (typeof window.calculateSheetRequirements === 'function') {
+            try { window.calculateSheetRequirements(); } catch (e) {}
+        }
+
+        if (typeof showToast === 'function') {
+            showToast('تم اعتماد قياسات الباب والمقطع بنجاح في جدول الأبواب!', 'bg-emerald-600', '✓');
+        }
+    }
+
+    window.closeInteractiveProfileEditor();
+};
+window.applyProfileChangesToSource = window.applyStudioChangesToSource;
+
+// Trigger 1A: Open Door Elevation from Project View (READ-ONLY)
+window.openDoorElevationFromProject = function(doorIdx, directDoor) {
+    try {
+        let d = null;
+        if (directDoor && typeof directDoor === 'object') {
+            d = directDoor;
+        } else if (doorIdx && typeof doorIdx === 'object') {
+            d = doorIdx;
+        } else {
+            const doors = (window.currentProjectData && Array.isArray(window.currentProjectData.details))
+                ? window.currentProjectData.details
+                : ((window.currentProjectData && Array.isArray(window.currentProjectData.doors)) ? window.currentProjectData.doors : []);
+            if (doorIdx !== undefined && doorIdx !== null && doors[doorIdx]) {
+                d = doors[doorIdx];
+            } else if (doorIdx !== undefined && doorIdx !== null) {
+                d = doors.find(x => x.id == doorIdx || x.door_number == doorIdx);
+            }
+            if (!d && doors.length > 0) {
+                d = doors[0];
+            }
+        }
+        if (!d) {
+            console.warn('Door data not found for preview:', doorIdx, window.currentProjectData);
+            if (typeof showToast === 'function') {
+                showToast('تعذر تحميل بيانات الباب المحدد', 'bg-rose-600', '⚠️');
+            }
+            return;
+        }
+
+        const s = window.doorElevationState;
+        s.isReadOnly = true;
+        s.sourceType = 'project';
+        s.sourceDoorIdx = doorIdx;
+        s.sourceRowEl = null;
+
+        s.width = parseFloat(d.width) || 100.0;
+        s.height = parseFloat(d.height) || 220.0;
+        s.depth = parseFloat(d.depth) || 15.0;
+        s.architrave = parseFloat(d.architrave) || 4.0;
+        s.architrave2 = parseFloat(d.architrave_2) || 6.2;
+        s.direction = d.direction || 'RH';
+        s.doorType = d.door_type || 'Single leaf metal';
+        s.lockType = d.lock_type || 'Mortise';
+        s.hinges = d.hinges || 'Standard Stainless Steel';
+        s.hingesCount = parseInt(d.hinges_count) || 4;
+        s.hasWindow = !!(parseFloat(d.window_width) > 0 && parseFloat(d.window_height) > 0);
+        s.windowWidth = parseFloat(d.window_width) || 20;
+        s.windowHeight = parseFloat(d.window_height) || 60;
+        s.windowPosition = d.window_position || 'Center';
+        s.raddad = (d.raddad === 'YES' || d.raddad === true);
+        s.doorNumber = d.door_number || ('#' + ((doorIdx !== undefined && doorIdx !== null) ? (doorIdx + 1) : 1));
+
+        // Sync profile state
+        const p = window.profileEditorState;
+        p.isReadOnly = true;
+        p.sourceType = 'project';
+        p.sourceDoorIdx = doorIdx;
+        p.sourceRowEl = null;
+        p.profileType = d.profile_type || 'single rabbit with rubber';
+        p.D = s.depth < 40 ? s.depth * 10 : s.depth;
+        p.A_L = s.architrave < 15 ? s.architrave * 10 : s.architrave;
+        p.A_R = s.architrave2 < 15 ? s.architrave2 * 10 : s.architrave2;
+
+        const tag = document.getElementById('lblProfileDoorTag');
+        if (tag) tag.textContent = `باب: ${s.doorNumber}`;
+
+        window.updateDoorElevationUI();
+        window.switchStudioTab('elevation');
+
+        const modal = document.getElementById('profileEditorModal');
+        if (modal) modal.classList.remove('hidden');
+    } catch (err) {
+        console.error('Error in openDoorElevationFromProject:', err);
+    }
+};
+
+// Trigger 1B: Open Door Profile from Project View (READ-ONLY)
+window.openDoorProfileFromProject = function(doorIdx, directDoor) {
+    try {
+        window.openDoorElevationFromProject(doorIdx, directDoor);
+        window.switchStudioTab('profile');
+    } catch (err) {
+        console.error('Error in openDoorProfileFromProject:', err);
+    }
+};
+
+// Trigger 2A: Open Door Elevation from Wizard / Edit Row (EDITABLE)
+window.openDoorElevationFromWizardRow = function(btn) {
+    try {
+        const tr = btn ? btn.closest('tr') : null;
+        if (!tr) return;
+
+        const s = window.doorElevationState;
+        s.isReadOnly = false;
+        s.sourceType = 'wizard';
+        s.sourceDoorIdx = null;
+        s.sourceRowEl = tr;
+
+        const doorNumInput = tr.querySelector('input[placeholder="رقم"]') || tr.querySelector('input[placeholder="رقم الباب"]') || tr.querySelectorAll('input')[0];
+        s.doorNumber = doorNumInput ? (doorNumInput.value || 'باب') : 'باب';
+
+        const widthInput = tr.querySelector('.pd-width-input') || tr.querySelector('input[placeholder="عرض"]') || tr.querySelectorAll('input')[2];
+        const heightInput = tr.querySelector('input[placeholder="طول"]') || tr.querySelector('input[placeholder="الارتفاع"]') || tr.querySelectorAll('input')[3];
+        const depthInput = tr.querySelector('input[placeholder="عمق"]') || tr.querySelectorAll('input')[4];
+        const arch1Input = tr.querySelector('.pd-architrave-input') || tr.querySelector('input[placeholder="الكشفة"]');
+        const arch2Input = tr.querySelector('.pd-architrave-2-input') || tr.querySelector('input[placeholder="الكشفة 2"]');
+
+        s.width = widthInput && parseFloat(widthInput.value) > 0 ? parseFloat(widthInput.value) : 100.0;
+        s.height = heightInput && parseFloat(heightInput.value) > 0 ? parseFloat(heightInput.value) : 220.0;
+        s.depth = depthInput && parseFloat(depthInput.value) > 0 ? parseFloat(depthInput.value) : 15.0;
+        s.architrave = arch1Input && parseFloat(arch1Input.value) > 0 ? parseFloat(arch1Input.value) : 4.0;
+        s.architrave2 = arch2Input && parseFloat(arch2Input.value) > 0 ? parseFloat(arch2Input.value) : (s.architrave + 2.2);
+
+        // Selects
+        const selects = Array.from(tr.querySelectorAll('select'));
+        const dirSelect = selects.find(sel => {
+            const opts = Array.from(sel.options).map(o => o.value);
+            return opts.includes('RH') || opts.includes('LH');
+        }) || selects[0];
+        s.direction = dirSelect && dirSelect.value ? dirSelect.value : 'RH';
+
+        const lockSelect = selects[1];
+        s.lockType = lockSelect && lockSelect.value ? lockSelect.value : 'Mortise';
+
+        const hingeSelect = selects[2];
+        s.hinges = hingeSelect && hingeSelect.value ? hingeSelect.value : 'Standard Stainless Steel';
+
+        const hingeCountSelect = selects[3];
+        s.hingesCount = hingeCountSelect && parseInt(hingeCountSelect.value) ? parseInt(hingeCountSelect.value) : 4;
+
+        const doorTypeSelect = tr.querySelector('.pd-doortype-select') || selects[5];
+        s.doorType = doorTypeSelect && doorTypeSelect.value ? doorTypeSelect.value : 'Single leaf metal';
+
+        // Window & Raddad
+        const winWInput = tr.querySelector('.pd-window-width');
+        const winHInput = tr.querySelector('.pd-window-height');
+        const winPosSelect = tr.querySelector('.pd-window-position');
+        s.windowWidth = winWInput && parseFloat(winWInput.value) > 0 ? parseFloat(winWInput.value) : 20;
+        s.windowHeight = winHInput && parseFloat(winHInput.value) > 0 ? parseFloat(winHInput.value) : 60;
+        s.windowPosition = winPosSelect && winPosSelect.value ? winPosSelect.value : 'Center';
+        s.hasWindow = (winWInput && !winWInput.disabled && parseFloat(winWInput.value) > 0);
+
+        // Checkbox for raddad
+        const checkboxes = Array.from(tr.querySelectorAll('input[type="checkbox"]'));
+        const raddadCb = checkboxes[checkboxes.length - 1];
+        s.raddad = raddadCb ? raddadCb.checked : false;
+
+        // Profile Type
+        const profileSelect = tr.querySelector('.pd-profile-type') || selects.find(sel => {
+            const opts = Array.from(sel.options).map(o => o.value);
+            return opts.includes('single rabbit with rubber') || opts.includes('double rabbit with rubber') || opts.includes('single rabbit without rubber') || opts.includes('double rabbit without rubber') || opts.includes('single rabbit');
+        });
+        s.profileType = profileSelect && profileSelect.value ? profileSelect.value : 'single rabbit with rubber';
+
+        // Sync profile state
+        const p = window.profileEditorState;
+        p.isReadOnly = false;
+        p.sourceType = 'wizard';
+        p.sourceDoorIdx = null;
+        p.sourceRowEl = tr;
+        p.profileType = s.profileType;
+        p.D = s.depth < 40 ? s.depth * 10 : s.depth;
+        p.A_L = s.architrave < 15 ? s.architrave * 10 : s.architrave;
+        p.A_R = s.architrave2 < 15 ? s.architrave2 * 10 : s.architrave2;
+
+        const tag = document.getElementById('lblProfileDoorTag');
+        if (tag) tag.textContent = `باب: ${s.doorNumber}`;
+
+        window.updateDoorElevationUI();
+        window.switchStudioTab('elevation');
+
+        const modal = document.getElementById('profileEditorModal');
+        if (modal) modal.classList.remove('hidden');
+    } catch (err) {
+        console.error('Error in openDoorElevationFromWizardRow:', err);
+    }
+};
+
+// Trigger 2B: Open Door Profile from Wizard / Edit Row (EDITABLE)
+window.openDoorProfileFromWizardRow = function(btn) {
+    try {
+        window.openDoorElevationFromWizardRow(btn);
+        window.switchStudioTab('profile');
+    } catch (err) {
+        console.error('Error in openDoorProfileFromWizardRow:', err);
+    }
+};
+
+// Interactive In-Place Inline Dimension Editing (No prompt popups)
+window.editProfileDimension = function(param, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    // STRICT CHECK: If read-only mode, do not allow editing
+    if (window.profileEditorState.isReadOnly) return;
+
+    const s = window.profileEditorState;
+    const currentVal = s[param] !== undefined ? s[param] : 0;
+
+    // Look for target group
+    const targetEl = document.getElementById(`dim-group-${param}`);
+    if (!targetEl) return;
+
+    // Check if input already open
+    if (targetEl.querySelector('foreignObject')) return;
+
+    const originalContent = targetEl.innerHTML;
+
+    // Get bbox or position attributes from dataset
+    const bx = parseFloat(targetEl.dataset.x) || 0;
+    const by = parseFloat(targetEl.dataset.y) || 0;
+
+    const inputW = 44;
+    const inputH = 22;
+
+    targetEl.innerHTML = `
+        <foreignObject x="${bx - inputW / 2}" y="${by - inputH / 2}" width="${inputW}" height="${inputH}" class="overflow-visible">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex; justify-content:center; align-items:center; width:100%; height:100%;">
+                <input type="number" step="0.5" id="dim-inline-input-${param}" value="${currentVal}"
+                    style="width: 100%; height: 100%; text-align: center; font-size: 10px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+                           background: #ffffff; color: #1e293b; border: 1.5px solid #2563eb; border-radius: 5px; outline: none;
+                           box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); padding: 0 1px;" />
+            </div>
+        </foreignObject>
+    `;
+
+    const inputEl = document.getElementById(`dim-inline-input-${param}`);
+    if (!inputEl) return;
+
+    let isHandled = false;
+    const commitVal = () => {
+        if (isHandled) return;
+        isHandled = true;
+        const newVal = parseFloat(inputEl.value);
+        if (!isNaN(newVal) && newVal > 0) {
+            if (param === 'T' && newVal > 2.0) {
+                if (typeof showToast === 'function') {
+                    showToast('لا يمكن أن تتجاوز سماكة الصاج 2 ملم', 'bg-rose-600', '⚠️');
+                } else {
+                    alert('لا يمكن أن تتجاوز سماكة الصاج 2 ملم');
+                }
+                targetEl.innerHTML = originalContent;
+                return;
+            }
+            applyNewDimensionParam(param, newVal);
+        } else {
+            targetEl.innerHTML = originalContent;
+        }
+    };
+
+    const cancelEdit = () => {
+        if (isHandled) return;
+        isHandled = true;
+        targetEl.innerHTML = originalContent;
+    };
+
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitVal();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEdit();
+        }
+    });
+
+    inputEl.addEventListener('blur', () => {
+        commitVal();
+    });
+
+    setTimeout(() => {
+        inputEl.focus();
+        inputEl.select();
+    }, 20);
+};
+
+// Apply new dimension parameter logic with automatic dependencies
+function applyNewDimensionParam(param, val) {
+    const s = window.profileEditorState;
+    if (s.isReadOnly) return;
+
+    const pType = (s.profileType || s.profile_type || '').toLowerCase();
+    const isDrnr = (pType.includes('double') || pType.includes('مزدوج')) && (pType.includes('without') || pType.includes('بدون'));
+    const isDouble = (pType.includes('double') || pType.includes('مزدوج')) && !isDrnr;
+    const isDoubleAny = isDrnr || isDouble;
+
+    if (param === 'D') {
+        s.D = val;
+        if (isDoubleAny) {
+            const w1 = s.W_rab1 || (isDouble ? 52.0 : 47.0);
+            const w2 = s.W_rab2 || 47.0;
+            s.W_web = Math.max(10.0, s.D - w1 - w2);
+        } else {
+            s.W_web = Math.max(10.0, s.D - (s.W_rab || 52.0));
+        }
+    } else if (param === 'A_L') {
+        s.A_L = val;
+        if (isDoubleAny) {
+            // For double rabbet, architraves are equal by default
+            s.A_R = val;
+        } else {
+            s.A_R = s.A_L + 22.0;
+        }
+    } else if (param === 'A_R') {
+        s.A_R = val;
+    } else if (param === 'W_rab' || param === 'W_rab1') {
+        s.W_rab = val;
+        s.W_rab1 = val;
+        if (isDoubleAny) {
+            const w2 = s.W_rab2 || 47.0;
+            s.W_web = Math.max(10.0, s.D - val - w2);
+        } else {
+            s.W_web = Math.max(10.0, s.D - s.W_rab);
+        }
+    } else if (param === 'W_rab2') {
+        s.W_rab2 = val;
+        const w1 = s.W_rab1 || (isDouble ? 52.0 : 47.0);
+        s.W_web = Math.max(10.0, s.D - w1 - val);
+    } else if (param === 'W_web') {
+        s.W_web = val;
+        if (isDoubleAny) {
+            const w1 = s.W_rab1 || (isDouble ? 52.0 : 47.0);
+            const w2 = s.W_rab2 || 47.0;
+            s.D = w1 + w2 + s.W_web;
+        } else {
+            s.D = (s.W_rab || 52.0) + s.W_web;
+        }
+    } else if (param === 'W_step') {
+        s.W_step = val;
+    } else if (param === 'H_step' || param === 'S1' || param === 'S_1') {
+        s.H_step = val;
+        s.S1 = val;
+    } else if (param === 'S_in') {
+        s.S_in = val;
+    } else if (param === 'R_L') {
+        s.R_L = val;
+    } else if (param === 'R_R') {
+        s.R_R = val;
+    } else if (param === 'T') {
+        if (val > 2.0) {
+            if (typeof showToast === 'function') {
+                showToast('لا يمكن أن تتجاوز سماكة الصاج 2 ملم', 'bg-rose-600', '⚠️');
+            } else {
+                alert('لا يمكن أن تتجاوز سماكة الصاج 2 ملم');
+            }
+            return;
+        }
+        s.T = val;
+    }
+
+    window.renderCleanProfileSvg();
+    updateProfileUnfoldedBadge();
+}
+
+// Render Clean Profile SVG (Charcoal gray lines, accurate dimension locations matching Image)
+window.renderCleanProfileSvg = function() {
+    const viewport = document.getElementById('profileSvgViewport');
+    if (!viewport) return;
+
+    const s = window.profileEditorState;
+    const D = parseFloat(s.D) || 150.0;
+    const A_L = parseFloat(s.A_L) || 40.0;
+    const H_step = parseFloat(s.H_step) || 10.5;   // 10.5 mm vertical step for rubber groove
+    const S_in = parseFloat(s.S_in) || 14.5;       // 14.5 mm inner vertical step
+    const A_R = parseFloat(s.A_R) !== undefined ? parseFloat(s.A_R) : 62.0; // Architrave 2
+    const W_rab = parseFloat(s.W_rab) || 52.0;    // left rabbet horizontal
+    const W_step = parseFloat(s.W_step) || 12.0;   // rubber groove width
+    const W_web = parseFloat(s.W_web) || Math.max(10.0, D - W_rab); // bottom web width
+    const R_L = parseFloat(s.R_L) || 15.0;         // left return flange
+    const R_R = parseFloat(s.R_R) || 15.0;         // right return flange
+    const T = Math.min(2.0, parseFloat(s.T) || 1.5); // Sheet thickness <= 2.0 mm
+
+    // Colors: Architectural Soft-blue background, Charcoal Gray lines, Hatch
+    const colBg = "#f0f4f9";
+    const colProfile = "#334155";    // charcoal / slate-700
+    const colDimLine = "#64748b";    // slate-500
+    const colDimText = "#0f172a";    // slate-900
+
+    // Vertical geometry mapping:
+    // Left side starts with top return flange at y = 0
+    // Rabbet horizontal is at y = A_L
+    // The bottom of the web sits at y = A_L + S_in + H_step
+    // Right architrave height is A_R.
+    // If A_R is decoupled from A_L, the right return flange sits at y_R_top = (A_L + S_in + H_step) - A_R
+    const y_bot = A_L + S_in + H_step;
+    const y_R_top = y_bot - A_R;
+
+    const pts = {
+        p0:  { x: D - R_R, y: y_R_top },
+        p1:  { x: D - 3,   y: y_R_top },
+        p2:  { x: D,       y: y_R_top + 3 },
+        p3:  { x: D,       y: y_bot - 3 },
+        p4:  { x: D - 3,   y: y_bot },
+        p5:  { x: W_rab + 3, y: y_bot },
+        p6:  { x: W_rab,     y: y_bot - 3 },
+        p7:  { x: W_rab,     y: y_bot - H_step + 3 },
+        p8:  { x: W_rab + 3, y: y_bot - H_step },
+        p9:  { x: W_rab + W_step - 1.5, y: y_bot - H_step },
+        p10: { x: W_rab + W_step,       y: y_bot - H_step - 1.5 },
+        p11: { x: W_rab + W_step,       y: A_L + 1.5 },
+        p12: { x: W_rab + W_step - 1.5, y: A_L },
+        p13: { x: 3,                    y: A_L },
+        p14: { x: 0,                    y: A_L - 3 },
+        p15: { x: 0,                    y: 3 },
+        p16: { x: 3,                    y: 0 },
+        p17: { x: R_L,                  y: 0 }
+    };
+
+    const inPts = {
+        p0:  { x: D - R_R, y: y_R_top + T },
+        p1:  { x: D - 3,   y: y_R_top + T },
+        p2:  { x: D - T,   y: y_R_top + 3 },
+        p3:  { x: D - T,   y: y_bot - 3 },
+        p4:  { x: D - 3,   y: y_bot - T },
+        p5:  { x: W_rab + 3, y: y_bot - T },
+        p6:  { x: W_rab + T, y: y_bot - 3 },
+        p7:  { x: W_rab + T, y: y_bot - H_step + 3 },
+        p8:  { x: W_rab + 3, y: y_bot - H_step + T },
+        p9:  { x: W_rab + W_step - 1.5, y: y_bot - H_step + T },
+        p10: { x: W_rab + W_step + T,   y: y_bot - H_step - 1.5 },
+        p11: { x: W_rab + W_step + T,   y: A_L + 1.5 },
+        p12: { x: W_rab + W_step - 1.5, y: A_L - T },
+        p13: { x: 3,                    y: A_L - T },
+        p14: { x: T,                    y: A_L - 3 },
+        p15: { x: T,                    y: 3 },
+        p16: { x: 3,                    y: T },
+        p17: { x: R_L,                  y: T }
+    };
+
+    const outerPath = `
+        M ${pts.p0.x} ${pts.p0.y}
+        L ${pts.p1.x} ${pts.p1.y}
+        A 3 3 0 0 1 ${pts.p2.x} ${pts.p2.y}
+        L ${pts.p3.x} ${pts.p3.y}
+        A 3 3 0 0 1 ${pts.p4.x} ${pts.p4.y}
+        L ${pts.p5.x} ${pts.p5.y}
+        A 3 3 0 0 1 ${pts.p6.x} ${pts.p6.y}
+        L ${pts.p7.x} ${pts.p7.y}
+        A 3 3 0 0 1 ${pts.p8.x} ${pts.p8.y}
+        L ${pts.p9.x} ${pts.p9.y}
+        A 1.5 1.5 0 0 0 ${pts.p10.x} ${pts.p10.y}
+        L ${pts.p11.x} ${pts.p11.y}
+        A 1.5 1.5 0 0 0 ${pts.p12.x} ${pts.p12.y}
+        L ${pts.p13.x} ${pts.p13.y}
+        A 3 3 0 0 1 ${pts.p14.x} ${pts.p14.y}
+        L ${pts.p15.x} ${pts.p15.y}
+        A 3 3 0 0 1 ${pts.p16.x} ${pts.p16.y}
+        L ${pts.p17.x} ${pts.p17.y}
+    `;
+
+    const r_outer = Math.max(0.5, 3 - T);
+    const r_inner = 1.5 + T;
+
+    // Inner path backwards from p17 to p0 to make a closed polygon for hatching
+    const reverseInnerPath = `
+        L ${inPts.p17.x} ${inPts.p17.y}
+        L ${inPts.p16.x} ${inPts.p16.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p15.x} ${inPts.p15.y}
+        L ${inPts.p14.x} ${inPts.p14.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p13.x} ${inPts.p13.y}
+        L ${inPts.p12.x} ${inPts.p12.y}
+        A ${r_inner} ${r_inner} 0 0 1 ${inPts.p11.x} ${inPts.p11.y}
+        L ${inPts.p10.x} ${inPts.p10.y}
+        A ${r_inner} ${r_inner} 0 0 1 ${inPts.p9.x} ${inPts.p9.y}
+        L ${inPts.p8.x} ${inPts.p8.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p7.x} ${inPts.p7.y}
+        L ${inPts.p6.x} ${inPts.p6.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p5.x} ${inPts.p5.y}
+        L ${inPts.p4.x} ${inPts.p4.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p3.x} ${inPts.p3.y}
+        L ${inPts.p2.x} ${inPts.p2.y}
+        A ${r_outer} ${r_outer} 0 0 0 ${inPts.p1.x} ${inPts.p1.y}
+        L ${inPts.p0.x} ${inPts.p0.y}
+        Z
+    `;
+
+    const closedHatchPath = outerPath + reverseInnerPath;
+
+    // Sized viewBox to make the drawing comfortably proportioned
+    const topLimit = Math.min(0, y_R_top);
+    const minX = -45;
+    const maxX = D + 45;
+    const minY = topLimit - 40;
+    const maxY = y_bot + 45;
+    const vbW = maxX - minX;
+    const vbH = maxY - minY;
+
+    // Helper for interactive dimension element (Clean, Modern, NO bounding box)
+    const formatDimVal = (v) => {
+        const num = Math.round(parseFloat(v) * 10) / 10;
+        return String(num).replace('.', ',');
+    };
+
+    const isReadOnly = !!s.isReadOnly;
+    const cursorClass = isReadOnly ? 'cursor-default' : 'cursor-pointer group';
+    const hoverClass = isReadOnly ? '' : 'group-hover:fill-blue-600 transition-colors';
+
+    const makeDimH = (x1, x2, y, val, param, offsetTextY = -3.8, arrowsInside = true) => {
+        const midX = (x1 + x2) / 2;
+        const strVal = formatDimVal(val);
+        const markerStart = arrowsInside ? 'url(#cad-arr-start)' : 'url(#cad-arr-end)';
+        const markerEnd = arrowsInside ? 'url(#cad-arr-end)' : 'url(#cad-arr-start)';
+        const titleText = isReadOnly ? `القياس: ${strVal} مم` : `انقر لتعديل القياس: ${strVal} مم`;
+        const clickAttr = isReadOnly ? '' : `onclick="editProfileDimension('${param}', event)"`;
+        return `
+            <g id="dim-group-${param}" data-x="${midX}" data-y="${y + offsetTextY}" class="${cursorClass}" ${clickAttr}>
+                <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${colDimLine}" stroke-width="0.4" marker-start="${markerStart}" marker-end="${markerEnd}" />
+                <text x="${midX}" y="${y + offsetTextY}" fill="${colDimText}" font-size="4.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="central" class="${hoverClass}">
+                    ${strVal}
+                </text>
+                <title>${titleText}</title>
+            </g>
+        `;
+    };
+
+    const makeDimV = (y1, y2, x, val, param, offsetTextX = -3.6, rotateText = true) => {
+        const midY = (y1 + y2) / 2;
+        const strVal = formatDimVal(val);
+        const titleText = isReadOnly ? `القياس: ${strVal} مم` : `انقر لتعديل القياس: ${strVal} مم`;
+        const clickAttr = isReadOnly ? '' : `onclick="editProfileDimension('${param}', event)"`;
+        return `
+            <g id="dim-group-${param}" data-x="${x + offsetTextX}" data-y="${midY}" class="${cursorClass}" ${clickAttr}>
+                <line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="${colDimLine}" stroke-width="0.4" marker-start="url(#cad-arr-start)" marker-end="url(#cad-arr-end)" />
+                <g transform="${rotateText ? `rotate(-90 ${x + offsetTextX} ${midY})` : ''}">
+                    <text x="${x + offsetTextX}" y="${midY}" fill="${colDimText}" font-size="4.6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="central" class="${hoverClass}">
+                        ${strVal}
+                    </text>
+                </g>
+                <title>${titleText}</title>
+            </g>
+        `;
+    };
+
+    const pType = (s.profileType || s.profile_type || '').toLowerCase();
+    const isDrnr = (pType.includes('double') || pType.includes('مزدوج')) && (pType.includes('without') || pType.includes('بدون'));
+    const isDouble = (pType.includes('double') || pType.includes('مزدوج')) && !isDrnr;
+
+    if (isDrnr) {
+        const D = parseFloat(s.D) || 150.0;
+        const A_L = parseFloat(s.A_L) || 40.0;
+        const A_R = parseFloat(s.A_R) !== undefined ? parseFloat(s.A_R) : 40.0;
+        const R_L = parseFloat(s.R_L) || 15.0;
+        const R_R = parseFloat(s.R_R) || 15.0;
+        const T = Math.min(2.0, parseFloat(s.T) || 1.5);
+        const W_rab1 = parseFloat(s.W_rab1) || 47.0;
+        const W_rab2 = parseFloat(s.W_rab2) || 47.0;
+        const S1 = parseFloat(s.S1) || 15.0;
+        const S2 = parseFloat(s.S2) || 15.0;
+        const W_web = Math.max(15.0, D - W_rab1 - W_rab2);
+        const y_bot = A_L + S1;
+        const y_rab2 = y_bot - S2;
+        const y_R_top = y_rab2 - A_R;
+
+        const r = 3.0;
+        const r_outer = Math.max(0.5, 3 - T);
+        const r_inner = 3 + T;
+
+        const pts = {
+            p0:  { x: D - R_R,            y: y_R_top },
+            p1:  { x: D - r,              y: y_R_top },
+            p2:  { x: D,                  y: y_R_top + r },
+            p3:  { x: D,                  y: y_rab2 - r },
+            p4:  { x: D - r,              y: y_rab2 },
+            p5:  { x: D - W_rab2 + r,     y: y_rab2 },
+            p6:  { x: D - W_rab2,         y: y_rab2 + r },
+            p7:  { x: D - W_rab2,         y: y_bot - r },
+            p8:  { x: D - W_rab2 - r,     y: y_bot },
+            p9:  { x: W_rab1 + r,         y: y_bot },
+            p10: { x: W_rab1,             y: y_bot - r },
+            p11: { x: W_rab1,             y: A_L + r },
+            p12: { x: W_rab1 - r,         y: A_L },
+            p13: { x: r,                  y: A_L },
+            p14: { x: 0,                  y: A_L - r },
+            p15: { x: 0,                  y: r },
+            p16: { x: r,                  y: 0 },
+            p17: { x: R_L,                y: 0 }
+        };
+
+        const outerPath = `
+            M ${pts.p0.x} ${pts.p0.y}
+            L ${pts.p1.x} ${pts.p1.y}
+            A 3 3 0 0 1 ${pts.p2.x} ${pts.p2.y}
+            L ${pts.p3.x} ${pts.p3.y}
+            A 3 3 0 0 1 ${pts.p4.x} ${pts.p4.y}
+            L ${pts.p5.x} ${pts.p5.y}
+            A 3 3 0 0 0 ${pts.p6.x} ${pts.p6.y}
+            L ${pts.p7.x} ${pts.p7.y}
+            A 3 3 0 0 1 ${pts.p8.x} ${pts.p8.y}
+            L ${pts.p9.x} ${pts.p9.y}
+            A 3 3 0 0 1 ${pts.p10.x} ${pts.p10.y}
+            L ${pts.p11.x} ${pts.p11.y}
+            A 3 3 0 0 0 ${pts.p12.x} ${pts.p12.y}
+            L ${pts.p13.x} ${pts.p13.y}
+            A 3 3 0 0 1 ${pts.p14.x} ${pts.p14.y}
+            L ${pts.p15.x} ${pts.p15.y}
+            A 3 3 0 0 1 ${pts.p16.x} ${pts.p16.y}
+            L ${pts.p17.x} ${pts.p17.y}
+        `;
+
+        const inPts = {
+            p0:  { x: D - R_R,            y: y_R_top + T },
+            p1:  { x: D - r,              y: y_R_top + T },
+            p2:  { x: D - T,              y: y_R_top + r },
+            p3:  { x: D - T,              y: y_rab2 - r },
+            p4:  { x: D - r,              y: y_rab2 - T },
+            p5:  { x: D - W_rab2 + r,     y: y_rab2 - T },
+            p6:  { x: D - W_rab2 - T,     y: y_rab2 + r },
+            p7:  { x: D - W_rab2 - T,     y: y_bot - r },
+            p8:  { x: D - W_rab2 - r,     y: y_bot - T },
+            p9:  { x: W_rab1 + r,         y: y_bot - T },
+            p10: { x: W_rab1 + T,         y: y_bot - r },
+            p11: { x: W_rab1 + T,         y: A_L + r },
+            p12: { x: W_rab1 - r,         y: A_L - T },
+            p13: { x: r,                  y: A_L - T },
+            p14: { x: T,                  y: A_L - r },
+            p15: { x: T,                  y: r },
+            p16: { x: r,                  y: T },
+            p17: { x: R_L,                y: T }
+        };
+
+        const reverseInnerPath = `
+            L ${inPts.p17.x} ${inPts.p17.y}
+            L ${inPts.p16.x} ${inPts.p16.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p15.x} ${inPts.p15.y}
+            L ${inPts.p14.x} ${inPts.p14.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p13.x} ${inPts.p13.y}
+            L ${inPts.p12.x} ${inPts.p12.y}
+            A ${r_inner} ${r_inner} 0 0 1 ${inPts.p11.x} ${inPts.p11.y}
+            L ${inPts.p10.x} ${inPts.p10.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p9.x} ${inPts.p9.y}
+            L ${inPts.p8.x} ${inPts.p8.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p7.x} ${inPts.p7.y}
+            L ${inPts.p6.x} ${inPts.p6.y}
+            A ${r_inner} ${r_inner} 0 0 1 ${inPts.p5.x} ${inPts.p5.y}
+            L ${inPts.p4.x} ${inPts.p4.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p3.x} ${inPts.p3.y}
+            L ${inPts.p2.x} ${inPts.p2.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p1.x} ${inPts.p1.y}
+            L ${inPts.p0.x} ${inPts.p0.y}
+            Z
+        `;
+        const closedHatchPath = outerPath + reverseInnerPath;
+
+        const topLimit = Math.min(0, y_R_top);
+        const minX = -45;
+        const maxX = D + 45;
+        const minY = topLimit - 40;
+        const maxY = y_bot + 45;
+        const vbW = maxX - minX;
+        const vbH = maxY - minY;
+
+        // Dimensions:
+        const dimD_Y = topLimit - 20;
+        const dimD = `
+            <line x1="0" y1="0" x2="0" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, D, dimD_Y, D, 'D', -3.8)}
+        `;
+
+        const dimR_L_Y = -8;
+        const dimR_L = `
+            <line x1="0" y1="0" x2="0" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${R_L}" y1="0" x2="${R_L}" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, R_L, dimR_L_Y, R_L, 'R_L', -3.8, false)}
+        `;
+
+        const dimR_R_Y = y_R_top - 8;
+        const dimR_R = `
+            <line x1="${D - R_R}" y1="${y_R_top}" x2="${D - R_R}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(D - R_R, D, dimR_R_Y, R_R, 'R_R', -3.8, false)}
+        `;
+
+        const dimA_L_X = -16;
+        const dimA_L = `
+            <line x1="0" y1="0" x2="${dimA_L_X - 3}" y2="0" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="0" y1="${A_L}" x2="${dimA_L_X - 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(0, A_L, dimA_L_X, A_L, 'A_L', -4.0, true)}
+        `;
+
+        const dimA_R_X = D + 18;
+        const dimA_R = `
+            <line x1="${D}" y1="${y_R_top}" x2="${dimA_R_X + 3}" y2="${y_R_top}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_rab2}" x2="${dimA_R_X + 3}" y2="${y_rab2}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(y_R_top, y_rab2, dimA_R_X, A_R, 'A_R', 4.0, true)}
+        `;
+
+        const dimBot_Y = y_bot + 24;
+        const dimBottom = `
+            <line x1="0" y1="${A_L}" x2="0" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${W_rab1}" y1="${A_L}" x2="${W_rab1}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D - W_rab2}" y1="${y_rab2}" x2="${D - W_rab2}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_rab2}" x2="${D}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            
+            ${makeDimH(0, W_rab1, dimBot_Y, W_rab1, 'W_rab1', 4.0)}
+            ${makeDimH(W_rab1, D - W_rab2, dimBot_Y, Math.round(W_web), 'W_web', 4.0)}
+            ${makeDimH(D - W_rab2, D, dimBot_Y, W_rab2, 'W_rab2', 4.0)}
+        `;
+
+        const dimStep_X = W_rab1 + 14;
+        const dimStep = `
+            <line x1="${W_rab1}" y1="${A_L}" x2="${dimStep_X + 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${W_rab1}" y1="${y_bot}" x2="${dimStep_X + 3}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(A_L, y_bot, dimStep_X, S1, 'H_step', 3.8, true)}
+        `;
+
+        viewport.innerHTML = `
+            <svg viewBox="${minX} ${minY} ${vbW} ${vbH}" class="w-full h-full max-h-[440px] select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="cad-arr-end" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+                        <path d="M 0,0.8 L 4.5,2.5 L 0,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <marker id="cad-arr-start" markerWidth="5" markerHeight="5" refX="0.5" refY="2.5" orient="auto">
+                        <path d="M 4.5,0.8 L 0,2.5 L 4.5,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <pattern id="profile-cad-hatch" width="2.2" height="2.2" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="2.2" stroke="#94a3b8" stroke-width="0.2" />
+                    </pattern>
+                </defs>
+                <rect x="${minX}" y="${minY}" width="${vbW}" height="${vbH}" fill="${colBg}" />
+                <path d="${closedHatchPath}" fill="#ffffff" stroke="none" />
+                <path d="${closedHatchPath}" fill="url(#profile-cad-hatch)" stroke="${colProfile}" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" />
+                ${dimD}
+                ${dimR_L}
+                ${dimR_R}
+                ${dimA_L}
+                ${dimA_R}
+                ${dimBottom}
+                ${dimStep}
+            </svg>
+        `;
+        return;
+    }
+
+    if (isDouble) {
+        const D = parseFloat(s.D) || 160.0;
+        const A_L = parseFloat(s.A_L) || 50.0;
+        const A_R = parseFloat(s.A_R) !== undefined ? parseFloat(s.A_R) : 50.0;
+        const R_L = parseFloat(s.R_L) || 15.0;
+        const R_R = parseFloat(s.R_R) || 15.0;
+        const T = Math.min(2.0, parseFloat(s.T) || 1.5);
+        const W_rab1 = parseFloat(s.W_rab1) || 52.0;
+        const W_step = parseFloat(s.W_step) || 12.0;
+        const H_step = parseFloat(s.H_step) || 10.5;
+        const S_in = parseFloat(s.S_in) || 11.5;
+        const S_total = S_in + H_step; // 22.0 mm
+        const W_rab2 = parseFloat(s.W_rab2) || 47.0;
+        const x_stop = W_rab1 + W_step; // 64.0 mm
+        const x_web_end = D - W_rab2;   // 113.0 mm when D=160
+        const W_web = Math.max(15.0, x_web_end - W_rab1); // 61.0 mm when D=160
+        const y_bot = A_L + S_total;    // 72.0 mm
+        const y_rab2 = y_bot - S_total; // 50.0 mm
+        const y_R_top = y_rab2 - A_R;   // 0.0 mm
+
+        const r = 3.0;
+        const r_sm = 1.5;
+        const r_outer = Math.max(0.5, 3 - T);
+        const r_inner = 1.5 + T;
+        const r_inner3 = 3 + T;
+
+        // Outer contour of Double Rabbet With Rubber (Exact CAD architecture matching DXF)
+        const pts = {
+            p0:  { x: D - R_R,           y: y_R_top },
+            p1:  { x: D - r,             y: y_R_top },
+            p2:  { x: D,                 y: y_R_top + r },
+            p3:  { x: D,                 y: y_rab2 - r },
+            p4:  { x: D - r,             y: y_rab2 },
+            p5:  { x: x_web_end + r,     y: y_rab2 },
+            p6:  { x: x_web_end,         y: y_rab2 + r },
+            p7:  { x: x_web_end,         y: y_bot - r },
+            p8:  { x: x_web_end - r,     y: y_bot },
+            p9:  { x: W_rab1 + r,        y: y_bot },
+            p10: { x: W_rab1,            y: y_bot - r },
+            p11: { x: W_rab1,            y: y_bot - H_step + r },
+            p12: { x: W_rab1 + r,        y: y_bot - H_step },
+            p13: { x: x_stop - r_sm,     y: y_bot - H_step },
+            p14: { x: x_stop,            y: y_bot - H_step - r_sm },
+            p15: { x: x_stop,            y: A_L + r_sm },
+            p16: { x: x_stop - r_sm,     y: A_L },
+            p17: { x: r,                 y: A_L },
+            p18: { x: 0,                 y: A_L - r },
+            p19: { x: 0,                 y: r },
+            p20: { x: r,                 y: 0 },
+            p21: { x: R_L,               y: 0 }
+        };
+
+        const outerPath = `
+            M ${pts.p0.x} ${pts.p0.y}
+            L ${pts.p1.x} ${pts.p1.y}
+            A 3 3 0 0 1 ${pts.p2.x} ${pts.p2.y}
+            L ${pts.p3.x} ${pts.p3.y}
+            A 3 3 0 0 1 ${pts.p4.x} ${pts.p4.y}
+            L ${pts.p5.x} ${pts.p5.y}
+            A 3 3 0 0 0 ${pts.p6.x} ${pts.p6.y}
+            L ${pts.p7.x} ${pts.p7.y}
+            A 3 3 0 0 1 ${pts.p8.x} ${pts.p8.y}
+            L ${pts.p9.x} ${pts.p9.y}
+            A 3 3 0 0 1 ${pts.p10.x} ${pts.p10.y}
+            L ${pts.p11.x} ${pts.p11.y}
+            A 3 3 0 0 1 ${pts.p12.x} ${pts.p12.y}
+            L ${pts.p13.x} ${pts.p13.y}
+            A 1.5 1.5 0 0 0 ${pts.p14.x} ${pts.p14.y}
+            L ${pts.p15.x} ${pts.p15.y}
+            A 1.5 1.5 0 0 0 ${pts.p16.x} ${pts.p16.y}
+            L ${pts.p17.x} ${pts.p17.y}
+            A 3 3 0 0 1 ${pts.p18.x} ${pts.p18.y}
+            L ${pts.p19.x} ${pts.p19.y}
+            A 3 3 0 0 1 ${pts.p20.x} ${pts.p20.y}
+            L ${pts.p21.x} ${pts.p21.y}
+        `;
+
+        const inPts = {
+            p0:  { x: D - R_R,           y: y_R_top + T },
+            p1:  { x: D - r,             y: y_R_top + T },
+            p2:  { x: D - T,             y: y_R_top + r },
+            p3:  { x: D - T,             y: y_rab2 - r },
+            p4:  { x: D - r,             y: y_rab2 - T },
+            p5:  { x: x_web_end + r,     y: y_rab2 - T },
+            p6:  { x: x_web_end - T,     y: y_rab2 + r },
+            p7:  { x: x_web_end - T,     y: y_bot - r },
+            p8:  { x: x_web_end - r,     y: y_bot - T },
+            p9:  { x: W_rab1 + r,        y: y_bot - T },
+            p10: { x: W_rab1 + T,        y: y_bot - r },
+            p11: { x: W_rab1 + T,        y: y_bot - H_step + r },
+            p12: { x: W_rab1 + r,        y: y_bot - H_step + T },
+            p13: { x: x_stop - r_sm,     y: y_bot - H_step + T },
+            p14: { x: x_stop + T,        y: y_bot - H_step - r_sm },
+            p15: { x: x_stop + T,        y: A_L + r_sm },
+            p16: { x: x_stop - r_sm,     y: A_L - T },
+            p17: { x: r,                 y: A_L - T },
+            p18: { x: T,                 y: A_L - r },
+            p19: { x: T,                 y: r },
+            p20: { x: r,                 y: T },
+            p21: { x: R_L,               y: T }
+        };
+
+        const reverseInnerPath = `
+            L ${inPts.p21.x} ${inPts.p21.y}
+            L ${inPts.p20.x} ${inPts.p20.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p19.x} ${inPts.p19.y}
+            L ${inPts.p18.x} ${inPts.p18.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p17.x} ${inPts.p17.y}
+            L ${inPts.p16.x} ${inPts.p16.y}
+            A ${r_inner} ${r_inner} 0 0 1 ${inPts.p15.x} ${inPts.p15.y}
+            L ${inPts.p14.x} ${inPts.p14.y}
+            A ${r_inner} ${r_inner} 0 0 1 ${inPts.p13.x} ${inPts.p13.y}
+            L ${inPts.p12.x} ${inPts.p12.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p11.x} ${inPts.p11.y}
+            L ${inPts.p10.x} ${inPts.p10.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p9.x} ${inPts.p9.y}
+            L ${inPts.p8.x} ${inPts.p8.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p7.x} ${inPts.p7.y}
+            L ${inPts.p6.x} ${inPts.p6.y}
+            A ${r_inner3} ${r_inner3} 0 0 1 ${inPts.p5.x} ${inPts.p5.y}
+            L ${inPts.p4.x} ${inPts.p4.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p3.x} ${inPts.p3.y}
+            L ${inPts.p2.x} ${inPts.p2.y}
+            A ${r_outer} ${r_outer} 0 0 0 ${inPts.p1.x} ${inPts.p1.y}
+            L ${inPts.p0.x} ${inPts.p0.y}
+            Z
+        `;
+        const closedHatchPath = outerPath + reverseInnerPath;
+
+        const topLimit = Math.min(0, y_R_top);
+        const minX = -45;
+        const maxX = D + 45;
+        const minY = topLimit - 40;
+        const maxY = y_bot + 45;
+        const vbW = maxX - minX;
+        const vbH = maxY - minY;
+
+        // Dimensions:
+        const dimD_Y = topLimit - 20;
+        const dimD = `
+            <line x1="0" y1="0" x2="0" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, D, dimD_Y, D, 'D', -3.8)}
+        `;
+
+        const dimR_L_Y = -8;
+        const dimR_L = `
+            <line x1="0" y1="0" x2="0" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${R_L}" y1="0" x2="${R_L}" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, R_L, dimR_L_Y, R_L, 'R_L', -3.8, false)}
+        `;
+
+        const dimR_R_Y = y_R_top - 8;
+        const dimR_R = `
+            <line x1="${D - R_R}" y1="${y_R_top}" x2="${D - R_R}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(D - R_R, D, dimR_R_Y, R_R, 'R_R', -3.8, false)}
+        `;
+
+        const dimA_L_X = -16;
+        const dimA_L = `
+            <line x1="0" y1="0" x2="${dimA_L_X - 3}" y2="0" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="0" y1="${A_L}" x2="${dimA_L_X - 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(0, A_L, dimA_L_X, A_L, 'A_L', -4.0, true)}
+        `;
+
+        const dimA_R_X = D + 18;
+        const dimA_R = `
+            <line x1="${D}" y1="${y_R_top}" x2="${dimA_R_X + 3}" y2="${y_R_top}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_rab2}" x2="${dimA_R_X + 3}" y2="${y_rab2}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(y_R_top, y_rab2, dimA_R_X, A_R, 'A_R', 4.0, true)}
+        `;
+
+        const dimBot_Y = y_bot + 24;
+        const dimBottom = `
+            <line x1="0" y1="${A_L}" x2="0" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${W_rab1}" y1="${A_L}" x2="${W_rab1}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${x_web_end}" y1="${y_rab2}" x2="${x_web_end}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_rab2}" x2="${D}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            
+            ${makeDimH(0, W_rab1, dimBot_Y, W_rab1, 'W_rab1', 4.0)}
+            ${makeDimH(W_rab1, x_web_end, dimBot_Y, Math.round(W_web), 'W_web', 4.0)}
+            ${makeDimH(x_web_end, D, dimBot_Y, W_rab2, 'W_rab2', 4.0)}
+        `;
+
+        const dimStep_X = D + 30;
+        const dimStep = `
+            <line x1="${x_web_end}" y1="${y_rab2}" x2="${dimStep_X + 3}" y2="${y_rab2}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${x_web_end}" y1="${y_bot}" x2="${dimStep_X + 3}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(y_rab2, y_bot, dimStep_X, S_total, 'H_step', 4.0, true)}
+        `;
+
+        const dimGroove_Y = y_bot - H_step - 5;
+        const dimGroove = `
+            <line x1="${W_rab1}" y1="${y_bot - H_step}" x2="${W_rab1}" y2="${dimGroove_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${x_stop}" y1="${y_bot - H_step}" x2="${x_stop}" y2="${dimGroove_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(W_rab1, x_stop, dimGroove_Y, W_step, 'W_step', -3.2, false)}
+        `;
+
+        viewport.innerHTML = `
+            <svg viewBox="${minX} ${minY} ${vbW} ${vbH}" class="w-full h-full max-h-[440px] select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="cad-arr-end" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+                        <path d="M 0,0.8 L 4.5,2.5 L 0,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <marker id="cad-arr-start" markerWidth="5" markerHeight="5" refX="0.5" refY="2.5" orient="auto">
+                        <path d="M 4.5,0.8 L 0,2.5 L 4.5,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <pattern id="profile-cad-hatch" width="2.2" height="2.2" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="2.2" stroke="#94a3b8" stroke-width="0.2" />
+                    </pattern>
+                </defs>
+                <rect x="${minX}" y="${minY}" width="${vbW}" height="${vbH}" fill="${colBg}" />
+                <path d="${closedHatchPath}" fill="#ffffff" stroke="none" />
+                <path d="${closedHatchPath}" fill="url(#profile-cad-hatch)" stroke="${colProfile}" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" />
+                ${dimD}
+                ${dimR_L}
+                ${dimR_R}
+                ${dimA_L}
+                ${dimA_R}
+                ${dimBottom}
+                ${dimStep}
+                ${dimGroove}
+            </svg>
+        `;
+        return;
+    }
+
+    const isWithoutRubber = pType.includes('without') || pType.includes('بدون') || pType === 'single rabbit';
+    if (isWithoutRubber) {
+        const D = parseFloat(s.D) || 150.0;
+        const A_L = parseFloat(s.A_L) || 55.0;
+        const A_R = parseFloat(s.A_R) !== undefined ? parseFloat(s.A_R) : 40.0;
+        const R_L = parseFloat(s.R_L) || 15.0;
+        const R_R = parseFloat(s.R_R) || 15.0;
+        const T = Math.min(2.0, parseFloat(s.T) || 1.5);
+        const W_rab = 47.0;
+        const S = 15.0;
+        const W_web = Math.max(20.0, D - W_rab);
+        const y_bot = A_L + S;
+        const y_R_top = y_bot - A_R;
+
+        // Outer contour of Single Rabbet Without Rubber
+        const outerD = `
+            M ${D - R_R} ${y_R_top}
+            L ${D} ${y_R_top}
+            L ${D} ${y_bot}
+            L ${W_rab} ${y_bot}
+            L ${W_rab} ${A_L}
+            L 0 ${A_L}
+            L 0 0
+            L ${R_L} 0
+        `;
+
+        // Inner contour (thickness T)
+        const innerD = `
+            L ${R_L} ${T}
+            L ${T} ${T}
+            L ${T} ${A_L - T}
+            L ${W_rab - T} ${A_L - T}
+            L ${W_rab - T} ${y_bot - T}
+            L ${D - T} ${y_bot - T}
+            L ${D - T} ${y_R_top + T}
+            L ${D - R_R} ${y_R_top + T}
+            Z
+        `;
+        const closedHatchPath = outerD + innerD;
+
+        const topLimit = Math.min(0, y_R_top);
+        const minX = -45;
+        const maxX = D + 45;
+        const minY = topLimit - 40;
+        const maxY = y_bot + 45;
+        const vbW = maxX - minX;
+        const vbH = maxY - minY;
+
+        // Dimensions:
+        const dimD_Y = topLimit - 20;
+        const dimD = `
+            <line x1="0" y1="0" x2="0" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, D, dimD_Y, D, 'D', -3.8)}
+        `;
+
+        const dimR_L_Y = -8;
+        const dimR_L = `
+            <line x1="0" y1="0" x2="0" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${R_L}" y1="0" x2="${R_L}" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(0, R_L, dimR_L_Y, R_L, 'R_L', -3.8, false)}
+        `;
+
+        const dimR_R_Y = y_R_top - 8;
+        const dimR_R = `
+            <line x1="${D - R_R}" y1="${y_R_top}" x2="${D - R_R}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimH(D - R_R, D, dimR_R_Y, R_R, 'R_R', -3.8, false)}
+        `;
+
+        const dimA_L_X = -16;
+        const dimA_L = `
+            <line x1="0" y1="0" x2="${dimA_L_X - 3}" y2="0" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="0" y1="${A_L}" x2="${dimA_L_X - 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(0, A_L, dimA_L_X, A_L, 'A_L', -4.0, true)}
+        `;
+
+        const dimA_R_X = D + 18;
+        const dimA_R = `
+            <line x1="${D}" y1="${y_R_top}" x2="${dimA_R_X + 3}" y2="${y_R_top}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_bot}" x2="${dimA_R_X + 3}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(y_R_top, y_bot, dimA_R_X, A_R, 'A_R', 4.0, true)}
+        `;
+
+        const dimBot_Y = y_bot + 24;
+        const dimBottom = `
+            <line x1="0" y1="${A_L}" x2="0" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${W_rab}" y1="${y_bot}" x2="${W_rab}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${D}" y1="${y_bot}" x2="${D}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            
+            ${makeDimH(0, W_rab, dimBot_Y, W_rab, 'W_rab', 4.0)}
+            ${makeDimH(W_rab, D, dimBot_Y, Math.round(W_web), 'W_web', 4.0)}
+        `;
+
+        const dimStep_X = W_rab + 14;
+        const dimStep = `
+            <line x1="${W_rab}" y1="${A_L}" x2="${dimStep_X + 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            <line x1="${W_rab}" y1="${y_bot}" x2="${dimStep_X + 3}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+            ${makeDimV(A_L, y_bot, dimStep_X, S, 'H_step', 3.8, true)}
+        `;
+
+        viewport.innerHTML = `
+            <svg viewBox="${minX} ${minY} ${vbW} ${vbH}" class="w-full h-full max-h-[440px] select-none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="cad-arr-end" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+                        <path d="M 0,0.8 L 4.5,2.5 L 0,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <marker id="cad-arr-start" markerWidth="5" markerHeight="5" refX="0.5" refY="2.5" orient="auto">
+                        <path d="M 4.5,0.8 L 0,2.5 L 4.5,4.2 Z" fill="${colDimLine}" />
+                    </marker>
+                    <pattern id="profile-cad-hatch" width="2.2" height="2.2" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="0" x2="0" y2="2.2" stroke="#94a3b8" stroke-width="0.2" />
+                    </pattern>
+                </defs>
+                <rect x="${minX}" y="${minY}" width="${vbW}" height="${vbH}" fill="${colBg}" />
+                <path d="${closedHatchPath}" fill="#ffffff" stroke="none" />
+                <path d="${closedHatchPath}" fill="url(#profile-cad-hatch)" stroke="${colProfile}" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" />
+                ${dimD}
+                ${dimR_L}
+                ${dimR_R}
+                ${dimA_L}
+                ${dimA_R}
+                ${dimBottom}
+                ${dimStep}
+            </svg>
+        `;
+        return;
+    }
+
+    // 1. Top Depth: D (Topmost horizontal dimension)
+    const dimD_Y = topLimit - 20;
+    const dimD = `
+        <line x1="0" y1="0" x2="0" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimD_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimH(0, D, dimD_Y, D, 'D', -3.8)}
+    `;
+
+    // 2. Left Flange Return: R_L (Top left)
+    const dimR_L_Y = -8;
+    const dimR_L = `
+        <line x1="0" y1="0" x2="0" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${R_L}" y1="0" x2="${R_L}" y2="${dimR_L_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimH(0, R_L, dimR_L_Y, R_L, 'R_L', -3.8, false)}
+    `;
+
+    // 3. Right Flange Return: R_R (Top right)
+    const dimR_R_Y = y_R_top - 8;
+    const dimR_R = `
+        <line x1="${D - R_R}" y1="${y_R_top}" x2="${D - R_R}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${D}" y1="${y_R_top}" x2="${D}" y2="${dimR_R_Y - 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimH(D - R_R, D, dimR_R_Y, R_R, 'R_R', -3.8, false)}
+    `;
+
+    // 4. Left Height: A_L (Left vertical)
+    const dimA_L_X = -16;
+    const dimA_L = `
+        <line x1="0" y1="0" x2="${dimA_L_X - 3}" y2="0" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="0" y1="${A_L}" x2="${dimA_L_X - 3}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimV(0, A_L, dimA_L_X, A_L, 'A_L', -4.0, true)}
+    `;
+
+    // 5. Right Height: A_R (Right vertical)
+    const dimA_R_X = D + 18;
+    const dimA_R = `
+        <line x1="${D}" y1="${y_R_top}" x2="${dimA_R_X + 3}" y2="${y_R_top}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${D}" y1="${y_bot}" x2="${dimA_R_X + 3}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimV(y_R_top, y_bot, dimA_R_X, A_R, 'A_R', 4.0, true)}
+    `;
+
+    // 6. Vertical Step H_step (Adjacent to groove)
+    const dimStep_X = W_rab - 12;
+    const dimStep = `
+        <line x1="${W_rab}" y1="${y_bot - H_step}" x2="${dimStep_X - 2.5}" y2="${y_bot - H_step}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${W_rab}" y1="${y_bot}" x2="${dimStep_X - 2.5}" y2="${y_bot}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimV(y_bot - H_step, y_bot, dimStep_X, H_step, 'H_step', -3.8, true)}
+    `;
+
+    // 7. Inner Vertical Step S_in (Inside rabbet to right of groove)
+    const dimSin_X = W_rab + W_step + 14;
+    const dimSin = `
+        <line x1="${W_rab + W_step}" y1="${A_L}" x2="${dimSin_X + 2.5}" y2="${A_L}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${W_rab + W_step}" y1="${y_bot - H_step}" x2="${dimSin_X + 2.5}" y2="${y_bot - H_step}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimV(A_L, y_bot - H_step, dimSin_X, S_in, 'S_in', 3.8, true)}
+    `;
+
+    // 8. Groove Width W_step (Under rubber groove)
+    const dimGroove_Y = y_bot + 10;
+    const dimGroove = `
+        <line x1="${W_rab}" y1="${y_bot}" x2="${W_rab}" y2="${dimGroove_Y + 2.5}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${W_rab + W_step}" y1="${y_bot - H_step}" x2="${W_rab + W_step}" y2="${dimGroove_Y + 2.5}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimH(W_rab, W_rab + W_step, dimGroove_Y, W_step, 'W_step', 4.0, false)}
+    `;
+
+    // 9. Bottom Dimensions: W_rab (left rabbet) and W_web (right web)
+    const dimBot_Y = y_bot + 24;
+    const dimBottom = `
+        <line x1="0" y1="${A_L}" x2="0" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${W_rab}" y1="${y_bot}" x2="${W_rab}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        <line x1="${D}" y1="${y_bot}" x2="${D}" y2="${dimBot_Y + 3}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        
+        <!-- left rabbet width -->
+        ${makeDimH(0, W_rab, dimBot_Y, W_rab, 'W_rab', 4.0)}
+
+        <!-- right web width -->
+        ${makeDimH(W_rab, D, dimBot_Y, W_web, 'W_web', 4.0)}
+    `;
+
+    // 10. Thickness T inside right architrave with architectural ticks
+    const dimThick_X = D - 14;
+    const dimThick_Y_mid = (y_R_top + 18);
+    const dimThick = `
+        <line x1="${D - T}" y1="${dimThick_Y_mid}" x2="${dimThick_X}" y2="${dimThick_Y_mid}" stroke="${colDimLine}" stroke-width="0.5" stroke-dasharray="1.5,1.5" />
+        ${makeDimV(dimThick_Y_mid - 6, dimThick_Y_mid + 6, dimThick_X, T, 'T', -3.8, true)}
+    `;
+
+    // Render pure refined drawing with AutoCAD crosshatch and soft blue background
+    viewport.innerHTML = `
+        <svg viewBox="${minX} ${minY} ${vbW} ${vbH}" class="w-full h-full max-h-[440px] select-none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <!-- AutoCAD architectural tick / arrow markers -->
+                <marker id="cad-arr-end" markerWidth="5" markerHeight="5" refX="4.5" refY="2.5" orient="auto">
+                    <path d="M 0,0.8 L 4.5,2.5 L 0,4.2 Z" fill="${colDimLine}" />
+                </marker>
+                <marker id="cad-arr-start" markerWidth="5" markerHeight="5" refX="0.5" refY="2.5" orient="auto">
+                    <path d="M 4.5,0.8 L 0,2.5 L 4.5,4.2 Z" fill="${colDimLine}" />
+                </marker>
+
+                <!-- Architectural 45-degree engineering crosshatch pattern -->
+                <pattern id="profile-cad-hatch" width="2.2" height="2.2" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="2.2" stroke="#94a3b8" stroke-width="0.2" />
+                </pattern>
+            </defs>
+
+            <!-- Architectural Canvas Background -->
+            <rect x="${minX}" y="${minY}" width="${vbW}" height="${vbH}" fill="${colBg}" />
+
+            <!-- Profile Solid Fill Underneath -->
+            <path d="${closedHatchPath}" fill="#ffffff" stroke="none" />
+
+            <!-- Profile Metal Hatch Interior & Thin Architectural Charcoal Outline -->
+            <path d="${closedHatchPath}" fill="url(#profile-cad-hatch)" stroke="${colProfile}" stroke-width="0.25" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- Dimensions (Faithful to Architectural Blueprint) -->
+            ${dimD}
+            ${dimR_L}
+            ${dimR_R}
+            ${dimA_L}
+            ${dimA_R}
+            ${dimStep}
+            ${dimSin}
+            ${dimGroove}
+            ${dimBottom}
+            ${dimThick}
+        </svg>
+    `;
 };
 
 
@@ -6279,7 +10858,7 @@ window.deleteFireRule = async function(id) {
 window.autoCalculateArchitrave2 = function(input) {
     const tr = input.closest('tr');
     if (!tr) return;
-    const architrave2Input = tr.querySelector('input[placeholder="الكشفة 2"]') || tr.querySelectorAll('input')[7];
+    const architrave2Input = tr.querySelector('input[placeholder="الكشفة 2"]') || tr.querySelector('.pd-architrave-2-input') || tr.querySelectorAll('input')[7];
     if (!architrave2Input) return;
     const val = parseFloat(input.value);
     if (!isNaN(val)) {
@@ -7852,6 +12431,8 @@ window.proceedFromStep2 = async function() {
                     if (isNaN(depth) || depth !== 15) doorErrors.push("العمق يجب أن يكون 15 سم");
                 } else if (profile === "double rabbit with rubber") {
                     if (isNaN(depth) || depth < 15 || depth > 33) doorErrors.push("العمق يجب ألا يقل عن 15 سم وألا يزيد عن 33 سم");
+                } else if (profile === "single rabbit without rubber" || profile === "double rabbit without rubber" || profile === "single rabbit") {
+                    if (isNaN(depth) || depth < 10 || depth > 35) doorErrors.push("العمق يجب ألا يقل عن 10 سم وألا يزيد عن 35 سم");
                 }
                 if (doorErrors.length > 0) {
                     errors.push(`الباب رقم (${doorNum}): ${doorErrors.join('، ')}`);
@@ -8004,11 +12585,12 @@ function doExportManufacturing(project) {
             const dir = d.direction || "";
             const isDouble = dir.toUpperCase().includes("D/RA") || dir.includes("دبل") || dir.toUpperCase().includes("DOUBLE");
             
+            const arch = parseFloat(d.architrave) || 4.0;
             let leafWidth = "";
             if (frameWidth > 0) {
-                leafWidth = isDouble ? ((frameWidth - 11.5) / 2).toFixed(1) : (frameWidth - 10.8).toFixed(1);
+                leafWidth = isDouble ? (((frameWidth - (2 * arch) - 1.5) / 2)).toFixed(1) : (frameWidth - (2 * arch) - 0.7).toFixed(1);
             }
-            let leafHeight = frameHeight > 0 ? (frameHeight - 6).toFixed(1) : "";
+            let leafHeight = frameHeight > 0 ? (frameHeight - arch - 1.0).toFixed(1) : "";
             
             const isFire = d.fire_resistance && (d.fire_resistance.toUpperCase().startsWith("Y") || d.fire_resistance.startsWith("نعم"));
             const frLabel = isFire ? "FR" : "NFR";

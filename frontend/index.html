@@ -137,22 +137,66 @@
                     <img src="logo.png" alt="FT Jada Logo" class="h-9 md:h-11 w-auto object-contain filter invert" style="mix-blend-mode: screen;" />
                 </div>
                 
-                <!-- Dropdown User Menu -->
-                <div class="relative inline-block text-left" id="userMenuDropdownContainer">
-                    <button onclick="toggleUserMenu()" class="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 transition">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                        <span id="activeUserDisplay" class="text-xs text-slate-200 font-bold">المستخدم</span>
-                        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    <div id="userMenuDropdown" class="hidden absolute left-0 mt-2 w-48 rounded-xl shadow-xl bg-white border border-slate-100 py-1 z-40">
-                        <button id="adminPanelLink" onclick="showAdminView()" class="hidden w-full text-right px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 font-bold">
-                            ⚙️ واجهة التحكم
+                <div class="flex items-center gap-3">
+                    <!-- Notifications Dropdown Container -->
+                    <div class="relative inline-block text-left" id="notificationsDropdownContainer">
+                        <button onclick="toggleNotificationsMenu(event)" class="relative p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 text-slate-300 hover:text-white transition focus:outline-none cursor-pointer flex items-center justify-center" title="الإشعارات">
+                            <!-- Bell Icon -->
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <!-- Badge -->
+                            <span id="unreadNotificationsBadge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full min-w-[18px] text-center shadow-md animate-pulse">0</span>
                         </button>
-                        <button onclick="handleLogout()" class="w-full text-right px-4 py-2.5 text-xs text-rose-605 hover:bg-rose-50 text-rose-600 font-bold border-t border-slate-50">
-                            🚪 تسجيل الخروج
+                        
+                        <!-- Notifications Panel -->
+                        <div id="notificationsDropdown" class="hidden absolute left-0 mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl bg-white border border-slate-200 py-0 z-50 overflow-hidden text-slate-800">
+                            <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-sm text-slate-800">الإشعارات</span>
+                                    <span id="notificationsHeaderCount" class="text-xs bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="markAllNotificationsAsRead(event)" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline flex items-center gap-1 transition cursor-pointer" title="تحديد جميع الإشعارات كمقروءة">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        تحديد الكل كمقروء
+                                    </button>
+                                    <button onclick="openNotificationSettingsModal(event)" class="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/60 transition cursor-pointer" title="إعدادات وتخصيص الإشعارات">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="notificationsList" class="max-h-96 overflow-y-auto divide-y divide-slate-100">
+                                <!-- Dynamic notifications items -->
+                                <div class="p-6 text-center text-xs text-slate-400">
+                                    جاري تحميل الإشعارات...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dropdown User Menu -->
+                    <div class="relative inline-block text-left" id="userMenuDropdownContainer">
+                        <button onclick="toggleUserMenu()" class="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 transition">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span id="activeUserDisplay" class="text-xs text-slate-200 font-bold">المستخدم</span>
+                            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
                         </button>
+                        <div id="userMenuDropdown" class="hidden absolute left-0 mt-2 w-48 rounded-xl shadow-xl bg-white border border-slate-100 py-1 z-40">
+                            <button id="adminPanelLink" onclick="showAdminView()" class="hidden w-full text-right px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 font-bold">
+                                ⚙️ واجهة التحكم
+                            </button>
+                            <button onclick="handleLogout()" class="w-full text-right px-4 py-2.5 text-xs text-rose-605 hover:bg-rose-50 text-rose-600 font-bold border-t border-slate-50">
+                                🚪 تسجيل الخروج
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -742,6 +786,12 @@
                             <button id="tabProjectsTable" onclick="switchProjectsTab('projects')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all bg-white text-slate-800 shadow">
                                 جدول المشاريع
                             </button>
+                            <button id="tabProjectsGantt" onclick="switchProjectsTab('gantt')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>مخطط جانت والجدول الزمني</span>
+                            </button>
                             <button id="tabContractorsList" onclick="switchProjectsTab('contractors')" class="px-4 py-2 rounded-lg font-bold text-xs transition-all text-slate-600 hover:text-slate-900">
                                 قائمة المقاولين
                             </button>
@@ -760,7 +810,7 @@
                                 تفعيل المشاريع
                             </button>
                             <button onclick="openAllProjectsTrackingModal()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                                 متابعة خطوات التصنيع
                             </button>
                         </div>
@@ -784,6 +834,7 @@
                                     <th class="p-4 font-bold">المقاول</th>
                                     <th class="p-4 font-bold">تاريخ التسليم</th>
                                     <th class="p-4 font-bold">الحالة</th>
+                                    <th class="p-4 font-bold">مؤشر التأخير / الإنجاز</th>
                                     <th class="p-4 font-bold text-center">متابعة</th>
                                 </tr>
                             </thead>
@@ -794,6 +845,97 @@
                         <div id="projectsLoadingIndicator" class="text-center py-12 hidden">
                             <div class="inline-block w-6 h-6 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                             <p class="text-slate-400 text-xs mt-2">جاري تحميل المشاريع...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects Gantt & Timeline Container (Hidden by default) -->
+                <div id="projectsGanttContainer" class="hidden space-y-4 animate-fade-in">
+                    <!-- KPI Summary Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg">📊</div>
+                            <div>
+                                <span class="text-[11px] font-bold text-slate-400 block">إجمالي المشاريع</span>
+                                <span id="ganttStatTotal" class="text-lg font-black text-slate-800">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">🟢</div>
+                            <div>
+                                <span class="text-[11px] font-bold text-slate-400 block">منتظمة بالجدول</span>
+                                <span id="ganttStatOnTrack" class="text-lg font-black text-emerald-600">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-lg">⚠️</div>
+                            <div>
+                                <span class="text-[11px] font-bold text-slate-400 block">متأخرة / حرجة</span>
+                                <span id="ganttStatDelayed" class="text-lg font-black text-rose-600">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">⏳</div>
+                            <div>
+                                <span class="text-[11px] font-bold text-slate-400 block">قيد الانتظار</span>
+                                <span id="ganttStatPending" class="text-lg font-black text-amber-600">0</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">✓</div>
+                            <div>
+                                <span class="text-[11px] font-bold text-slate-400 block">مكتملة</span>
+                                <span id="ganttStatCompleted" class="text-lg font-black text-blue-600">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gantt Main Container -->
+                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                        <!-- Top Toolbar -->
+                        <div class="p-4 sm:p-5 border-b border-slate-200 bg-white flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+                            <!-- Left: Search & Filter Pills -->
+                            <div class="flex items-center gap-3 flex-1 flex-wrap">
+                                <div class="relative flex-1 min-w-[200px] max-w-xs">
+                                    <input type="text" id="ganttSearchInput" oninput="onGanttSearchInput(this.value)" placeholder="ابحث بالمشروع أو المقاول..." class="w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition">
+                                    <span class="absolute right-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                                </div>
+                                <!-- Filter Pills -->
+                                <div class="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+                                    <button type="button" onclick="filterGanttProjects('all')" class="gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs cursor-pointer" data-filter="all">الكل</button>
+                                    <button type="button" onclick="filterGanttProjects('active')" class="gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer" data-filter="active">الفعالة</button>
+                                    <button type="button" onclick="filterGanttProjects('delayed')" class="gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer" data-filter="delayed">مهددة بالتأخير ⚠️</button>
+                                    <button type="button" onclick="filterGanttProjects('completed')" class="gantt-filter-btn px-3 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer" data-filter="completed">المنتهية ✓</button>
+                                </div>
+                            </div>
+
+                            <!-- Right: Time Navigation & View Granularity -->
+                            <div class="flex items-center gap-2.5 flex-wrap justify-end">
+                                <!-- Navigation Buttons -->
+                                <div class="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
+                                    <button type="button" onclick="navigateGanttTime(-14)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border-l border-slate-200 transition cursor-pointer" title="السابق 14 يوم">◀ السابق</button>
+                                    <button type="button" onclick="navigateGanttTime('today')" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition cursor-pointer" title="الرجوع لليوم">اليوم</button>
+                                    <button type="button" onclick="navigateGanttTime(14)" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border-r border-slate-200 transition cursor-pointer" title="التالي 14 يوم">التالي ▶</button>
+                                </div>
+
+                                <!-- View Scale Modes -->
+                                <div class="flex items-center bg-slate-100 p-1 rounded-xl gap-1">
+                                    <button type="button" id="btnGanttModeWeek" onclick="setGanttViewMode('week')" class="px-2.5 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer">أسبوعي</button>
+                                    <button type="button" id="btnGanttModeMonth" onclick="setGanttViewMode('month')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs cursor-pointer">شهري</button>
+                                    <button type="button" id="btnGanttModeQuarter" onclick="setGanttViewMode('quarter')" class="px-2.5 py-1 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer">ربعي</button>
+                                </div>
+
+                                <!-- Expand/Collapse All -->
+                                <button type="button" onclick="toggleAllGanttStages()" id="btnToggleAllStages" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer flex items-center gap-1 shadow-xs">
+                                    <span>↕</span>
+                                    <span id="lblToggleAllStages">توسيع المراحل</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Gantt Visual Chart Canvas (Split Columns) -->
+                        <div id="ganttChartBody" class="w-full overflow-hidden bg-slate-50">
+                            <!-- Populated dynamically by renderProjectsGantt() -->
                         </div>
                     </div>
                 </div>
@@ -974,6 +1116,7 @@
                                             <th class="p-2 border-b w-24">موقع الشباك</th>
                                              <th class="p-2 border-b text-center">رداد</th>
                                             <th class="p-2 border-b">ملاحظات</th>
+                                            <th class="p-2 border-b text-center">معاينة</th>
                                             <th class="p-2 border-b text-center">حذف</th>
                                         </tr>
                                     </thead>
@@ -1028,7 +1171,34 @@
                             <p class="text-slate-500 text-sm mt-0.5" id="pdSubtitle">جاري التحميل...</p>
                         </div>
                     </div>
-                    <div id="pdStatusBadge"></div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Action Print Buttons -->
+                        <button type="button" onclick="printProjectWorkOrder(window.currentProjectData ? window.currentProjectData.id : null)" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition font-bold text-xs shadow flex items-center gap-1.5 cursor-pointer" title="طباعة أمر تشغيل رسمي شامل للورشة">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            <span>أمر التشغيل 🖨️</span>
+                        </button>
+                        <button type="button" onclick="printProjectCuttingCards(window.currentProjectData ? window.currentProjectData.id : null)" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition font-bold text-xs shadow flex items-center gap-1.5 cursor-pointer" title="طباعة بطاقات وملصقات قص الأبواب">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            <span>بطاقات القص 🏷️</span>
+                        </button>
+                        <button type="button" onclick="generateProjectHandoverPdf(window.currentProjectData ? window.currentProjectData.id : null)" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition font-bold text-xs shadow flex items-center gap-1.5 cursor-pointer" title="توليد محضر الاستلام والتسليم للموقع">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <span>محضر الاستلام 📄</span>
+                        </button>
+                        <div id="pdStatusBadge"></div>
+                    </div>
+                </div>
+
+                <!-- Early Delay Warning Banner -->
+                <div id="pdEarlyWarningBanner" class="hidden rounded-2xl p-4 border flex items-center justify-between gap-4 animate-fade-in">
+                    <div class="flex items-center gap-3">
+                        <div id="pdDelayAlertIcon" class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"></div>
+                        <div>
+                            <h4 id="pdDelayAlertTitle" class="text-sm font-bold"></h4>
+                            <p id="pdDelayAlertMsg" class="text-xs mt-0.5 leading-relaxed text-slate-600"></p>
+                        </div>
+                    </div>
+                    <div id="pdDelayAlertAction" class="shrink-0"></div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1048,6 +1218,20 @@
                                 <div class="flex justify-between"><span class="text-slate-500">نوع التصنيع:</span> <span class="font-bold text-slate-800" id="pdManufacturingType"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">تركيب المشروع:</span> <span class="font-bold text-slate-800" id="pdInstallationType"></span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">مسؤول التنفيذ:</span> <span class="font-bold text-slate-800" id="pdAssignee"></span></div>
+                            </div>
+                        </div>
+
+                        <!-- Signed Handover Card -->
+                        <div class="bg-white rounded-2xl shadow border border-slate-100 p-6">
+                            <div class="flex justify-between items-center mb-3 border-b pb-2">
+                                <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    محضر الاستلام الموقع من الموقع
+                                </h3>
+                                <span id="pdHandoverStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-bold"></span>
+                            </div>
+                            <div id="pdHandoverContent" class="space-y-3">
+                                <!-- Dynamic handover content -->
                             </div>
                         </div>
                     </div>
@@ -1072,6 +1256,10 @@
                             <div class="flex justify-between items-center mb-4 border-b pb-2">
                                 <h3 class="font-bold text-lg text-slate-800">التفاصيل الهندسية</h3>
                                 <div class="flex items-center gap-2">
+                                    <button onclick="downloadProjectDXF()" class="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition text-sm font-bold">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        تصدير DXF
+                                    </button>
                                     <button onclick="downloadEngineeringCSV()" class="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition text-sm font-bold">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                                         تصدير CSV
@@ -1193,6 +1381,74 @@
                             </div>
                             <div id="sheetEmpty" class="hidden py-4 text-center text-slate-500">
                                 لا توجد حسابات متاحة.
+                            </div>
+                        </div>
+
+                        <!-- Change Orders Section -->
+                        <div class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b pb-3">
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-lg text-slate-800">سجل أوامر التعديل والتغيير (Change Orders)</h3>
+                                    <span id="pdChangeOrdersCount" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">0</span>
+                                </div>
+                                <button type="button" onclick="openNewChangeOrderModal()" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl transition font-bold text-xs border border-indigo-200 flex items-center gap-1.5 cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    <span>إضافة أمر تعديل جديد</span>
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                            <th class="p-3">رقم الأمر</th>
+                                            <th class="p-3">موضوع التعديل</th>
+                                            <th class="p-3">الوصف والتفاصيل</th>
+                                            <th class="p-3">الجهة الطالبة</th>
+                                            <th class="p-3">الأثر المالي</th>
+                                            <th class="p-3">الأثر الزمني</th>
+                                            <th class="p-3">الحالة</th>
+                                            <th class="p-3">التاريخ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pdChangeOrdersBody" class="divide-y divide-slate-100">
+                                        <tr><td colspan="8" class="p-6 text-center text-slate-400">لا توجد أوامر تعديل مسجلة لهذا المشروع.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Punch List Section -->
+                        <div class="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b pb-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-bold text-lg text-slate-800">قائمة ملاحظات التسليم والموقع (Site Punch List)</h3>
+                                        <span id="pdPunchCount" class="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200">0</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-0.5">تتبع الملاحظات الفنية ومشاكل التركيب بعد التوريد للموقع حتى إغلاقها واعتمادها</p>
+                                </div>
+                                <button type="button" onclick="openNewPunchItemModal()" class="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl transition font-bold text-xs border border-amber-200 flex items-center gap-1.5 cursor-pointer">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                    <span>تسجيل ملاحظة تسليم جديدة</span>
+                                </button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right border-collapse text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-50 text-slate-600 text-xs border-b">
+                                            <th class="p-3">رقم الباب</th>
+                                            <th class="p-3">وصف الملاحظة</th>
+                                            <th class="p-3">الأولوية</th>
+                                            <th class="p-3">الحالة</th>
+                                            <th class="p-3">تاريخ التسجيل</th>
+                                            <th class="p-3">تاريخ الإصلاح</th>
+                                            <th class="p-3 text-center">إجراء سريع</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pdPunchListBody" class="divide-y divide-slate-100">
+                                        <tr><td colspan="7" class="p-6 text-center text-slate-400">لا توجد ملاحظات مسجلة على التسليم.</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                 </div>
@@ -3954,7 +4210,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js?v=149"></script>
 
     <!-- Move Item Modal -->
     <div id="moveItemModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center">
@@ -4394,5 +4649,467 @@
         </div>
     </div>
 
+    <!-- Clean White Door & Profile Studio Modal (معاينة وتعديل شكل الباب والمقطع) -->
+    <div id="profileEditorModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-6xl w-full max-h-[95vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden text-slate-800">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white flex-wrap gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-xs">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v10m8-10v10M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <span id="lblStudioTitle">معاينة وتعديل شكل الباب</span>
+                            <span id="lblProfileDoorTag" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">باب</span>
+                        </h3>
+                        <p id="lblProfileSubtitle" class="text-xs text-slate-500 mt-0.5">انقر مباشرة على أبعاد العرض أو الطول في الرسم أو استخدم أدوات التحكم لتعديل المقاسات مباشرة</p>
+                    </div>
+                </div>
+
+                <!-- Studio Switcher Tabs (شكل الباب / مقطع الحلق) -->
+                <div class="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner">
+                    <button type="button" id="btnStudioTabElevation" onclick="switchStudioTab('elevation')" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all bg-white text-indigo-700 shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="text-sm">🚪</span>
+                        <span>واجهة وشكل الباب</span>
+                    </button>
+                    <button type="button" id="btnStudioTabProfile" onclick="switchStudioTab('profile')" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer">
+                        <span class="text-sm">📐</span>
+                        <span>مقطع الحلق (Profile)</span>
+                    </button>
+                </div>
+
+                <!-- Right Corner Badges -->
+                <div class="flex items-center gap-3">
+                    <!-- Elevation Dimensions Badge -->
+                    <div id="badgeDoorElevationStats" class="bg-slate-50 border-2 border-indigo-500/40 px-3.5 py-1.5 rounded-xl shadow-xs text-right">
+                        <span class="text-[10px] font-bold text-slate-500 block">المقاس الكلي (عرض × طول)</span>
+                        <div class="flex items-baseline justify-end gap-1">
+                            <span id="lblDoorStatsWidth" class="text-xl font-black text-indigo-700 font-mono tracking-tight">100</span>
+                            <span class="text-xs font-bold text-slate-400">×</span>
+                            <span id="lblDoorStatsHeight" class="text-xl font-black text-indigo-700 font-mono tracking-tight">220</span>
+                            <span class="text-xs font-bold text-indigo-600 mr-1">سم</span>
+                        </div>
+                    </div>
+
+                    <!-- Profile Unfolded Width Badge (Shown on profile tab) -->
+                    <div id="badgeProfileUnfolded" class="hidden bg-slate-50 border-2 border-emerald-500/50 px-3.5 py-1.5 rounded-xl shadow-xs text-right">
+                        <span class="text-[10px] font-bold text-slate-500 block">عرض الإفراد الكلي للصاج (Flat Width)</span>
+                        <div class="flex items-baseline justify-end gap-1">
+                            <span id="lblTotalUnfoldedWidth" class="text-xl font-black text-emerald-700 font-mono tracking-tight">315.9</span>
+                            <span class="text-xs font-bold text-emerald-600">مم</span>
+                            <span id="lblTotalUnfoldedCm" class="text-xs text-slate-400 font-semibold mr-1.5">(31.6 سم)</span>
+                        </div>
+                    </div>
+
+                    <button onclick="closeInteractiveProfileEditor()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Viewport 1: Door Elevation Interactive Container -->
+            <div id="doorElevationContainer" class="flex-1 flex flex-col overflow-hidden bg-slate-100">
+                <!-- Interactive Controls Bar -->
+                <div id="doorElevationControls" class="w-full bg-white px-6 py-2.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3 text-xs font-bold shadow-xs">
+                    <!-- Width Quick Stepper -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            <span>العرض:</span>
+                        </span>
+                        <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
+                            <button type="button" onclick="adjustDoorDimension('width', -5)" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-l border-slate-200 transition cursor-pointer" title="إنقاص 5 سم">-5</button>
+                            <button type="button" onclick="adjustDoorDimension('width', -1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-l border-slate-200 transition cursor-pointer" title="إنقاص 1 سم">-1</button>
+                            <input type="number" id="doorCtrlWidth" step="0.5" class="w-16 text-center font-black text-indigo-700 bg-white outline-none py-1 text-xs" oninput="onDoorDimensionInput('width', this.value)">
+                            <span class="px-1.5 text-slate-400 font-bold bg-slate-50 text-[11px]">سم</span>
+                            <button type="button" onclick="adjustDoorDimension('width', 1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-r border-slate-200 transition cursor-pointer" title="زيادة 1 سم">+1</button>
+                            <button type="button" onclick="adjustDoorDimension('width', 5)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-r border-slate-200 transition cursor-pointer" title="زيادة 5 سم">+5</button>
+                        </div>
+                    </div>
+
+                    <!-- Height Quick Stepper -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                            <span>الطول (الارتفاع):</span>
+                        </span>
+                        <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
+                            <button type="button" onclick="adjustDoorDimension('height', -5)" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-l border-slate-200 transition cursor-pointer" title="إنقاص 5 سم">-5</button>
+                            <button type="button" onclick="adjustDoorDimension('height', -1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-l border-slate-200 transition cursor-pointer" title="إنقاص 1 سم">-1</button>
+                            <input type="number" id="doorCtrlHeight" step="0.5" class="w-16 text-center font-black text-indigo-700 bg-white outline-none py-1 text-xs" oninput="onDoorDimensionInput('height', this.value)">
+                            <span class="px-1.5 text-slate-400 font-bold bg-slate-50 text-[11px]">سم</span>
+                            <button type="button" onclick="adjustDoorDimension('height', 1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-r border-slate-200 transition cursor-pointer" title="زيادة 1 سم">+1</button>
+                            <button type="button" onclick="adjustDoorDimension('height', 5)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-r border-slate-200 transition cursor-pointer" title="زيادة 5 سم">+5</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Direction Toggle -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-slate-500">الاتجاه:</span>
+                        <div class="flex border border-slate-300 rounded-xl overflow-hidden bg-slate-50">
+                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">يمين RH</button>
+                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">يسار LH</button>
+                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">دبل Double</button>
+                        </div>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="flex items-center gap-1">
+                        <span class="text-slate-400 text-[11px]">مقاسات قياسية:</span>
+                        <button type="button" onclick="applyDoorPreset(90, 210)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">90×210</button>
+                        <button type="button" onclick="applyDoorPreset(100, 220)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">100×220</button>
+                        <button type="button" onclick="applyDoorPreset(120, 220)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">120×220</button>
+                        <button type="button" onclick="applyDoorPreset(180, 220, 'Double')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">180×220 دبل</button>
+                    </div>
+                </div>
+
+                <!-- SVG Viewport for Door Elevation -->
+                <div class="p-4 sm:p-6 overflow-hidden flex-1 flex flex-col items-center justify-center">
+                    <div id="doorElevationSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[460px] bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-2xl relative select-none overflow-hidden">
+                        <!-- Dynamic SVG rendered by renderDoorElevationSvg -->
+                    </div>
+                </div>
+
+                <!-- Bottom Stats Bar for Door Elevation -->
+                <div id="doorElevationStats" class="w-full bg-white px-6 py-2.5 border-t border-slate-200 text-xs flex justify-between items-center text-slate-600 font-medium flex-wrap gap-2">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span>درفة 1 (عرض × طول): <strong id="lblStatsLeaf1" class="text-indigo-700 font-bold">91.3 × 215.0 سم</strong></span>
+                        <span id="boxStatsLeaf2" class="hidden">درفة 2 (عرض × طول): <strong id="lblStatsLeaf2" class="text-indigo-700 font-bold">-</strong></span>
+                        <span>نوع الباب: <strong id="lblStatsDoorType" class="text-slate-800 font-bold">Single leaf metal</strong></span>
+                        <span>كشفة (A1): <strong id="lblStatsArchitrave" class="text-slate-800 font-bold">4.0 سم</strong></span>
+                        <span>محور ثقب اليد: <strong id="lblStatsHandleHole" class="text-emerald-700 font-bold">1050 ملم (1043 ملم عن قاع الدرفة)</strong></span>
+                        <span>فراغ الحلق/الأرض: <strong class="text-amber-700 font-bold">أعلى 3 ملم | أسفل 7 ملم</strong></span>
+                        <span>القفل: <strong id="lblStatsLock" class="text-slate-800 font-bold">Mortise</strong></span>
+                        <span>الفصالات: <strong id="lblStatsHinges" class="text-slate-800 font-bold">4 فصالات</strong></span>
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        • انقر مباشرة على الأرقام في خطوط الأبعاد للتعديل المباشر
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viewport 2: Profile SVG Viewport (Shown when Profile tab active) -->
+            <div id="doorProfileContainer" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-100">
+                <!-- Profile Controls Bar -->
+                <div id="doorProfileControls" class="w-full bg-white px-6 py-2.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3 text-xs font-bold shadow-xs">
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600 flex items-center gap-1.5">
+                            <span class="text-indigo-600">📐</span>
+                            <span>نوع المقطع (Profile):</span>
+                        </span>
+                        <select id="studioProfileSelect" onchange="onStudioProfileTypeChange(this.value)" class="px-3 py-1.5 border border-slate-300 rounded-xl bg-slate-50 text-slate-800 font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer text-xs">
+                            <option value="single rabbit with rubber">Single rabbit with rubber (فرزة واحدة مع كاوتشوك)</option>
+                            <option value="single rabbit without rubber">Single rabbit without rubber (فرزة واحدة بدون كاوتشوك)</option>
+                            <option value="double rabbit with rubber">Double rabbit with rubber (فرزة مزدوجة مع كاوتشوك)</option>
+                            <option value="double rabbit without rubber">Double rabbit without rubber (فرزة مزدوجة بدون كاوتشوك)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="text-slate-500">العمق (D): <strong id="lblStudioProfileD" class="text-indigo-600 font-mono">15.0</strong> سم</span>
+                        <span class="text-slate-500">كشفة الفصالات (A1): <strong id="lblStudioProfileA1" class="text-indigo-600 font-mono">4.0</strong> سم</span>
+                        <span class="text-slate-500">كشفة الظهر (A2): <strong id="lblStudioProfileA2" class="text-indigo-600 font-mono">6.2</strong> سم</span>
+                    </div>
+                </div>
+
+                <div class="p-4 sm:p-6 overflow-hidden flex-1 flex flex-col items-center justify-center">
+                    <div id="profileSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[460px] bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-2xl relative select-none overflow-hidden">
+                        <!-- Profile SVG rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Bottom Stats Bar for Profile -->
+                <div id="doorProfileStats" class="w-full bg-white px-6 py-2.5 border-t border-slate-200 text-xs flex justify-between items-center text-slate-600 font-medium flex-wrap gap-2">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span>المقطع النشط: <strong id="lblCurrentProfileName" class="text-indigo-700 font-bold">Single rabbit with rubber</strong></span>
+                        <span>سماكة الصاج: <strong id="lblCurrentProfileThickness" class="text-slate-800 font-bold">1.5 مم</strong></span>
+                        <span>عرض الإفراد الكلي: <strong id="lblCurrentProfileUnfolded" class="text-emerald-700 font-bold">315.9 مم</strong></span>
+                    </div>
+                    <div class="text-[11px] text-slate-400">
+                        • انقر مباشرة على الأرقام في خطوط الأبعاد للتعديل المباشر
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-sm flex-wrap gap-3">
+                <div class="flex items-center gap-2">
+                    <button id="btnProfileReset" type="button" onclick="resetStudioCurrentTab()" class="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer shadow-xs">
+                        إعادة ضبط القياس الافتراضي
+                    </button>
+                    <span id="lblProfileFooterNote" class="text-xs text-slate-400 mr-2">• المقاسات المعروضة بالسنتيمتر والملمتر</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnProfileApply" type="button" onclick="applyStudioChangesToSource()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow cursor-pointer">
+                        حفظ واعتماد التعديلات
+                    </button>
+                    <button id="btnProfileCancel" type="button" onclick="closeInteractiveProfileEditor()" class="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl transition cursor-pointer">
+                        إلغاء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unsupported Profile Modal (المقطع غير متوافر حالياً) -->
+    <div id="unsupportedProfileModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center animate-scale-up">
+            <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">المقطع غير متوافر حالياً</h3>
+            <p class="text-sm text-slate-600 mb-6 leading-relaxed" id="unsupportedProfileMsg">
+                المعاينة التفاعلية والتعديل المباشر متاحان حالياً لمقطع <strong class="text-slate-900">Single rabbit with rubber</strong> فقط.
+            </p>
+            <button type="button" onclick="closeUnsupportedProfileModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-4 rounded-xl transition">
+                حسناً، فهمت
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= NOTIFICATION SETTINGS MODAL ================= -->
+    <div id="notificationSettingsModal" onclick="if(event.target === this) closeNotificationSettingsModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-scale-up text-slate-800">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">إعدادات وتفضيلات الإشعارات</h3>
+                        <p class="text-xs text-slate-500">حدد أنواع الإشعارات التي ترغب في وصولها إلى حسابك</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeNotificationSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Quick Action Bar -->
+            <div class="flex items-center justify-between py-2.5 px-3 border-b border-slate-100/80 bg-slate-50/70 rounded-xl my-3">
+                <span class="text-xs font-semibold text-slate-600">إجراء سريع لجميع الإشعارات:</span>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="setAllNotificationSettings(true)" class="px-3 py-1 text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-bold transition cursor-pointer">
+                        تفعيل الكل ✓
+                    </button>
+                    <button type="button" onclick="setAllNotificationSettings(false)" class="px-3 py-1 text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-bold transition cursor-pointer">
+                        إلغاء الكل ✗
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Content (Scrollable Categories) -->
+            <div id="notificationSettingsList" class="flex-1 overflow-y-auto py-1 space-y-4 pr-1 pl-1">
+                <!-- Grouped toggles dynamically injected by JS -->
+                <div class="text-center py-8 text-xs text-slate-400">جاري تحميل الإعدادات...</div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeNotificationSettingsModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">
+                    إلغاء
+                </button>
+                <button type="button" onclick="saveNotificationSettings()" id="btnSaveNotificationSettings" class="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-100 transition flex items-center gap-2 cursor-pointer">
+                    <span>حفظ التفضيلات</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= NEW CHANGE ORDER MODAL ================= -->
+    <div id="newChangeOrderModal" onclick="if(event.target === this) closeNewChangeOrderModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-scale-up text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">إضافة أمر تعديل / تغيير جديد</h3>
+                        <p class="text-xs text-slate-500">توثيق طلب تعديل رسمي على مواصفات أو مقاسات المشروع</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeNewChangeOrderModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="newChangeOrderForm" onsubmit="submitNewChangeOrder(event)" class="space-y-4 pt-4 overflow-y-auto">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">رقم أمر التعديل *</label>
+                        <input type="text" id="coOrderNumber" required placeholder="مثال: CO-01" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">الجهة الطالبة للتعديل</label>
+                        <input type="text" id="coRequestedBy" placeholder="مثال: م. خالد المشرف / المقاول" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">موضوع التعديل *</label>
+                    <input type="text" id="coTitle" required placeholder="مثال: تغيير اتجاه فتح أبواب الطابق الثاني" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">الوصف والتفاصيل الهندسية للتعديل *</label>
+                    <textarea id="coDescription" required rows="3" placeholder="اذكر الأبواب والمقاسات والتغييرات المطلوبة بالتفصيل..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">الأثر المالي</label>
+                        <input type="text" id="coCostImpact" placeholder="بدون تكلفة / تكلفة إضافية" value="بدون تكلفة إضافية" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">الأثر الزمني</label>
+                        <input type="text" id="coTimeImpact" placeholder="بدون تأخير / +3 أيام" value="بدون تأخير" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">حالة الاعتماد</label>
+                        <select id="coStatus" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
+                            <option value="معتمد" selected>معتمد ✓</option>
+                            <option value="قيد المراجعة">قيد المراجعة ⏳</option>
+                            <option value="مرفوض">مرفوض ✗</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeNewChangeOrderModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">إلغاء</button>
+                    <button type="submit" id="btnSubmitChangeOrder" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer">حفظ أمر التعديل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= NEW PUNCH ITEM MODAL ================= -->
+    <div id="newPunchItemModal" onclick="if(event.target === this) closeNewPunchItemModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] animate-scale-up text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">تسجيل ملاحظة تسليم (Punch List Item)</h3>
+                        <p class="text-xs text-slate-500">توثيق ملاحظات الفحص أو رتوش التركيب بعد التوريد للموقع</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeNewPunchItemModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="newPunchItemForm" onsubmit="submitNewPunchItem(event)" class="space-y-4 pt-4 overflow-y-auto">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">رقم الباب (اختياري)</label>
+                        <input type="text" id="plDoorNumber" placeholder="مثال: D-04 أو باب المدخل الرئيسي" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">الأولوية</label>
+                        <select id="plPriority" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none font-bold">
+                            <option value="عادي" selected>عادي</option>
+                            <option value="عاجل">عاجل ⚠️</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">وصف الملاحظة أو العيب الفني *</label>
+                    <textarea id="plDescription" required rows="3" placeholder="مثال: رتوش دهان في الركن العلوي أو تعديل مقبض أو زرفيل..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">المسؤول عن المتابعة / الإصلاح</label>
+                    <input type="text" id="plAssignedTo" placeholder="اسم الفني أو فني الدهان / التركيب" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2">
+                    <button type="button" onclick="closeNewPunchItemModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">إلغاء</button>
+                    <button type="submit" id="btnSubmitPunchItem" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer">تسجيل الملاحظة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= UPLOAD SIGNED HANDOVER MODAL ================= -->
+    <div id="uploadHandoverModal" onclick="if(event.target === this) closeUploadHandoverModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col animate-scale-up text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">رفع محضر الاستلام الموقع</h3>
+                        <p class="text-xs text-slate-500">ارفع نسخة PDF أو صورة للمحضر بعد توقيعه في الموقع</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeUploadHandoverModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="uploadHandoverForm" onsubmit="submitSignedHandover(event)" class="space-y-4 pt-4">
+                <div class="border-2 border-dashed border-slate-200 hover:border-emerald-500 transition rounded-2xl p-6 text-center cursor-pointer bg-slate-50/50" onclick="document.getElementById('handoverFileInput').click()">
+                    <input type="file" id="handoverFileInput" accept="application/pdf,image/*" required class="hidden" onchange="previewHandoverFileName(this)">
+                    <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700" id="handoverFileName">اضغط لاختيار ملف المحضر (PDF أو صورة)</p>
+                    <p class="text-[10px] text-slate-400 mt-1">يدعم ملفات PDF، JPG، PNG</p>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeUploadHandoverModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">إلغاء</button>
+                    <button type="submit" id="btnSubmitHandover" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer">رفع واعتماد المحضر</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= QUICK SET DELIVERY DATE MODAL FOR GANTT ================= -->
+    <div id="ganttSetDeliveryModal" onclick="if(event.target === this) closeGanttSetDeliveryModal()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 flex flex-col animate-scale-up text-slate-800">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm font-bold text-lg">
+                        📅
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">تحديد موعد تسليم المشروع</h3>
+                        <p class="text-xs text-slate-500" id="ganttModalProjectTitle">المشروع</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeGanttSetDeliveryModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="ganttSetDeliveryForm" onsubmit="submitGanttSetDeliveryDate(event)" class="space-y-4 pt-4">
+                <input type="hidden" id="ganttModalProjectId">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">موعد التسليم المستهدف</label>
+                    <input type="date" id="ganttModalDeliveryDate" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition">
+                    <p class="text-[11px] text-slate-400 mt-1.5">تحديد موعد التسليم يضبط المخطط الزمني بدقة ويفعّل التنبيه المبكر لاحتمالية التأخير.</p>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeGanttSetDeliveryModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer">إلغاء</button>
+                    <button type="submit" id="btnSubmitGanttDelivery" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow transition cursor-pointer flex items-center gap-1.5">
+                        <span>حفظ الموعد</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js?v=175"></script>
 </body>
 </html>

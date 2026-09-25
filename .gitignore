@@ -10,3 +10,10 @@ dist/
 *.exe
 web-app/
 mobile/
+archive/
+scratch/
+*.bak
+*.mp4
+*.dwl
+*.dwl2
+*.svg

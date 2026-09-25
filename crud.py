@@ -6,8 +6,46 @@ import schemas
 import auth
 
 
+def normalize_username(name: str) -> str:
+    """Normalizes username for whitespace, case, and Arabic letter variants."""
+    if not name:
+        return ""
+    s = " ".join(name.strip().split())
+    s = s.replace("ى", "ي").replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").replace("ة", "ه")
+    return s.lower()
+
 def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
+    if not username:
+        return None
+    raw_clean = username.strip()
+
+    # 1. Exact match
+    user = db.query(models.User).filter(models.User.username == raw_clean).first()
+    if user:
+        return user
+
+    # 2. Case-insensitive / trimmed SQL match
+    user = db.query(models.User).filter(func.lower(func.trim(models.User.username)) == raw_clean.lower()).first()
+    if user:
+        return user
+
+    # 3. Arabic normalization and single-match prefix
+    target_norm = normalize_username(raw_clean)
+    all_users = db.query(models.User).all()
+
+    for u in all_users:
+        if normalize_username(u.username) == target_norm:
+            return u
+
+    matching_prefix = [
+        u for u in all_users
+        if normalize_username(u.username).startswith(target_norm + " ")
+        or target_norm.startswith(normalize_username(u.username) + " ")
+    ]
+    if len(matching_prefix) == 1:
+        return matching_prefix[0]
+
+    return None
 
 def get_all_users(db: Session):
     return db.query(models.User).order_by(models.User.id.asc()).all()
@@ -570,6 +608,69 @@ def delete_project_task(db: Session, task_id: int):
         return True
     return False
 
+# --- Project Change Orders ---
+def create_project_change_order(db: Session, project_id: int, order: schemas.ProjectChangeOrderCreate):
+    db_order = models.ProjectChangeOrder(**order.model_dump(), project_id=project_id)
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
+    return db_order
+
+def get_project_change_orders(db: Session, project_id: int):
+    return db.query(models.ProjectChangeOrder).filter(models.ProjectChangeOrder.project_id == project_id).order_by(models.ProjectChangeOrder.created_at.desc()).all()
+
+def update_project_change_order(db: Session, order_id: int, order_update: schemas.ProjectChangeOrderUpdate):
+    db_order = db.query(models.ProjectChangeOrder).filter(models.ProjectChangeOrder.id == order_id).first()
+    if db_order:
+        update_data = order_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_order, key, value)
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+    return None
+
+def delete_project_change_order(db: Session, order_id: int):
+    db_order = db.query(models.ProjectChangeOrder).filter(models.ProjectChangeOrder.id == order_id).first()
+    if db_order:
+        db.delete(db_order)
+        db.commit()
+        return True
+    return False
+
+# --- Project Punch List ---
+def create_project_punch_item(db: Session, project_id: int, item: schemas.ProjectPunchListItemCreate):
+    db_item = models.ProjectPunchListItem(**item.model_dump(), project_id=project_id)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+def get_project_punch_list(db: Session, project_id: int):
+    return db.query(models.ProjectPunchListItem).filter(models.ProjectPunchListItem.project_id == project_id).order_by(models.ProjectPunchListItem.created_at.desc()).all()
+
+def update_project_punch_item(db: Session, item_id: int, item_update: schemas.ProjectPunchListItemUpdate):
+    db_item = db.query(models.ProjectPunchListItem).filter(models.ProjectPunchListItem.id == item_id).first()
+    if db_item:
+        from datetime import datetime, timezone
+        update_data = item_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_item, key, value)
+        if update_data.get("status") in ["تم الإصلاح", "معتمد"] and not db_item.resolved_at:
+            db_item.resolved_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(db_item)
+        return db_item
+    return None
+
+def delete_project_punch_item(db: Session, item_id: int):
+    db_item = db.query(models.ProjectPunchListItem).filter(models.ProjectPunchListItem.id == item_id).first()
+    if db_item:
+        db.delete(db_item)
+        db.commit()
+        return True
+    return False
+
 def move_item(db: Session, item_id: int, new_category: str, new_subcategory: str, user_id: int):
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
@@ -645,7 +746,12 @@ def seed_default_project_options(db: Session):
             db.add(models.ProjectOption(option_type="hinge", name=hinge))
     # Seed profiles
     if not db.query(models.ProjectOption).filter(models.ProjectOption.option_type == "profile").first():
-        profiles = ["single rabbit with rubber", "double rabbit with rubber", "single rabbit", "double rabbit"]
+        profiles = [
+            "single rabbit with rubber",
+            "single rabbit without rubber",
+            "double rabbit with rubber",
+            "double rabbit without rubber"
+        ]
         for p in profiles:
             db.add(models.ProjectOption(option_type="profile", name=p))
     # Seed door types
@@ -1110,3 +1216,182 @@ def delete_service_client(db: Session, client_id: int):
     db.delete(db_client)
     db.commit()
     return True
+
+
+# --- NOTIFICATIONS CRUD & SETTINGS ---
+
+NOTIFICATION_SETTINGS_DEFINITIONS = [
+    # المستودعات والمخازن
+    {"key": "inventory_add_sheet", "label": "إضافة إلى مخزن الصاج", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_sub_sheet", "label": "السحب من مخزن الصاج", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_add_locks", "label": "إضافة إلى مخزن الزرافيل", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_sub_locks", "label": "السحب من مخزن الزرافيل", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_add_hinges", "label": "إضافة إلى مخزن الفصالات", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_sub_hinges", "label": "السحب من مخزن الفصالات", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_add_paint", "label": "إضافة إلى مخزن الدهان", "group": "المستودعات والمخازن", "default": True},
+    {"key": "inventory_sub_paint", "label": "السحب من مخزن الدهان", "group": "المستودعات والمخازن", "default": True},
+    {"key": "low_stock_alert", "label": "تنبيه نفاد المخزون (وصول الرصيد للصفر)", "group": "المستودعات والمخازن", "default": True},
+
+    # المشاريع
+    {"key": "project_created", "label": "إضافة مشروع جديد", "group": "المشاريع", "default": True},
+    {"key": "project_status_changed", "label": "تحول حالة المشروع", "group": "المشاريع", "default": True},
+
+    # المشتريات
+    {"key": "purchase_request_created", "label": "إنشاء طلب شراء جديد", "group": "المشتريات", "default": True},
+    {"key": "purchase_request_completed", "label": "إتمام طلب شراء", "group": "المشتريات", "default": True},
+
+    # خدمات التشغيل
+    {"key": "service_job_created", "label": "إضافة أمر تشغيل خدمة جديد", "group": "خدمات التشغيل", "default": True},
+    {"key": "service_job_status_changed", "label": "تغيير حالة أمر التشغيل", "group": "خدمات التشغيل", "default": True},
+
+    # الموارد البشرية
+    {"key": "hr_request_created", "label": "طلب إجازة أو مغادرة جديد", "group": "الموارد البشرية", "default": True},
+    {"key": "hr_request_status_changed", "label": "اعتماد أو رفض طلب الإجازة/المغادرة", "group": "الموارد البشرية", "default": True},
+]
+
+
+def broadcast_notification(db: Session, title: str, message: str, notif_type: str = "info", reference_id: Optional[int] = None):
+    notification = models.Notification(
+        title=title,
+        message=message,
+        type=notif_type,
+        reference_id=reference_id
+    )
+    db.add(notification)
+    db.flush()
+
+    users = db.query(models.User).filter(models.User.is_approved == 1).all()
+    if not users:
+        users = db.query(models.User).all()
+
+    # Find users who disabled this notification type
+    disabled_users = set()
+    if notif_type:
+        disabled_rows = db.query(models.UserNotificationSetting.user_id).filter(
+            models.UserNotificationSetting.setting_key == notif_type,
+            models.UserNotificationSetting.is_enabled == False
+        ).all()
+        disabled_users = {row[0] for row in disabled_rows}
+
+    for u in users:
+        if u.id in disabled_users:
+            continue
+
+        user_notif = models.UserNotification(
+            user_id=u.id,
+            notification_id=notification.id,
+            is_read=False
+        )
+        db.add(user_notif)
+
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+
+def get_user_notification_settings(db: Session, user_id: int):
+    user_settings = db.query(models.UserNotificationSetting).filter(models.UserNotificationSetting.user_id == user_id).all()
+    user_map = {s.setting_key: s.is_enabled for s in user_settings}
+
+    result = []
+    for item in NOTIFICATION_SETTINGS_DEFINITIONS:
+        val = user_map.get(item["key"], item["default"])
+        result.append({
+            "key": item["key"],
+            "label": item["label"],
+            "group": item["group"],
+            "is_enabled": bool(val)
+        })
+    return result
+
+
+def update_user_notification_settings(db: Session, user_id: int, settings_dict: dict):
+    valid_keys = {item["key"] for item in NOTIFICATION_SETTINGS_DEFINITIONS}
+    for key, is_enabled in settings_dict.items():
+        if key in valid_keys:
+            existing = db.query(models.UserNotificationSetting).filter(
+                models.UserNotificationSetting.user_id == user_id,
+                models.UserNotificationSetting.setting_key == key
+            ).first()
+            if existing:
+                existing.is_enabled = bool(is_enabled)
+            else:
+                new_setting = models.UserNotificationSetting(
+                    user_id=user_id,
+                    setting_key=key,
+                    is_enabled=bool(is_enabled)
+                )
+                db.add(new_setting)
+    db.commit()
+    return get_user_notification_settings(db, user_id)
+
+
+def get_user_notifications(db: Session, user_id: int, limit: int = 50):
+    rows = db.query(models.UserNotification, models.Notification)\
+        .join(models.Notification, models.UserNotification.notification_id == models.Notification.id)\
+        .filter(models.UserNotification.user_id == user_id)\
+        .order_by(models.Notification.created_at.desc(), models.Notification.id.desc())\
+        .limit(limit)\
+        .all()
+
+    result = []
+    for un, n in rows:
+        result.append({
+            "id": un.id,
+            "notification_id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.type,
+            "reference_id": n.reference_id,
+            "is_read": un.is_read,
+            "created_at": n.created_at,
+            "read_at": un.read_at
+        })
+    return result
+
+
+def get_unread_notification_count(db: Session, user_id: int) -> int:
+    return db.query(models.UserNotification)\
+        .filter(models.UserNotification.user_id == user_id, models.UserNotification.is_read == False)\
+        .count()
+
+
+def mark_notification_as_read(db: Session, user_id: int, user_notification_id: int):
+    un = db.query(models.UserNotification).filter(
+        models.UserNotification.id == user_notification_id,
+        models.UserNotification.user_id == user_id
+    ).first()
+    if un:
+        from datetime import datetime, timezone
+        un.is_read = True
+        un.read_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(un)
+        return un
+    return None
+
+
+def mark_all_notifications_as_read(db: Session, user_id: int):
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    db.query(models.UserNotification).filter(
+        models.UserNotification.user_id == user_id,
+        models.UserNotification.is_read == False
+    ).update({
+        models.UserNotification.is_read: True,
+        models.UserNotification.read_at: now
+    }, synchronize_session=False)
+    db.commit()
+    return True
+
+
+def delete_user_notification(db: Session, user_id: int, user_notification_id: int):
+    un = db.query(models.UserNotification).filter(
+        models.UserNotification.id == user_notification_id,
+        models.UserNotification.user_id == user_id
+    ).first()
+    if un:
+        db.delete(un)
+        db.commit()
+        return True
+    return False
