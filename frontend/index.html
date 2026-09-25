@@ -4714,55 +4714,23 @@
             <div id="doorElevationContainer" class="flex-1 flex flex-col overflow-hidden bg-slate-100">
                 <!-- Interactive Controls Bar -->
                 <div id="doorElevationControls" class="w-full bg-white px-6 py-2.5 border-b border-slate-200 flex items-center justify-between flex-wrap gap-3 text-xs font-bold shadow-xs">
-                    <!-- Width Quick Stepper -->
-                    <div class="flex items-center gap-2">
-                        <span class="text-slate-600 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                            <span>العرض:</span>
-                        </span>
-                        <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
-                            <button type="button" onclick="adjustDoorDimension('width', -5)" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-l border-slate-200 transition cursor-pointer" title="إنقاص 5 سم">-5</button>
-                            <button type="button" onclick="adjustDoorDimension('width', -1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-l border-slate-200 transition cursor-pointer" title="إنقاص 1 سم">-1</button>
-                            <input type="number" id="doorCtrlWidth" step="0.5" class="w-16 text-center font-black text-indigo-700 bg-white outline-none py-1 text-xs" oninput="onDoorDimensionInput('width', this.value)">
-                            <span class="px-1.5 text-slate-400 font-bold bg-slate-50 text-[11px]">سم</span>
-                            <button type="button" onclick="adjustDoorDimension('width', 1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-r border-slate-200 transition cursor-pointer" title="زيادة 1 سم">+1</button>
-                            <button type="button" onclick="adjustDoorDimension('width', 5)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-r border-slate-200 transition cursor-pointer" title="زيادة 5 سم">+5</button>
-                        </div>
-                    </div>
-
-                    <!-- Height Quick Stepper -->
-                    <div class="flex items-center gap-2">
-                        <span class="text-slate-600 flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                            <span>الطول (الارتفاع):</span>
-                        </span>
-                        <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
-                            <button type="button" onclick="adjustDoorDimension('height', -5)" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-l border-slate-200 transition cursor-pointer" title="إنقاص 5 سم">-5</button>
-                            <button type="button" onclick="adjustDoorDimension('height', -1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-l border-slate-200 transition cursor-pointer" title="إنقاص 1 سم">-1</button>
-                            <input type="number" id="doorCtrlHeight" step="0.5" class="w-16 text-center font-black text-indigo-700 bg-white outline-none py-1 text-xs" oninput="onDoorDimensionInput('height', this.value)">
-                            <span class="px-1.5 text-slate-400 font-bold bg-slate-50 text-[11px]">سم</span>
-                            <button type="button" onclick="adjustDoorDimension('height', 1)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border-r border-slate-200 transition cursor-pointer" title="زيادة 1 سم">+1</button>
-                            <button type="button" onclick="adjustDoorDimension('height', 5)" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-black border-r border-slate-200 transition cursor-pointer" title="زيادة 5 سم">+5</button>
-                        </div>
-                    </div>
-
                     <!-- Quick Direction Toggle -->
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-slate-500">الاتجاه:</span>
-                        <div class="flex border border-slate-300 rounded-xl overflow-hidden bg-slate-50">
-                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">يمين RH</button>
-                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">يسار LH</button>
-                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-2.5 py-1 text-xs font-bold transition cursor-pointer">دبل Double</button>
+                    <div class="flex items-center gap-2">
+                        <span class="text-slate-600 flex items-center gap-1 font-bold">
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            <span>اتجاه فتح الباب:</span>
+                        </span>
+                        <div class="flex border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
+                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">يمين RH</button>
+                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">يسار LH</button>
+                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-3 py-1.5 text-xs font-bold transition cursor-pointer">دبل Double</button>
                         </div>
                     </div>
 
-                    <!-- Presets -->
-                    <div class="flex items-center gap-1">
-                        <span class="text-slate-400 text-[11px]">مقاسات قياسية:</span>
-                        <button type="button" onclick="applyDoorPreset(90, 210)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">90×210</button>
-                        <button type="button" onclick="applyDoorPreset(100, 220)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">100×220</button>
-                        <button type="button" onclick="applyDoorPreset(120, 220)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">120×220</button>
-                        <button type="button" onclick="applyDoorPreset(180, 220, 'Double')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 text-[11px] border border-slate-200 transition cursor-pointer">180×220 دبل</button>
+                    <!-- Direct Edit Instruction Badge -->
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200/80 rounded-xl text-indigo-800">
+                        <span class="text-base">📐</span>
+                        <span class="text-xs font-bold">انقر مباشرة على رقم العرض أو الارتفاع في الرسم لتعديل القياس</span>
                     </div>
                 </div>
 

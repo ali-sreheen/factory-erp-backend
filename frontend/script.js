@@ -8210,11 +8210,11 @@ window.updateDoorElevationUI = function() {
         if (footerNote) footerNote.textContent = '• نمط العرض فقط: المقاسات معتمدة ومسجلة في المشروع';
         if (controlsBar) controlsBar.classList.add('pointer-events-none', 'opacity-60');
     } else {
-        if (subtitle) subtitle.textContent = 'انقر مباشرة على أبعاد العرض أو الطول في الرسم أو استخدم أدوات التحكم لتعديل المقاسات مباشرة';
+        if (subtitle) subtitle.textContent = 'انقر مباشرة على أبعاد العرض أو الارتفاع في الرسم لتعديل القياس فوراً';
         if (btnReset) btnReset.classList.remove('hidden');
         if (btnApply) btnApply.classList.remove('hidden');
         if (btnCancel) btnCancel.textContent = 'إلغاء';
-        if (footerNote) footerNote.textContent = '• المقاسات المعروضة بالسنتيمتر، ويتم تحديث قياس الدرف والمقطع تلقائياً';
+        if (footerNote) footerNote.textContent = '• انقر على رقم العرض أو الارتفاع في الرسم للتعديل المباشر • يتم تحديث قياس الدرف والمقطع تلقائياً';
         if (controlsBar) controlsBar.classList.remove('pointer-events-none', 'opacity-60');
     }
 };
@@ -8273,7 +8273,7 @@ window.applyDoorPreset = function(w, h, dir) {
     window.renderDoorElevationSvg();
 };
 
-// In-place click on SVG dimension badge
+// In-place click on SVG dimension badge (Direct CAD-style inline editing)
 window.editDoorDimensionInPlace = function(dim, event) {
     if (event) {
         event.stopPropagation();
@@ -8285,19 +8285,105 @@ window.editDoorDimensionInPlace = function(dim, event) {
         }
         return;
     }
-    const targetInputId = (dim === 'width') ? 'doorCtrlWidth' : 'doorCtrlHeight';
-    const input = document.getElementById(targetInputId);
-    if (input) {
-        input.focus();
-        input.select();
-        const container = input.closest('div');
-        if (container) {
-            container.classList.add('ring-4', 'ring-indigo-400');
-            setTimeout(() => {
-                container.classList.remove('ring-4', 'ring-indigo-400');
-            }, 1200);
+
+    const s = window.doorElevationState;
+    const currentVal = dim === 'width' ? s.width : s.height;
+    const targetId = dim === 'width' ? 'badgeDimWidth' : 'badgeDimHeight';
+    const targetEl = document.getElementById(targetId);
+    if (!targetEl) return;
+
+    if (targetEl.querySelector('foreignObject')) return;
+
+    const originalContent = targetEl.innerHTML;
+    const bx = parseFloat(targetEl.dataset.x) || 0;
+    const by = parseFloat(targetEl.dataset.y) || 0;
+
+    const inputW = 260;
+    const inputH = 58;
+
+    targetEl.innerHTML = `
+        <foreignObject x="${bx - inputW / 2}" y="${by - inputH / 2}" width="${inputW}" height="${inputH}" class="overflow-visible">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; direction:rtl;">
+                <div style="display:flex; align-items:center; justify-content:center; background:#ffffff; border:2.5px solid #4f46e5; border-radius:14px; box-shadow:0 8px 20px rgba(79, 70, 229, 0.3); padding:4px 10px; width:100%; height:100%; box-sizing:border-box;">
+                    <span style="font-size:18px; font-weight:900; color:#4338ca; margin-left:6px; font-family:system-ui, sans-serif; white-space:nowrap;">
+                        ${dim === 'width' ? 'العرض:' : 'الارتفاع:'}
+                    </span>
+                    <input type="number" step="0.5" id="dim-door-inline-${dim}" value="${currentVal}"
+                        style="width:90px; height:38px; text-align:center; font-size:22px; font-weight:900; font-family:system-ui, sans-serif;
+                               background:#f8fafc; color:#1e1b4b; border:1.5px solid #cbd5e1; border-radius:8px; outline:none; padding:0 4px;" />
+                    <span style="font-size:16px; font-weight:700; color:#64748b; margin-right:6px; font-family:system-ui, sans-serif;">سم</span>
+                </div>
+            </div>
+        </foreignObject>
+    `;
+
+    const inputEl = document.getElementById(`dim-door-inline-${dim}`);
+    if (!inputEl) return;
+
+    let isHandled = false;
+    const commitVal = () => {
+        if (isHandled) return;
+        isHandled = true;
+        const newVal = parseFloat(inputEl.value);
+        if (!isNaN(newVal) && newVal > 0) {
+            if (dim === 'width') {
+                s.width = Math.max(30, Math.min(500, Math.round(newVal * 10) / 10));
+                if (s.sourceType === 'wizard' && s.sourceRowEl) {
+                    const wInput = s.sourceRowEl.querySelector('input[placeholder="عرض"]') || s.sourceRowEl.querySelectorAll('input')[2];
+                    if (wInput) {
+                        wInput.value = s.width;
+                        if (typeof autoCalculateLeafSizes === 'function') autoCalculateLeafSizes(wInput);
+                    }
+                }
+            } else {
+                s.height = Math.max(50, Math.min(500, Math.round(newVal * 10) / 10));
+                if (s.sourceType === 'wizard' && s.sourceRowEl) {
+                    const hInput = s.sourceRowEl.querySelector('input[placeholder="طول"]') || s.sourceRowEl.querySelector('input[placeholder="الارتفاع"]') || s.sourceRowEl.querySelectorAll('input')[3];
+                    if (hInput) {
+                        hInput.value = s.height;
+                    }
+                }
+            }
+
+            if (typeof window.calculateSheetRequirements === 'function') {
+                try { window.calculateSheetRequirements(); } catch(e) {}
+            }
+
+            window.updateDoorElevationUI();
+            window.renderDoorElevationSvg();
+
+            if (typeof showToast === 'function') {
+                showToast(`تم تعديل ${dim === 'width' ? 'العرض' : 'الارتفاع'} إلى ${s[dim]} سم`, 'bg-indigo-600', '✓');
+            }
+        } else {
+            targetEl.innerHTML = originalContent;
         }
-    }
+    };
+
+    const cancelEdit = () => {
+        if (isHandled) return;
+        isHandled = true;
+        targetEl.innerHTML = originalContent;
+    };
+
+    inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitVal();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEdit();
+        }
+    });
+
+    inputEl.addEventListener('blur', () => {
+        commitVal();
+    });
+
+    setTimeout(() => {
+        inputEl.focus();
+        inputEl.select();
+    }, 20);
 };
 
 // Render Door Elevation SVG (Architectural Elevation CAD View)
@@ -8661,7 +8747,7 @@ window.renderDoorElevationSvg = function() {
             <line x1="0" y1="${dimWidthY}" x2="${W}" y2="${dimWidthY}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
 
             <!-- Top Width Interactive Badge -->
-            <g id="badgeDimWidth" class="cursor-pointer group" onclick="editDoorDimensionInPlace('width', event)">
+            <g id="badgeDimWidth" class="cursor-pointer group" onclick="editDoorDimensionInPlace('width', event)" data-x="${W/2}" data-y="${dimWidthY}">
                 <rect x="${W/2 - 130}" y="${dimWidthY - 28}" width="260" height="56" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" filter="url(#badgeShadow)"/>
                 <text x="${W/2}" y="${dimWidthY + 9}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#3730a3">العرض: ${s.width} سم ✎</text>
             </g>
@@ -8671,10 +8757,12 @@ window.renderDoorElevationSvg = function() {
             <line x1="-10" y1="${H}" x2="${dimHeightX - 20}" y2="${H}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
             <line x1="${dimHeightX}" y1="0" x2="${dimHeightX}" y2="${H}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
 
-            <!-- Left Height Interactive Badge (Rotated for architectural elegance) -->
-            <g id="badgeDimHeight" class="cursor-pointer group" onclick="editDoorDimensionInPlace('height', event)" transform="rotate(-90, ${dimHeightX}, ${H/2})">
-                <rect x="${dimHeightX - 135}" y="${H/2 - 28}" width="270" height="56" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" filter="url(#badgeShadow)"/>
-                <text x="${dimHeightX}" y="${H/2 + 9}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#3730a3">الارتفاع: ${s.height} سم ✎</text>
+            <!-- Left Height Interactive Badge -->
+            <g id="badgeDimHeight" class="cursor-pointer group" onclick="editDoorDimensionInPlace('height', event)" data-x="${dimHeightX}" data-y="${H/2}">
+                <g id="badgeDimHeightInner" transform="rotate(-90, ${dimHeightX}, ${H/2})">
+                    <rect x="${dimHeightX - 135}" y="${H/2 - 28}" width="270" height="56" rx="14" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5" filter="url(#badgeShadow)"/>
+                    <text x="${dimHeightX}" y="${H/2 + 9}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#3730a3">الارتفاع: ${s.height} سم ✎</text>
+                </g>
             </g>
 
             <!-- Architrave Dimension Annotation (Top Right) -->
