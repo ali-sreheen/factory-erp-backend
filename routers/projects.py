@@ -294,6 +294,9 @@ def export_project_dxf(
     sizes_1_5 = [(float(s.width) * 10, float(s.height) * 10) for s in db_sizes_1_5 if s.width and s.height] if db_sizes_1_5 else None
     sizes_1_2 = [(float(s.width) * 10, float(s.height) * 10) for s in db_sizes_1_2 if s.width and s.height] if db_sizes_1_2 else None
 
+    import json
+    import re
+
     doors_list = []
     for d in project.details:
         qty = d.quantity if d.quantity and d.quantity > 0 else 1
@@ -306,6 +309,15 @@ def export_project_dxf(
             def_a1, def_a2 = 5.0, 5.0
         else:
             def_a1, def_a2 = 4.0, 6.2
+
+        custom_p = {}
+        if d.notes:
+            m = re.search(r'\[PROFILE:(.*?)\]', d.notes)
+            if m:
+                try:
+                    custom_p = json.loads(m.group(1))
+                except Exception:
+                    custom_p = {}
 
         for q in range(qty):
             name_suffix = f"-{q+1}" if qty > 1 else ""
@@ -321,7 +333,11 @@ def export_project_dxf(
                 "door_type": d.door_type or "Single leaf metal",
                 "qashatah": d.qashatah or "NO",
                 "drop_seal": (str(d.qashatah or "").upper() in ("YES", "TRUE", "1", "نعم")),
-                "fire_resistance": d.fire_resistance or ""
+                "fire_resistance": d.fire_resistance or "",
+                "custom_profile": custom_p,
+                "s1": float(custom_p.get("s1") or custom_p.get("S1") or 15.0),
+                "s2": float(custom_p.get("s2") or custom_p.get("S2") or 15.0),
+                "r2": float(custom_p.get("r2") or custom_p.get("R2") or 10.5)
             })
 
     try:

@@ -3806,7 +3806,7 @@ function addProjectDetailRow() {
             </select>
         </td>
         <td class="p-2 text-center"><input type="checkbox" class="w-4 h-4"></td>
-        <td class="p-2"><input type="text" class="w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
+        <td class="p-2"><input type="text" class="pd-notes-input w-full px-2 py-1 border rounded" placeholder="ملاحظات"></td>
         <td class="p-2 text-center">
             <div class="flex items-center justify-center gap-1">
                 <button type="button" onclick="openDoorElevationFromWizardRow(this)" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-xs" title="معاينة وتعديل شكل الباب">
@@ -4223,7 +4223,7 @@ async function viewProjectDetails(id, fromHistory = false) {
                     <td class="p-3 font-semibold text-slate-700">${d.window_height || '-'}</td>
                     <td class="p-3 font-semibold text-slate-700">${d.window_position || '-'}</td>
                     <td class="p-3 text-center">${d.raddad === 'YES' ? 'نعم' : 'لا'}</td>
-                    <td class="p-3">${d.notes || '-'}</td>
+                    <td class="p-3">${(d.notes || '').replace(/\[PROFILE:.*?\]/g, '').trim() || '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -4363,7 +4363,7 @@ if (projectWizardForm) {
                     window_position: inputs[22].value || null,
                     window_details: (inputs[20].value && inputs[21].value) ? `${inputs[20].value}x${inputs[21].value}${inputs[22].value ? ' (' + inputs[22].value + ')' : ''}` : null,
                     raddad: inputs[23].checked ? 'YES' : 'NO',
-                    notes: inputs[24].value || null
+                    notes: (tr.querySelector('.pd-notes-input') ? tr.querySelector('.pd-notes-input').value : (inputs[24] ? inputs[24].value : null)) || null
                 };
                 
                 await authFetch(`${PROJECTS_URL}/${createdProject.id}/details/`, {
@@ -4817,7 +4817,7 @@ window.editProject = async function(projectId, fromHistory = false) {
                         </select>
                     </td>
                     <td class="p-2 text-center"><input type="checkbox" class="w-5 h-5 text-indigo-600 rounded" ${d.raddad === 'YES' ? 'checked' : ''}></td>
-                    <td class="p-2"><input type="text" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
+                    <td class="p-2"><input type="text" class="pd-notes-input w-full p-2 border border-slate-300 rounded-lg text-sm" value="${d.notes || ''}"></td>
                     <td class="p-2 text-center">
                         <div class="flex items-center justify-center gap-1">
                             <button type="button" onclick="openDoorElevationFromWizardRow(this)" class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-indigo-200 shadow-xs" title="معاينة وتعديل شكل الباب">
@@ -8903,6 +8903,21 @@ window.applyStudioChangesToSource = function() {
             autoCalculateLeafSizes(widthInput);
         }
 
+        // 8b. Persist custom profile parameters (s1, s2, r2) to row notes & dataset
+        const customObj = {
+            s1: parseFloat(p.R_L || p.S1 || 15.0),
+            s2: parseFloat(p.R_R || p.S2 || 15.0),
+            r2: parseFloat(p.H_step || 10.5)
+        };
+        tr.dataset.customProfile = JSON.stringify(customObj);
+
+        const notesInput = tr.querySelector('.pd-notes-input') || tr.querySelectorAll('input')[24];
+        if (notesInput) {
+            let currentNotes = (notesInput.value || '').replace(/\s*\[PROFILE:.*?\]/g, '').trim();
+            const tag = `[PROFILE:${JSON.stringify(customObj)}]`;
+            notesInput.value = currentNotes ? `${currentNotes} ${tag}` : tag;
+        }
+
         // 9. Recalculate sheet requirements if available
         if (typeof window.calculateSheetRequirements === 'function') {
             try { window.calculateSheetRequirements(); } catch (e) {}
@@ -8979,6 +8994,20 @@ window.openDoorElevationFromProject = function(doorIdx, directDoor) {
         p.D = s.depth < 40 ? s.depth * 10 : s.depth;
         p.A_L = s.architrave < 15 ? s.architrave * 10 : s.architrave;
         p.A_R = s.architrave2 < 15 ? s.architrave2 * 10 : s.architrave2;
+
+        // Parse custom profile if stored in notes
+        let customProf = null;
+        if (d.notes) {
+            const m = d.notes.match(/\[PROFILE:(.*?)\]/);
+            if (m) {
+                try { customProf = JSON.parse(m[1]); } catch(e) {}
+            }
+        }
+        if (customProf) {
+            if (customProf.s1) { p.R_L = customProf.s1; p.S1 = customProf.s1; }
+            if (customProf.s2) { p.R_R = customProf.s2; p.S2 = customProf.s2; }
+            if (customProf.r2) { p.H_step = customProf.r2; }
+        }
 
         const tag = document.getElementById('lblProfileDoorTag');
         if (tag) tag.textContent = `باب: ${s.doorNumber}`;
@@ -9081,6 +9110,26 @@ window.openDoorElevationFromWizardRow = function(btn) {
         p.D = s.depth < 40 ? s.depth * 10 : s.depth;
         p.A_L = s.architrave < 15 ? s.architrave * 10 : s.architrave;
         p.A_R = s.architrave2 < 15 ? s.architrave2 * 10 : s.architrave2;
+
+        // Restore custom profile from row dataset or notes input
+        let customProf = null;
+        if (tr.dataset.customProfile) {
+            try { customProf = JSON.parse(tr.dataset.customProfile); } catch(e) {}
+        }
+        if (!customProf) {
+            const notesInput = tr.querySelector('.pd-notes-input') || tr.querySelectorAll('input')[24];
+            if (notesInput && notesInput.value) {
+                const m = notesInput.value.match(/\[PROFILE:(.*?)\]/);
+                if (m) {
+                    try { customProf = JSON.parse(m[1]); } catch(e) {}
+                }
+            }
+        }
+        if (customProf) {
+            if (customProf.s1) { p.R_L = customProf.s1; p.S1 = customProf.s1; }
+            if (customProf.s2) { p.R_R = customProf.s2; p.S2 = customProf.s2; }
+            if (customProf.r2) { p.H_step = customProf.r2; }
+        }
 
         const tag = document.getElementById('lblProfileDoorTag');
         if (tag) tag.textContent = `باب: ${s.doorNumber}`;
