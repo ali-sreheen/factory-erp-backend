@@ -4711,23 +4711,24 @@
 
             <!-- Viewport 1: Door Elevation Interactive Container -->
             <div id="doorElevationContainer" class="flex-1 flex flex-col overflow-hidden bg-slate-100">
-                <!-- Interactive Controls Bar (Direction only, minimal) -->
-                <div id="doorElevationControls" class="w-full bg-white px-3 sm:px-6 py-1.5 sm:py-2 border-b border-slate-200 flex items-center justify-center text-xs font-bold shadow-xs">
-                    <!-- Quick Direction Toggle -->
-                    <div class="flex items-center gap-2">
-                        <span class="text-slate-600 font-bold">اتجاه فتح الباب:</span>
-                        <div class="flex border border-slate-300 rounded-xl overflow-hidden bg-slate-50 shadow-xs">
-                            <button type="button" id="btnDirRH" onclick="setDoorElevationDirection('RH')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">يمين RH</button>
-                            <button type="button" id="btnDirLH" onclick="setDoorElevationDirection('LH')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">يسار LH</button>
-                            <button type="button" id="btnDirDouble" onclick="setDoorElevationDirection('Double')" class="px-3 py-1 text-xs font-bold transition cursor-pointer">دبل Double</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- SVG Viewport for Door Elevation -->
-                <div class="p-1 sm:p-3 overflow-hidden flex-1 flex flex-col items-center justify-center">
-                    <div id="doorElevationSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[350px] sm:min-h-[460px] h-full bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-xl sm:rounded-2xl relative select-none overflow-hidden">
+                <div class="p-1 sm:p-3 overflow-hidden flex-1 flex flex-col items-center justify-center relative">
+                    <div id="doorElevationSvgViewport" class="w-full flex-1 flex items-center justify-center min-h-[360px] sm:min-h-[480px] h-full bg-[#f0f4f9] border border-slate-300/80 shadow-inner rounded-xl sm:rounded-2xl relative select-none overflow-hidden">
                         <!-- Dynamic SVG rendered by renderDoorElevationSvg -->
+                    </div>
+
+                    <!-- Floating Direction Dropdown on Bottom-Right Corner (LH, RH, RA, LA) -->
+                    <div id="doorElevationDirectionWidget" class="absolute bottom-3 right-3 sm:bottom-5 sm:right-5 z-20 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm border border-slate-300 shadow-md rounded-xl px-2.5 py-1.5">
+                        <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                            <span>الاتجاه:</span>
+                        </span>
+                        <select id="doorElevationDirectionSelect" onchange="setDoorElevationDirection(this.value)" class="text-xs font-black text-indigo-700 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            <option value="LH">LH</option>
+                            <option value="RH">RH</option>
+                            <option value="RA">RA</option>
+                            <option value="LA">LA</option>
+                        </select>
                     </div>
                 </div>
             </div>

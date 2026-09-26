@@ -3746,6 +3746,8 @@ function addProjectDetailRow() {
                 <option value="" disabled selected>الاتجاه</option>
                 <option value="RH">RH</option>
                 <option value="LH">LH</option>
+                <option value="RA">RA</option>
+                <option value="LA">LA</option>
             </select>
         </td>
         <td class="p-2">
@@ -4757,6 +4759,8 @@ window.editProject = async function(projectId, fromHistory = false) {
                             <option value="" disabled ${!d.direction ? 'selected' : ''}>الاتجاه</option>
                             <option value="RH" ${d.direction === 'RH' ? 'selected' : ''}>RH</option>
                             <option value="LH" ${d.direction === 'LH' ? 'selected' : ''}>LH</option>
+                            <option value="RA" ${(d.direction === 'RA' || d.direction === 'Double' || d.direction === 'D/RA') ? 'selected' : ''}>RA</option>
+                            <option value="LA" ${(d.direction === 'LA' || d.direction === 'D/LA') ? 'selected' : ''}>LA</option>
                         </select>
                     </td>
                     <td class="p-2">
@@ -8092,9 +8096,9 @@ window.calculateDoorElevationLeafSizes = function() {
     if (h > 450) h /= 10.0;
     if (arch > 20) arch /= 10.0;
 
-    const dir = s.direction || '';
-    const dt = s.doorType || '';
-    const isDouble = dir === 'Double' || dir.includes('D/') || dir.includes('دبل') || dt.toLowerCase().includes('double') || dt.includes('دبل');
+    const rawDir = (s.direction || '').toUpperCase();
+    const dt = (s.doorType || '').toLowerCase();
+    const isDouble = rawDir === 'RA' || rawDir === 'LA' || rawDir === 'DOUBLE' || rawDir.includes('D/') || rawDir.includes('دبل') || dt.includes('double') || dt.includes('دبل');
 
     // Leaf height: Door height - Architrave (A1) - 3mm (frame gap) - 7mm (floor clearance) = H - A1 - 1.0 cm
     const leafHeight = Math.max(10, Math.round((h - arch - 1.0) * 100) / 100);
@@ -8103,7 +8107,7 @@ window.calculateDoorElevationLeafSizes = function() {
         // Double door: clearances = 3.5mm (left) + 3.5mm (right) + 8.0mm (middle) = 15.0mm (1.5 cm)
         const leafW = Math.max(10, Math.round(((w - (2 * arch) - 1.5) / 2) * 100) / 100);
         const leafW_mm = leafW * 10;
-        const isRightActive = !dir.toUpperCase().includes('D/LA') && !dir.includes('يسار');
+        const isRightActive = rawDir === 'RA' || (!rawDir.includes('LA') && !rawDir.includes('D/LA') && !s.direction.includes('يسار'));
         return {
             isDouble: true,
             leaf1: leafW,
@@ -8143,19 +8147,16 @@ window.updateDoorElevationUI = function() {
     if (lblStatW) lblStatW.textContent = s.width;
     if (lblStatH) lblStatH.textContent = s.height;
 
-    // Direction buttons
-    const btnRH = document.getElementById('btnDirRH');
-    const btnLH = document.getElementById('btnDirLH');
-    const btnDouble = document.getElementById('btnDirDouble');
-    [btnRH, btnLH, btnDouble].forEach(b => {
-        if (b) b.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer text-slate-700 bg-white hover:bg-slate-50';
-    });
-    if (s.direction === 'RH' && btnRH) {
-        btnRH.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
-    } else if (s.direction === 'LH' && btnLH) {
-        btnLH.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
-    } else if ((s.direction === 'Double' || (s.direction || '').includes('D/')) && btnDouble) {
-        btnDouble.className = 'px-2.5 py-1 text-xs font-bold transition cursor-pointer bg-indigo-600 text-white shadow-xs';
+    // Direction dropdown select (LH, RH, RA, LA)
+    const dirSel = document.getElementById('doorElevationDirectionSelect');
+    if (dirSel) {
+        let curDir = (s.direction || 'RH').toUpperCase();
+        if (curDir === 'DOUBLE' || curDir === 'D/RA' || curDir === 'D/RH') curDir = 'RA';
+        if (curDir === 'D/LA' || curDir === 'D/LH') curDir = 'LA';
+        if (!['LH', 'RH', 'RA', 'LA'].includes(curDir)) {
+            curDir = (s.doorType || '').toLowerCase().includes('double') ? 'RA' : 'RH';
+        }
+        dirSel.value = curDir;
     }
 
     // Stats bar
@@ -8248,12 +8249,36 @@ window.onDoorDimensionInput = function(dim, val) {
 
 window.setDoorElevationDirection = function(dir) {
     if (window.doorElevationState.isReadOnly) return;
-    window.doorElevationState.direction = dir;
-    if (dir === 'Double') {
-        window.doorElevationState.doorType = 'Double leaf metal';
+    const s = window.doorElevationState;
+    s.direction = dir;
+    if (dir === 'RA' || dir === 'LA' || dir === 'Double') {
+        s.doorType = 'Double leaf metal';
     } else {
-        if ((window.doorElevationState.doorType || '').toLowerCase().includes('double') || (window.doorElevationState.doorType || '').includes('دبل')) {
-            window.doorElevationState.doorType = 'Single leaf metal';
+        s.doorType = 'Single leaf metal';
+    }
+    // If opened from a wizard row, update the row directly as well
+    if (s.sourceType === 'wizard' && s.sourceRowEl) {
+        const selects = Array.from(s.sourceRowEl.querySelectorAll('select'));
+        const dirSelect = selects.find(sel => {
+            const opts = Array.from(sel.options).map(o => o.value);
+            return opts.includes('RH') || opts.includes('LH') || opts.includes('RA') || opts.includes('LA');
+        });
+        if (dirSelect) {
+            dirSelect.value = dir;
+        }
+        const dtSelect = s.sourceRowEl.querySelector('.pd-doortype-select') || selects.find(sel => {
+            const html = (sel.innerHTML || '').toLowerCase();
+            return html.includes('single leaf') || html.includes('double leaf');
+        });
+        if (dtSelect) {
+            const isDbl = (dir === 'RA' || dir === 'LA');
+            const opts = Array.from(dtSelect.options);
+            const m = opts.find(o => isDbl ? o.value.toLowerCase().includes('double') : o.value.toLowerCase().includes('single'));
+            if (m) dtSelect.value = m.value;
+        }
+        const wInput = s.sourceRowEl.querySelector('.pd-width-input') || s.sourceRowEl.querySelector('input[placeholder="عرض"]') || s.sourceRowEl.querySelectorAll('input')[2];
+        if (wInput && typeof autoCalculateLeafSizes === 'function') {
+            autoCalculateLeafSizes(wInput);
         }
     }
     window.updateDoorElevationUI();
@@ -8672,11 +8697,12 @@ window.renderDoorElevationSvg = function() {
                 </g>
             `;
         } else {
-            const hx = leaf2X + 45;
+            const hx = isRightActive ? (leaf2X + 45) : (leaf1X + l1W - 45);
+            const leverX = isRightActive ? hx : (hx - 65);
             hardwareSvg = `
                 <g id="doubleMortiseLock">
                     <rect x="${hx - 14}" y="${handleHoleY - 50}" width="28" height="155" rx="7" fill="#475569" stroke="#1e293b" stroke-width="2"/>
-                    <rect x="${hx}" y="${handleHoleY - 7.5}" width="65" height="15" rx="7" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
+                    <rect x="${leverX}" y="${handleHoleY - 7.5}" width="65" height="15" rx="7" fill="#e2e8f0" stroke="#1e293b" stroke-width="2"/>
                     <circle cx="${hx}" cy="${handleHoleY}" r="11" fill="#334155" stroke="#1e293b" stroke-width="2"/>
                     <circle cx="${hx}" cy="${handleHoleY}" r="4" fill="#0f172a"/>
                     <circle cx="${hx}" cy="${handleHoleY + 72}" r="5" fill="#0f172a"/>
@@ -8921,12 +8947,10 @@ window.applyStudioChangesToSource = function() {
         const selects = Array.from(tr.querySelectorAll('select'));
         const dirSelect = selects.find(sel => {
             const opts = Array.from(sel.options).map(o => o.value);
-            return opts.includes('RH') || opts.includes('LH');
+            return opts.includes('RH') || opts.includes('LH') || opts.includes('RA') || opts.includes('LA');
         }) || selects[0];
         if (dirSelect) {
-            if (s.direction === 'RH' || s.direction === 'LH') {
-                dirSelect.value = s.direction;
-            }
+            dirSelect.value = s.direction;
         }
 
         // 7. Door Type select
@@ -9014,8 +9038,11 @@ window.openDoorElevationFromProject = function(doorIdx, directDoor) {
         s.depth = parseFloat(d.depth) || 15.0;
         s.architrave = parseFloat(d.architrave) || 4.0;
         s.architrave2 = parseFloat(d.architrave_2) || 6.2;
-        s.direction = d.direction || 'RH';
-        s.doorType = d.door_type || 'Single leaf metal';
+        let dirVal = (d.direction || 'RH').toUpperCase();
+        if (dirVal === 'DOUBLE' || dirVal === 'D/RA' || dirVal === 'D/RH') dirVal = 'RA';
+        if (dirVal === 'D/LA' || dirVal === 'D/LH') dirVal = 'LA';
+        s.direction = dirVal;
+        s.doorType = d.door_type || ((dirVal === 'RA' || dirVal === 'LA') ? 'Double leaf metal' : 'Single leaf metal');
         s.lockType = d.lock_type || 'Mortise';
         s.hinges = d.hinges || 'Standard Stainless Steel';
         s.hingesCount = parseInt(d.hinges_count) || 4;
@@ -9105,9 +9132,11 @@ window.openDoorElevationFromWizardRow = function(btn) {
         const selects = Array.from(tr.querySelectorAll('select'));
         const dirSelect = selects.find(sel => {
             const opts = Array.from(sel.options).map(o => o.value);
-            return opts.includes('RH') || opts.includes('LH');
+            return opts.includes('RH') || opts.includes('LH') || opts.includes('RA') || opts.includes('LA');
         }) || selects[0];
         s.direction = dirSelect && dirSelect.value ? dirSelect.value : 'RH';
+        if (s.direction === 'Double' || s.direction === 'D/RA') s.direction = 'RA';
+        if (s.direction === 'D/LA') s.direction = 'LA';
 
         const lockSelect = selects[1];
         s.lockType = lockSelect && lockSelect.value ? lockSelect.value : 'Mortise';
