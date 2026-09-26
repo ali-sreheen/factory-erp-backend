@@ -8106,8 +8106,10 @@ window.calculateDoorElevationLeafSizes = function() {
     if (isDouble) {
         // Double door: clearances = 3.5mm (left) + 3.5mm (right) + 8.0mm (middle) = 15.0mm (1.5 cm)
         const leafW = Math.max(10, Math.round(((w - (2 * arch) - 1.5) / 2) * 100) / 100);
-        const leafW_mm = leafW * 10;
-        const isRightActive = rawDir === 'RA' || (!rawDir.includes('LA') && !rawDir.includes('D/LA') && !s.direction.includes('يسار'));
+        // User requested reversing direction for RA and LA:
+        // For RA: Active leaf is on the left (isRightActive = false)
+        // For LA: Active leaf is on the right (isRightActive = true)
+        const isRightActive = (rawDir === 'LA' || rawDir.includes('LA') || rawDir.includes('D/LA'));
         return {
             isDouble: true,
             leaf1: leafW,
@@ -8323,20 +8325,20 @@ window.editDoorDimensionInPlace = function(dim, event) {
     const bx = parseFloat(targetEl.dataset.x) || 0;
     const by = parseFloat(targetEl.dataset.y) || 0;
 
-    const inputW = 220;
-    const inputH = 50;
+    const inputW = 340;
+    const inputH = 84;
 
     targetEl.innerHTML = `
         <foreignObject x="${bx - inputW / 2}" y="${by - inputH / 2}" width="${inputW}" height="${inputH}" class="overflow-visible">
             <div xmlns="http://www.w3.org/1999/xhtml" style="display:flex; justify-content:center; align-items:center; width:100%; height:100%; direction:rtl;">
-                <div style="display:flex; align-items:center; justify-content:center; background:#ffffff; border:2px solid #4f46e5; border-radius:12px; box-shadow:0 6px 16px rgba(79, 70, 229, 0.3); padding:2px 8px; width:100%; height:100%; box-sizing:border-box;">
-                    <span style="font-size:16px; font-weight:900; color:#4338ca; margin-left:4px; font-family:system-ui, sans-serif; white-space:nowrap;">
+                <div style="display:flex; align-items:center; justify-content:center; background:#ffffff; border:3.5px solid #4f46e5; border-radius:20px; box-shadow:0 8px 24px rgba(79, 70, 229, 0.35); padding:4px 10px; width:100%; height:100%; box-sizing:border-box;">
+                    <span style="font-size:26px; font-weight:900; color:#4338ca; margin-left:6px; font-family:system-ui, sans-serif; white-space:nowrap;">
                         ${dim === 'width' ? 'العرض:' : 'الارتفاع:'}
                     </span>
                     <input type="number" step="0.5" id="dim-door-inline-${dim}" value="${currentVal}"
-                        style="width:80px; height:32px; text-align:center; font-size:20px; font-weight:900; font-family:system-ui, sans-serif;
-                               background:#f8fafc; color:#1e1b4b; border:1.5px solid #cbd5e1; border-radius:6px; outline:none; padding:0 2px;" />
-                    <span style="font-size:14px; font-weight:700; color:#64748b; margin-right:4px; font-family:system-ui, sans-serif;">سم</span>
+                        style="width:120px; height:54px; text-align:center; font-size:32px; font-weight:900; font-family:system-ui, sans-serif;
+                               background:#f8fafc; color:#1e1b4b; border:2px solid #cbd5e1; border-radius:10px; outline:none; padding:0 4px;" />
+                    <span style="font-size:22px; font-weight:700; color:#64748b; margin-right:6px; font-family:system-ui, sans-serif;">سم</span>
                 </div>
             </div>
         </foreignObject>
@@ -8423,11 +8425,11 @@ window.renderDoorElevationSvg = function() {
     const isDouble = s.direction === 'Double' || (s.doorType || '').toLowerCase().includes('double') || (s.doorType || '').includes('دبل');
     const dir = s.direction || 'RH';
 
-    // ViewBox Margins (Optimized for mobile to maximize door display size)
-    const marginL = 110;
-    const marginR = 30;
-    const marginT = 75;
-    const marginB = 30;
+    // ViewBox Margins (Ensuring door, floor, dimensions and badges are never clipped)
+    const marginL = 190;
+    const marginR = 60;
+    const marginT = 160;
+    const marginB = 140;
     const vbX = -marginL;
     const vbY = -marginT;
     const vbW = W + marginL + marginR;
@@ -8480,9 +8482,9 @@ window.renderDoorElevationSvg = function() {
             <!-- Inner leaf bevel line -->
             <rect x="${leafX + 8}" y="${leafY + 8}" width="${leafW - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
             <!-- Leaf size watermark -->
-            <g transform="translate(${leafX + leafW/2}, ${H - 140})">
-                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#475569" opacity="0.9">درفة: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم (إفراد: ${leafCalc.leaf1Unfolded_mm} مم)</text>
-                <text x="0" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="semibold" fill="#64748b" opacity="0.8">طول الدرفة = ${s.height} - ${s.architrave} - 0.3 - 0.7 = ${(leafH / 10).toFixed(1)} سم</text>
+            <g transform="translate(${leafX + leafW/2}, ${H - 160})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#475569" opacity="0.9">درفة: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم (إفراد: ${leafCalc.leaf1Unfolded_mm} مم)</text>
+                <text x="0" y="32" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="semibold" fill="#64748b" opacity="0.8">طول الدرفة = ${s.height} - ${s.architrave} - 0.3 - 0.7 = ${(leafH / 10).toFixed(1)} سم</text>
             </g>
         `;
 
@@ -8633,17 +8635,17 @@ window.renderDoorElevationSvg = function() {
             <!-- Left Leaf -->
             <rect x="${leaf1X}" y="${leaf1Y}" width="${l1W}" height="${leafH}" rx="3" fill="url(#doorLeafGrad)" stroke="#64748b" stroke-width="2" filter="url(#leafShadow)"/>
             <rect x="${leaf1X + 8}" y="${leaf1Y + 8}" width="${l1W - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
-            <g transform="translate(${leaf1X + l1W/2}, ${H - 140})">
-                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" fill="#475569" opacity="0.9">${leftTitle}: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم</text>
-                <text x="0" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="semibold" fill="#64748b" opacity="0.85">${leftUnfold}</text>
+            <g transform="translate(${leaf1X + l1W/2}, ${H - 160})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#475569" opacity="0.9">${leftTitle}: ${leafCalc.leaf1} × ${(leafH / 10).toFixed(1)} سم</text>
+                <text x="0" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="semibold" fill="#64748b" opacity="0.85">${leftUnfold}</text>
             </g>
 
             <!-- Right Leaf -->
             <rect x="${leaf2X}" y="${leaf2Y}" width="${l2W}" height="${leafH}" rx="3" fill="url(#doorLeafGrad)" stroke="#64748b" stroke-width="2" filter="url(#leafShadow)"/>
             <rect x="${leaf2X + 8}" y="${leaf2Y + 8}" width="${l2W - 16}" height="${leafH - 16}" rx="2" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-opacity="0.8"/>
-            <g transform="translate(${leaf2X + l2W/2}, ${H - 140})">
-                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" fill="#475569" opacity="0.9">${rightTitle}: ${leafCalc.leaf2} × ${(leafH / 10).toFixed(1)} سم</text>
-                <text x="0" y="20" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="semibold" fill="#64748b" opacity="0.85">${rightUnfold}</text>
+            <g transform="translate(${leaf2X + l2W/2}, ${H - 160})">
+                <text x="0" y="0" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#475569" opacity="0.9">${rightTitle}: ${leafCalc.leaf2} × ${(leafH / 10).toFixed(1)} سم</text>
+                <text x="0" y="28" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="semibold" fill="#64748b" opacity="0.85">${rightUnfold}</text>
             </g>
 
             <!-- Central Astragal (شفة الركوب 36.5 ملم) -->
@@ -8746,41 +8748,51 @@ window.renderDoorElevationSvg = function() {
         </g>
     `;
 
-    // Floor Line (F.F.L)
+    // Floor Line (F.F.L) with architectural ground hatching
+    const floorX1 = -marginL + 30;
+    const floorX2 = W + marginR - 20;
+    let floorHatchLines = '';
+    for (let fx = floorX1; fx <= floorX2; fx += 28) {
+        floorHatchLines += `<line x1="${fx}" y1="${H}" x2="${fx - 18}" y2="${H + 24}" stroke="#94a3b8" stroke-width="2"/>`;
+    }
     const floorSvg = `
         <g id="floorLevelGroup">
             <!-- Solid floor level line -->
-            <line x1="-20" y1="${H}" x2="${W + 20}" y2="${H}" stroke="#475569" stroke-width="3"/>
+            <line x1="${floorX1}" y1="${H}" x2="${floorX2}" y2="${H}" stroke="#334155" stroke-width="4"/>
+            <!-- Architectural floor hatch lines -->
+            ${floorHatchLines}
+            <!-- F.F.L text label -->
+            <text x="${floorX1 + 10}" y="${H + 46}" font-family="system-ui, sans-serif" font-size="26" font-weight="900" fill="#64748b">F.F.L ±0.00 (منسوب التشطيب)</text>
         </g>
     `;
 
     // Dimension Lines (Width & Height with interactive clickable badges)
-    const dimWidthY = -48;
-    const dimHeightX = -60;
+    const dimWidthY = -85;
+    const dimHeightX = -110;
 
     const dimensionsSvg = `
         <g id="architecturalDimensions">
-            <!-- Top Width Dimension -->
-            <line x1="0" y1="-8" x2="0" y2="${dimWidthY - 14}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
-            <line x1="${W}" y1="-8" x2="${W}" y2="${dimWidthY - 14}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
-            <line x1="0" y1="${dimWidthY}" x2="${W}" y2="${dimWidthY}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+            <!-- Top Width Dimension Lines -->
+            <line x1="0" y1="-8" x2="0" y2="${dimWidthY - 25}" stroke="#94a3b8" stroke-dasharray="8,8" stroke-width="2.5"/>
+            <line x1="${W}" y1="-8" x2="${W}" y2="${dimWidthY - 25}" stroke="#94a3b8" stroke-dasharray="8,8" stroke-width="2.5"/>
+            <line x1="0" y1="${dimWidthY}" x2="${W}" y2="${dimWidthY}" stroke="#4f46e5" stroke-width="4" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
 
             <!-- Top Width Interactive Badge -->
             <g id="badgeDimWidth" class="cursor-pointer group" onclick="editDoorDimensionInPlace('width', event)" data-x="${W/2}" data-y="${dimWidthY}">
-                <rect x="${W/2 - 110}" y="${dimWidthY - 24}" width="220" height="48" rx="12" fill="#ffffff" stroke="#4f46e5" stroke-width="2.2" filter="url(#badgeShadow)"/>
-                <text x="${W/2}" y="${dimWidthY + 7}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="900" fill="#3730a3">العرض: ${s.width} سم ✎</text>
+                <rect x="${W/2 - 170}" y="${dimWidthY - 42}" width="340" height="84" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="3.5" filter="url(#badgeShadow)"/>
+                <text x="${W/2}" y="${dimWidthY + 16}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="46" font-weight="900" fill="#312e81">العرض: ${s.width} سم ✎</text>
             </g>
 
-            <!-- Left Height Dimension -->
-            <line x1="-8" y1="0" x2="${dimHeightX - 14}" y2="0" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
-            <line x1="-8" y1="${H}" x2="${dimHeightX - 14}" y2="${H}" stroke="#94a3b8" stroke-dasharray="4,4" stroke-width="1.5"/>
-            <line x1="${dimHeightX}" y1="0" x2="${dimHeightX}" y2="${H}" stroke="#4f46e5" stroke-width="2.5" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
+            <!-- Left Height Dimension Lines -->
+            <line x1="-8" y1="0" x2="${dimHeightX - 25}" y2="0" stroke="#94a3b8" stroke-dasharray="8,8" stroke-width="2.5"/>
+            <line x1="-8" y1="${H}" x2="${dimHeightX - 25}" y2="${H}" stroke="#94a3b8" stroke-dasharray="8,8" stroke-width="2.5"/>
+            <line x1="${dimHeightX}" y1="0" x2="${dimHeightX}" y2="${H}" stroke="#4f46e5" stroke-width="4" marker-start="url(#arrowStart)" marker-end="url(#arrowEnd)"/>
 
             <!-- Left Height Interactive Badge -->
             <g id="badgeDimHeight" class="cursor-pointer group" onclick="editDoorDimensionInPlace('height', event)" data-x="${dimHeightX}" data-y="${H/2}">
                 <g id="badgeDimHeightInner" transform="rotate(-90, ${dimHeightX}, ${H/2})">
-                    <rect x="${dimHeightX - 110}" y="${H/2 - 24}" width="220" height="48" rx="12" fill="#ffffff" stroke="#4f46e5" stroke-width="2.2" filter="url(#badgeShadow)"/>
-                    <text x="${dimHeightX}" y="${H/2 + 7}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="900" fill="#3730a3">الارتفاع: ${s.height} سم ✎</text>
+                    <rect x="${dimHeightX - 170}" y="${H/2 - 42}" width="340" height="84" rx="20" fill="#ffffff" stroke="#4f46e5" stroke-width="3.5" filter="url(#badgeShadow)"/>
+                    <text x="${dimHeightX}" y="${H/2 + 16}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="46" font-weight="900" fill="#312e81">الارتفاع: ${s.height} سم ✎</text>
                 </g>
             </g>
         </g>
@@ -8819,18 +8831,18 @@ window.renderDoorElevationSvg = function() {
                 </linearGradient>
 
                 <!-- Dimension Arrows (Blue) -->
-                <marker id="arrowStart" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <marker id="arrowStart" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="9" markerHeight="9" orient="auto">
                     <path d="M 10 1 L 1 5 L 10 9 z" fill="#4f46e5" />
                 </marker>
-                <marker id="arrowEnd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <marker id="arrowEnd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
                     <path d="M 0 1 L 9 5 L 0 9 z" fill="#4f46e5" />
                 </marker>
 
                 <!-- Dimension Arrows (Green for Handle) -->
-                <marker id="arrowStartGreen" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <marker id="arrowStartGreen" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="9" markerHeight="9" orient="auto">
                     <path d="M 10 1 L 1 5 L 10 9 z" fill="#059669" />
                 </marker>
-                <marker id="arrowEndGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <marker id="arrowEndGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto">
                     <path d="M 0 1 L 9 5 L 0 9 z" fill="#059669" />
                 </marker>
 
